@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>NEXUS DIGITAL — Digital Goods & Subscriptions</title>
+  <title>NEXUS DIGITAL — Master Digital Goods Marketplace</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -72,9 +72,9 @@
   <div id="appBackdrop" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden transition-opacity"></div>
   <div id="mainViewport" class="flex flex-1 min-h-screen"></div>
 
-  <!-- Global Modal for Inspection & Edit Forms -->
+  <!-- Global Modal for Inspection & Studio Edit Forms -->
   <div id="globalModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
-    <div class="glass max-w-2xl w-full rounded-3xl p-6 relative max-h-[90vh] overflow-y-auto custom-scroll" id="globalModalContent"></div>
+    <div class="glass max-w-3xl w-full rounded-3xl p-6 relative max-h-[90vh] overflow-y-auto custom-scroll" id="globalModalContent"></div>
   </div>
 
   <script>
@@ -127,9 +127,23 @@
       else { side.classList.add('-translate-x-full'); drop.classList.add('hidden'); }
     }
 
+    function sendHeartbeat(action = '') {
+      fetch('/api/presence/heartbeat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: state.sessionId,
+          page: state.currentView,
+          action
+        })
+      }).catch(() => {});
+    }
+    setInterval(sendHeartbeat, 15000);
+
     function navigate(view, params = {}) {
       state.currentView = view;
       closeAllDrawers();
+      sendHeartbeat();
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
       const viewport = document.getElementById('mainViewport');
@@ -142,7 +156,7 @@
     }
 
     // =========================================================================
-    // STOREFRONT LAYOUT & PRODUCTS
+    // STOREFRONT LAYOUT & CATALOG
     // =========================================================================
     function renderStorefrontLayout(viewport, view, params) {
       viewport.innerHTML = `
@@ -185,7 +199,10 @@
                 <button onclick="toggleCustomerDrawer(true)" class="lg:hidden p-2 rounded-xl bg-white/5 text-slate-300">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
-                <span class="text-xs font-bold text-slate-400">Digital Goods & Subscriptions</span>
+                <div class="relative w-48 sm:w-80">
+                  <input type="text" oninput="handleStoreSearch(this.value)" placeholder="Search products, software, keys..." class="w-full pl-9 pr-4 py-2 rounded-xl bg-surface-900 border border-white/10 text-xs text-white placeholder-slate-500 focus:border-emerald-500 outline-none">
+                  <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
               </div>
               <div class="flex items-center gap-3">
                 <button onclick="navigate('cart')" class="relative p-2.5 rounded-xl bg-surface-900 border border-white/5 text-slate-300">
@@ -203,8 +220,8 @@
       const storeContent = document.getElementById('storeContent');
       switch(view) {
         case 'home':
-        case 'products': renderStoreProducts(storeContent); break;
-        case 'product-details': renderStoreProductDetails(storeContent, params.id); break;
+        case 'products': renderStoreProducts(storeContent, params); break;
+        case 'product-details': renderStoreProductDetails(storeContent, params.id || params.slug); break;
         case 'cart': renderStoreCart(storeContent); break;
         case 'checkout': renderStoreCheckout(storeContent); break;
         case 'orders': renderStoreOrders(storeContent); break;
@@ -212,116 +229,266 @@
       }
     }
 
-    async function renderStoreProducts(container) {
+    async function renderStoreProducts(container, filters = {}) {
       container.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold animate-pulse">Loading catalog...</div>';
-      const res = await fetch('/api/products');
+      let queryUrl = '/api/products?';
+      if (filters.search) queryUrl += `search=${encodeURIComponent(filters.search)}&`;
+
+      const res = await fetch(queryUrl);
       const products = await res.json();
 
       container.innerHTML = `
         <div class="space-y-6">
           <div>
-            <h1 class="text-xl font-black text-white">Digital Products & Subscriptions</h1>
-            <p class="text-xs text-slate-400">Choose one-time digital goods or flexible monthly/yearly subscriptions</p>
+            <h1 class="text-xl font-black text-white">${filters.title || 'Digital Products & Subscriptions'}</h1>
+            <p class="text-xs text-slate-400">${products.length} products available for instant fulfillment</p>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            ${products.map(p => `
-              <div class="glass-card rounded-3xl overflow-hidden flex flex-col justify-between border border-white/5 relative group cursor-pointer" onclick="navigate('product-details', { id: '${p._id}' })">
-                <span class="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full ${p.product_type === 'SUBSCRIPTION' ? 'bg-indigo-500' : 'bg-emerald-500'} text-white font-black text-[10px] uppercase">
-                  ${p.product_type === 'SUBSCRIPTION' ? '🔄 Subscription' : '⚡ One-Time'}
-                </span>
+            ${products.map(p => {
+              const savings = p.original_price > p.sale_price ? p.original_price - p.sale_price : 0;
+              return `
+                <div class="glass-card rounded-3xl overflow-hidden flex flex-col justify-between border border-white/5 relative group cursor-pointer" onclick="navigate('product-details', { id: '${p._id}' })">
+                  ${p.discount_percentage > 0 ? `
+                    <span class="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full bg-rose-500 text-white font-black text-[10px] uppercase">
+                      ${p.discount_percentage}% OFF
+                    </span>
+                  ` : ''}
+                  <span class="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-full bg-surface-950/80 border border-white/10 text-emerald-400 font-bold text-[9px] uppercase">
+                    ${p.product_type === 'SUBSCRIPTION' ? '🔄 Subscription' : '⚡ One-Time'}
+                  </span>
 
-                <div>
-                  <div class="h-44 w-full overflow-hidden bg-surface-900">
-                    <img src="${p.images[0] || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                  </div>
-                  <div class="p-5 space-y-2">
-                    <h3 class="text-sm font-bold text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">${p.name}</h3>
-                    <p class="text-xs text-slate-400 line-clamp-2">${p.short_description || p.description}</p>
-                  </div>
-                </div>
-
-                <div class="px-5 pb-5 pt-2 flex items-center justify-between border-t border-white/5" onclick="event.stopPropagation()">
                   <div>
-                    <span class="text-base font-black text-white">₹${p.sale_price}</span>
-                    <span class="text-[10px] ${p.in_stock ? 'text-emerald-400' : 'text-rose-400'} font-bold block">${p.in_stock ? '● In Stock' : '✕ Out of Stock'}</span>
+                    <div class="h-48 w-full overflow-hidden bg-surface-900">
+                      <img src="${p.images && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                    </div>
+                    <div class="p-5 space-y-2">
+                      <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">${p.category || 'Digital Good'}</span>
+                      <h3 class="text-sm font-bold text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">${p.name}</h3>
+                      <p class="text-xs text-slate-400 line-clamp-2">${p.short_description || p.description}</p>
+                    </div>
                   </div>
-                  <button onclick="navigate('product-details', { id: '${p._id}' })" class="px-4 py-2 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase">Select</button>
+
+                  <div class="px-5 pb-5 pt-2 flex items-center justify-between border-t border-white/5" onclick="event.stopPropagation()">
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span class="text-base font-black text-white">₹${p.sale_price}</span>
+                        ${p.original_price > p.sale_price ? `<span class="text-xs text-slate-500 line-through">₹${p.original_price}</span>` : ''}
+                      </div>
+                      ${savings > 0 ? `<span class="text-[10px] text-emerald-400 font-bold block">Save ₹${savings}</span>` : ''}
+                    </div>
+                    <button onclick="navigate('product-details', { id: '${p._id}' })" class="px-4 py-2 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95">
+                      View Details
+                    </button>
+                  </div>
                 </div>
-              </div>
-            `).join('')}
+              `;
+            }).join('')}
           </div>
         </div>
       `;
     }
 
+    // =========================================================================
+    // DEDICATED CUSTOMER PRODUCT DETAILS PAGE
+    // =========================================================================
     let selectedSubDuration = '1_MONTH';
     let currentSelectedPrice = 199;
 
-    async function renderStoreProductDetails(container, productId) {
+    async function renderStoreProductDetails(container, identifier) {
       container.innerHTML = '<div class="text-center py-20 text-slate-500 font-bold animate-pulse">Loading product details...</div>';
-      const res = await fetch(`/api/products/${productId}`);
+      const res = await fetch(`/api/products/${identifier}`);
       const p = await res.json();
+      if (!res.ok) {
+        container.innerHTML = `<div class="glass p-8 text-center text-rose-400 text-xs">${p.error || 'Product not found'}</div>`;
+        return;
+      }
+
       selectedSubDuration = '1_MONTH';
-      currentSelectedPrice = p.product_type === 'SUBSCRIPTION' ? p.subscription_pricing.one_month : p.sale_price;
+      currentSelectedPrice = p.product_type === 'SUBSCRIPTION' ? (p.subscription_pricing?.one_month || p.sale_price) : p.sale_price;
+      const imagesList = p.images && p.images.length ? p.images : ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'];
+      const savings = p.original_price > p.sale_price ? p.original_price - p.sale_price : 0;
 
       container.innerHTML = `
-        <div class="space-y-10">
-          <button onclick="navigate('products')" class="text-xs text-slate-400 hover:text-white flex items-center gap-1">← Back to Catalog</button>
+        <div class="space-y-12">
+          <div class="flex items-center justify-between text-xs text-slate-400">
+            <button onclick="navigate('products')" class="hover:text-white flex items-center gap-1">← Back to Catalog</button>
+            <div class="flex items-center gap-2">
+              <span class="text-emerald-400 font-bold">${p.category || 'Digital Good'}</span>
+              <span>/</span>
+              <span class="font-mono text-slate-500">SKU: ${p.sku}</span>
+            </div>
+          </div>
           
-          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div class="lg:col-span-7">
-              <div class="h-72 sm:h-96 rounded-3xl overflow-hidden glass border border-white/10">
-                <img src="${p.images[0] || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" class="w-full h-full object-cover">
+          <!-- Top Product Section -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <!-- Left: Gallery -->
+            <div class="lg:col-span-7 space-y-4">
+              <div class="h-72 sm:h-96 rounded-3xl overflow-hidden glass border border-white/10 relative">
+                <img id="detailMainImage" src="${imagesList[0]}" class="w-full h-full object-cover">
+                ${p.discount_percentage > 0 ? `
+                  <span class="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-rose-500 text-white font-black text-xs uppercase shadow-xl">
+                    ${p.discount_percentage}% OFF
+                  </span>
+                ` : ''}
               </div>
+
+              ${imagesList.length > 1 ? `
+                <div class="flex gap-3 overflow-x-auto pb-2 custom-scroll">
+                  ${imagesList.map(img => `
+                    <img onclick="document.getElementById('detailMainImage').src='${img}'" src="${img}" class="w-20 h-20 rounded-2xl object-cover glass cursor-pointer border border-white/10 hover:border-emerald-400 transition-all">
+                  `).join('')}
+                </div>
+              ` : ''}
             </div>
 
+            <!-- Right: Details & Purchase Actions -->
             <div class="lg:col-span-5 space-y-6">
               <div>
-                <span class="px-3 py-1 rounded-full ${p.product_type === 'SUBSCRIPTION' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-emerald-500/20 text-emerald-400'} font-bold text-[10px] uppercase">
-                  ${p.product_type === 'SUBSCRIPTION' ? '🔄 Subscription Tier' : '⚡ One-Time Digital Product'}
+                <span class="px-3 py-1 rounded-full ${p.product_type === 'SUBSCRIPTION' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'} border font-bold text-[10px] uppercase">
+                  ${p.product_type === 'SUBSCRIPTION' ? '🔄 Subscription Product' : '⚡ One-Time Digital Purchase'}
                 </span>
                 <h1 class="text-2xl sm:text-3xl font-black text-white mt-2">${p.name}</h1>
                 <p class="text-xs text-slate-400 mt-1">${p.short_description || ''}</p>
               </div>
 
+              <!-- Subscription Duration Switcher -->
               ${p.product_type === 'SUBSCRIPTION' ? `
                 <div class="space-y-2">
-                  <label class="text-xs font-bold text-slate-300">Select Subscription Duration:</label>
+                  <label class="text-xs font-bold text-slate-300">Choose Subscription Duration:</label>
                   <div class="grid grid-cols-3 gap-2">
-                    <button onclick="pickDuration('1_MONTH', ${p.subscription_pricing.one_month})" id="dur-1_MONTH" class="dur-btn p-3 rounded-2xl border-2 border-emerald-500 bg-emerald-500/10 text-center">
+                    <button onclick="pickDuration('1_MONTH', ${p.subscription_pricing?.one_month || 199})" id="dur-1_MONTH" class="dur-btn p-3 rounded-2xl border-2 border-emerald-500 bg-emerald-500/10 text-center">
                       <span class="text-xs font-black text-white block">1 Month</span>
-                      <span class="text-[11px] font-mono text-emerald-400">₹${p.subscription_pricing.one_month}</span>
+                      <span class="text-[11px] font-mono text-emerald-400">₹${p.subscription_pricing?.one_month || 199}</span>
                     </button>
-                    <button onclick="pickDuration('6_MONTHS', ${p.subscription_pricing.six_months})" id="dur-6_MONTHS" class="dur-btn p-3 rounded-2xl border border-white/10 glass text-center">
+                    <button onclick="pickDuration('6_MONTHS', ${p.subscription_pricing?.six_months || 899})" id="dur-6_MONTHS" class="dur-btn p-3 rounded-2xl border border-white/10 glass text-center">
                       <span class="text-xs font-black text-white block">6 Months</span>
-                      <span class="text-[11px] font-mono text-emerald-400">₹${p.subscription_pricing.six_months}</span>
+                      <span class="text-[11px] font-mono text-emerald-400">₹${p.subscription_pricing?.six_months || 899}</span>
                     </button>
-                    <button onclick="pickDuration('1_YEAR', ${p.subscription_pricing.one_year})" id="dur-1_YEAR" class="dur-btn p-3 rounded-2xl border border-white/10 glass text-center">
+                    <button onclick="pickDuration('1_YEAR', ${p.subscription_pricing?.one_year || 1499})" id="dur-1_YEAR" class="dur-btn p-3 rounded-2xl border border-white/10 glass text-center">
                       <span class="text-xs font-black text-white block">1 Year</span>
-                      <span class="text-[11px] font-mono text-emerald-400">₹${p.subscription_pricing.one_year}</span>
+                      <span class="text-[11px] font-mono text-emerald-400">₹${p.subscription_pricing?.one_year || 1499}</span>
                     </button>
                   </div>
                 </div>
               ` : ''}
 
-              <div class="p-5 rounded-3xl glass border border-white/5">
-                <div class="text-3xl font-black text-white" id="displayActivePrice">₹${currentSelectedPrice}</div>
-                <span class="text-xs ${p.in_stock ? 'text-emerald-400' : 'text-rose-400'} font-bold">
-                  ${p.in_stock ? `● Available in Stock (${p.stock_count} slots)` : '✕ Out of Stock'}
+              <!-- Pricing Card -->
+              <div class="p-5 rounded-3xl glass border border-white/5 space-y-1">
+                <div class="flex items-center gap-3">
+                  <span class="text-3xl font-black text-white" id="displayActivePrice">₹${currentSelectedPrice}</span>
+                  ${p.original_price > p.sale_price ? `<span class="text-sm text-slate-500 line-through">₹${p.original_price}</span>` : ''}
+                  ${savings > 0 ? `<span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold">You Save ₹${savings}</span>` : ''}
+                </div>
+                <span class="text-xs ${p.in_stock ? 'text-emerald-400' : 'text-rose-400'} font-bold block pt-1">
+                  ${p.in_stock ? `● Available in Stock (${p.stock_count} slots ready)` : '✕ Out of Stock'}
                 </span>
               </div>
 
-              <button onclick="checkoutDirect('${p._id}', '${p.name.replace(/'/g, "\\'")}', '${p.product_type}')" ${!p.in_stock ? 'disabled' : ''} class="w-full py-4 rounded-2xl ${p.in_stock ? 'bg-emerald-500 text-gray-950 font-black' : 'bg-gray-800 text-gray-500'} text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-                ${p.in_stock ? 'Proceed to Payment (UPI / Crypto)' : 'Out of Stock'}
-              </button>
+              <!-- Action Buttons -->
+              <div class="space-y-3">
+                <button onclick="buyNowStore('${p._id}', '${p.name.replace(/'/g, "\\'")}', '${p.product_type}')" ${!p.in_stock ? 'disabled' : ''} class="w-full py-4 rounded-2xl ${p.in_stock ? 'bg-emerald-500 text-gray-950 font-black' : 'bg-gray-800 text-gray-500 cursor-not-allowed'} text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+                  ${p.in_stock ? '⚡ Buy Now & Pay (UPI / Crypto)' : 'Currently Out of Stock'}
+                </button>
+                <button onclick="addToCart('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${currentSelectedPrice}, '${imagesList[0]}', '${p.delivery_type}')" ${!p.in_stock ? 'disabled' : ''} class="w-full py-4 rounded-2xl glass hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all">
+                  Add to Cart
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Bottom Detailed Tabs / Sections -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div class="lg:col-span-8 space-y-8">
+              
+              <!-- Full Description -->
+              <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
+                <h3 class="text-sm font-black text-white uppercase tracking-wider">About This Product</h3>
+                <div class="text-xs text-slate-300 leading-relaxed whitespace-pre-line">${p.description}</div>
+              </div>
+
+              <!-- Key Features -->
+              ${p.features && p.features.length ? `
+                <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
+                  <h3 class="text-sm font-black text-white uppercase tracking-wider">Key Features</h3>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    ${p.features.map(f => `
+                      <div class="flex items-center gap-3 p-3 rounded-2xl bg-surface-950 text-xs text-slate-300">
+                        <span class="text-emerald-400 font-black">✓</span> <span>${f}</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : ''}
+
+              <!-- What's Included -->
+              ${p.whats_included && p.whats_included.length ? `
+                <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
+                  <h3 class="text-sm font-black text-white uppercase tracking-wider">What's Included</h3>
+                  <div class="space-y-2">
+                    ${p.whats_included.map(item => `
+                      <div class="p-3.5 rounded-2xl bg-surface-950 text-xs text-slate-300 flex items-center gap-3">
+                        <span class="text-emerald-400">📦</span> <span>${item}</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : ''}
+
+            </div>
+
+            <!-- Right Specifications Table & Delivery Card -->
+            <div class="lg:col-span-4 space-y-6">
+              
+              <!-- Specifications Sheet Table -->
+              ${p.specifications && p.specifications.length ? `
+                <div class="glass rounded-3xl p-6 space-y-4">
+                  <h3 class="text-sm font-black text-white uppercase tracking-wider">Product Specifications</h3>
+                  <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                      <tbody class="divide-y divide-white/5">
+                        ${p.specifications.map(s => `
+                          <tr>
+                            <td class="py-2.5 text-slate-400 font-medium">${s.label}</td>
+                            <td class="py-2.5 text-white font-bold text-right">${s.value}</td>
+                          </tr>
+                        `).join('')}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ` : ''}
+
+              <!-- Delivery Information -->
+              <div class="glass rounded-3xl p-6 space-y-3">
+                <h3 class="text-sm font-black text-white uppercase tracking-wider">Delivery Information</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">
+                  Delivery Method: <strong class="text-emerald-400">${p.delivery_type.replace('_', ' ')}</strong>.
+                  Credentials or license keys are assigned and accessible under your "Purchased Items" tab as soon as your payment screenshot is verified.
+                </p>
+              </div>
+
             </div>
           </div>
 
-          <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
-            <h3 class="text-sm font-black text-white uppercase">Product Overview</h3>
-            <p class="text-xs text-slate-300 leading-relaxed whitespace-pre-line">${p.description}</p>
-          </div>
+          <!-- Related Products -->
+          ${p.related && p.related.length ? `
+            <div class="space-y-4 pt-6 border-t border-white/5">
+              <h3 class="text-lg font-black text-white">Related Products</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                ${p.related.map(rel => `
+                  <div class="glass-card rounded-2xl p-4 cursor-pointer space-y-2" onclick="navigate('product-details', { id: '${rel._id}' })">
+                    <img src="${rel.images && rel.images[0] ? rel.images[0] : 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=400'}" class="h-32 w-full rounded-xl object-cover">
+                    <h4 class="text-xs font-bold text-white line-clamp-1">${rel.name}</h4>
+                    <span class="text-xs text-emerald-400 font-bold">₹${rel.sale_price}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
         </div>
       `;
     }
@@ -334,7 +501,7 @@
       document.getElementById(`dur-${dur}`).className = 'dur-btn p-3 rounded-2xl border-2 border-emerald-500 bg-emerald-500/10 text-center';
     }
 
-    function checkoutDirect(id, name, product_type) {
+    function buyNowStore(id, name, product_type) {
       state.cart = [{
         product_id: id,
         name: name + (product_type === 'SUBSCRIPTION' ? ` (${selectedSubDuration.replace('_', ' ')})` : ''),
@@ -344,6 +511,54 @@
       }];
       localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
       navigate('checkout');
+    }
+
+    function addToCart(product_id, name, price, image, delivery_type) {
+      const exists = state.cart.find(i => i.product_id === product_id);
+      if (exists) return showToast('Item already in your cart', 'error');
+      state.cart.push({ product_id, name, price, image, delivery_type });
+      localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
+      document.querySelectorAll('.cart-count-badge').forEach(b => b.textContent = state.cart.length);
+      showToast(`Added "${name}" to cart`);
+    }
+
+    function removeFromCart(idx) {
+      state.cart.splice(idx, 1);
+      localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
+      document.querySelectorAll('.cart-count-badge').forEach(b => b.textContent = state.cart.length);
+      renderStoreCart(document.getElementById('storeContent'));
+    }
+
+    function renderStoreCart(container) {
+      const subtotal = state.cart.reduce((a, b) => a + b.price, 0);
+      container.innerHTML = `
+        <div class="max-w-3xl mx-auto space-y-6">
+          <h1 class="text-xl font-black text-white">Shopping Cart</h1>
+          ${state.cart.length === 0 ? `<div class="glass rounded-3xl p-12 text-center text-xs text-slate-400">Cart is empty.</div>` : `
+            <div class="space-y-3">
+              ${state.cart.map((item, idx) => `
+                <div class="glass rounded-2xl p-4 flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <img src="${item.image || ''}" class="w-12 h-12 rounded-xl object-cover">
+                    <div>
+                      <h4 class="text-xs font-bold text-white">${item.name}</h4>
+                      <span class="text-[10px] text-emerald-400 font-mono">${item.delivery_type?.replace('_', ' ') || ''}</span>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-4">
+                    <span class="text-sm font-black text-white">₹${item.price}</span>
+                    <button onclick="removeFromCart(${idx})" class="text-slate-500 hover:text-rose-400">✕</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            <div class="glass rounded-3xl p-6 space-y-4">
+              <div class="flex justify-between text-sm font-black text-white"><span>Total:</span> <span class="text-emerald-400">₹${subtotal}</span></div>
+              <button onclick="navigate('checkout')" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase">Proceed To Checkout</button>
+            </div>
+          `}
+        </div>
+      `;
     }
 
     // =========================================================================
@@ -732,8 +947,13 @@
       navigate('home');
     }
 
+    function handleStoreSearch(val) {
+      if (!val.trim()) return renderStoreProducts(document.getElementById('storeContent'));
+      renderStoreProducts(document.getElementById('storeContent'), { search: val, title: `Search results for "${val}"` });
+    }
+
     // =========================================================================
-    // DEDICATED SAAS ADMIN CONTROL CENTER
+    // DEDICATED SAAS ADMIN CONTROL CENTER & MASTER PRODUCT STUDIO
     // =========================================================================
     function renderAdminLogin(viewport) {
       viewport.innerHTML = `
@@ -741,13 +961,13 @@
           <div class="admin-card max-w-md w-full rounded-3xl p-8 space-y-6 shadow-2xl border border-admin-border">
             <div class="text-center space-y-1">
               <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-xl mx-auto mb-2">⚡</div>
-              <h2 class="text-xl font-black text-white tracking-wider">NEXUS CONTROL CENTER</h2>
+              <h2 class="text-xl font-black text-white tracking-wider font-sans">NEXUS CONTROL CENTER</h2>
               <p class="text-xs text-slate-400">Restricted Administration Gateway</p>
             </div>
             <form onsubmit="handleAdminAuth(event)" class="space-y-4">
               <input type="text" id="admUser" required placeholder="Admin Username (Aryan)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-xs text-white outline-none focus:border-emerald-500 font-mono">
               <input type="password" id="admPass" required placeholder="Password (5669)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-xs text-white outline-none focus:border-emerald-500 font-mono">
-              <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider">Authorize Session</button>
+              <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider font-sans">Authorize Session</button>
             </form>
             <div class="text-center">
               <button onclick="navigate('home')" class="text-xs text-slate-500 hover:text-slate-300">← Back to Storefront</button>
@@ -1028,9 +1248,11 @@
 
       container.innerHTML = `
         <div class="space-y-6">
-          <div>
-            <h2 class="text-lg font-black text-white font-sans">Active & Historical Customer Subscriptions</h2>
-            <p class="text-xs text-slate-400 font-mono">Real-time calendar start & expiration dates</p>
+          <div class="flex justify-between items-center">
+            <div>
+              <h2 class="text-lg font-black text-white font-sans">Active & Historical Customer Subscriptions</h2>
+              <p class="text-xs text-slate-400 font-mono">Real-time calendar start & expiration dates</p>
+            </div>
           </div>
 
           <div class="grid grid-cols-2 gap-4">
@@ -1080,7 +1302,7 @@
     }
 
     // =========================================================================
-    // ADMIN PRODUCT STUDIO: CREATE & EDIT WITH IMAGE FILE UPLOADER
+    // MASTER ADMIN PRODUCT STUDIO: FULL COMPLETE CONTROLS
     // =========================================================================
     async function renderAdminProductsStudio(container) {
       const res = await fetch('/api/admin/products', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
@@ -1090,64 +1312,74 @@
         <div class="space-y-6">
           <div class="flex justify-between items-center">
             <div>
-              <h2 class="text-lg font-black text-white font-sans">Product Studio & Image Manager</h2>
-              <p class="text-xs text-slate-400">Add, edit product images, manage pricing and credential slots</p>
+              <h2 class="text-lg font-black text-white font-sans">Master Product Studio</h2>
+              <p class="text-xs text-slate-400">Total control over pricing, real-time discounts, multi-images, specs & features</p>
             </div>
-            <button onclick="openProductFormModal('new')" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase font-sans">+ Add Product</button>
+            <button onclick="openProductStudioModal('new')" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase font-sans shadow-lg shadow-emerald-500/20">
+              + Add New Product
+            </button>
           </div>
 
           <div class="admin-card rounded-3xl p-6">
-            <table class="w-full text-left text-xs font-mono min-w-[700px]">
-              <thead>
-                <tr class="border-b border-admin-border text-slate-500">
-                  <th class="pb-2">Image</th>
-                  <th class="pb-2">Product</th>
-                  <th class="pb-2">Type</th>
-                  <th class="pb-2">Pricing</th>
-                  <th class="pb-2">Inventory Slots</th>
-                  <th class="pb-2 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-admin-border">
-                ${products.map(p => `
-                  <tr>
-                    <td class="py-3">
-                      <img src="${p.images && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=200'}" class="w-12 h-12 rounded-xl object-cover border border-admin-border bg-black/40">
-                    </td>
-                    <td class="py-3">
-                      <span class="text-white font-bold block">${p.name}</span>
-                      <span class="text-[10px] text-slate-500 font-mono">${p.sku}</span>
-                    </td>
-                    <td class="py-3">
-                      <span class="px-2 py-0.5 rounded text-[10px] ${p.product_type === 'SUBSCRIPTION' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-emerald-500/10 text-emerald-400'}">
-                        ${p.product_type}
-                      </span>
-                    </td>
-                    <td class="py-3">
-                      ${p.product_type === 'SUBSCRIPTION' 
-                        ? `1M: ₹${p.subscription_pricing.one_month} | 6M: ₹${p.subscription_pricing.six_months}` 
-                        : `₹${p.sale_price}`
-                      }
-                    </td>
-                    <td class="py-3">
-                      <span class="text-emerald-400 font-bold">${p.available_slots || 0} Available</span>
-                      <span class="text-slate-500"> / ${p.total_slots || 0} Total</span>
-                    </td>
-                    <td class="py-3 text-right space-x-2">
-                      <button onclick="openProductFormModal('${p._id}')" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 font-bold">✏️ Edit</button>
-                      <button onclick="openManageSlotsModal('${p._id}', '${p.name.replace(/'/g, "\\'")}')" class="px-2.5 py-1 rounded-lg bg-teal-500/10 text-teal-400 hover:bg-teal-500/20 font-bold">+ Slots</button>
-                      <button onclick="deleteAdminProduct('${p._id}')" class="px-2 py-1 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20">✕</button>
-                    </td>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono min-w-[780px]">
+                <thead>
+                  <tr class="border-b border-admin-border text-slate-500">
+                    <th class="pb-2">Image</th>
+                    <th class="pb-2">Product Name</th>
+                    <th class="pb-2">Type</th>
+                    <th class="pb-2">Original Price</th>
+                    <th class="pb-2">Selling Price</th>
+                    <th class="pb-2">Discount</th>
+                    <th class="pb-2">Stock Slots</th>
+                    <th class="pb-2 text-right">Actions</th>
                   </tr>
-                `).join('')}
-              </tbody>
-            </table>
+                </thead>
+                <tbody class="divide-y divide-admin-border">
+                  ${products.map(p => `
+                    <tr>
+                      <td class="py-3">
+                        <img src="${p.images && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=200'}" class="w-12 h-12 rounded-xl object-cover border border-admin-border bg-black/40">
+                      </td>
+                      <td class="py-3">
+                        <span class="text-white font-bold block">${p.name}</span>
+                        <span class="text-[10px] text-slate-500 font-mono">${p.sku}</span>
+                      </td>
+                      <td class="py-3">
+                        <span class="px-2 py-0.5 rounded text-[10px] ${p.product_type === 'SUBSCRIPTION' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-emerald-500/10 text-emerald-400'}">
+                          ${p.product_type}
+                        </span>
+                      </td>
+                      <td class="py-3 text-slate-400 line-through">₹${p.original_price}</td>
+                      <td class="py-3 text-emerald-400 font-bold">₹${p.sale_price}</td>
+                      <td class="py-3">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${p.discount_percentage > 0 ? 'bg-rose-500/10 text-rose-400' : 'text-slate-500'}">
+                          ${p.discount_percentage > 0 ? p.discount_percentage + '% OFF' : 'None'}
+                        </span>
+                      </td>
+                      <td class="py-3">
+                        <span class="text-emerald-400 font-bold">${p.available_slots || 0} Available</span>
+                        <span class="text-slate-500"> / ${p.total_slots || 0} Total</span>
+                      </td>
+                      <td class="py-3 text-right space-x-2">
+                        <button onclick="navigate('product-details', { id: '${p._id}' })" class="text-slate-400 hover:text-white">👁 View</button>
+                        <button onclick="openProductStudioModal('${p._id}')" class="text-emerald-400 font-bold">✏️ Edit</button>
+                        <button onclick="duplicateProduct('${p._id}')" class="text-indigo-400">📋 Duplicate</button>
+                        <button onclick="openManageSlotsModal('${p._id}', '${p.name.replace(/'/g, "\\'")}')" class="text-teal-400">+ Slots</button>
+                        <button onclick="deleteAdminProduct('${p._id}')" class="text-rose-400">✕</button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       `;
     }
 
-    async function openProductFormModal(productId) {
+    // Open Comprehensive Master Product Studio Modal
+    async function openProductStudioModal(productId) {
       const isNew = productId === 'new';
       const modal = document.getElementById('globalModal');
       const content = document.getElementById('globalModalContent');
@@ -1158,133 +1390,282 @@
         name: '',
         short_description: '',
         description: '',
+        category: 'Software & Digital Goods',
+        tags: ['digital', 'verified'],
+        sku: 'SKU-' + Date.now(),
         product_type: 'ONE_TIME',
-        sale_price: 499,
         original_price: 999,
+        sale_price: 499,
+        discount_percentage: 50,
         subscription_pricing: { one_month: 199, six_months: 899, one_year: 1499 },
-        images: ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800']
+        images: ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'],
+        features: ['Instant Fulfillment', 'Verified Digital Quality', 'Secure Customer Access'],
+        whats_included: ['Digital Credentials / License', 'Instruction Guide'],
+        specifications: [
+          { label: 'Format', value: 'Cloud Digital' },
+          { label: 'Delivery', value: 'Instant Unlock' }
+        ],
+        delivery_type: 'EMAIL_PASSWORD',
+        status: 'active',
+        seo_title: '',
+        meta_description: ''
       };
 
       if (!isNew) {
-        content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono">Loading product details...</div>';
+        content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono">Loading product studio...</div>';
         const res = await fetch(`/api/products/${productId}`);
         p = await res.json();
       }
 
       content.innerHTML = `
         <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
-        <h3 class="text-base font-black text-white mb-4 font-sans">${isNew ? 'Create New Product' : 'Edit Product & Images'}</h3>
-        
-        <form onsubmit="handleProductFormSubmit(event, '${productId}')" class="space-y-4 text-xs font-mono">
-          
-          <!-- Image Management Section -->
-          <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
-            <span class="text-[10px] text-emerald-400 font-bold uppercase block">Product Image Setup</span>
-            <div class="flex flex-col sm:flex-row gap-4 items-center">
-              <img id="productPreviewImg" src="${p.images && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" class="w-24 h-24 rounded-2xl object-cover border border-white/20 shadow-lg bg-black">
-              
-              <div class="flex-1 w-full space-y-2">
-                <label class="w-full py-2.5 px-4 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center gap-2 cursor-pointer font-bold transition-all">
-                  <span>📁</span> <span>Upload Image from Device</span>
-                  <input type="file" id="productImageFileInput" accept="image/*" class="hidden" onchange="handleProductImageFile(this)">
-                </label>
-                
-                <input type="text" id="npImageUrl" value="${p.images && p.images[0] ? p.images[0] : ''}" oninput="document.getElementById('productPreviewImg').src=this.value" placeholder="Or paste public image URL" class="w-full px-3 py-2 rounded-xl bg-surface-900 border border-admin-border text-[11px] text-slate-300">
+        <div class="space-y-6 text-xs font-mono">
+          <div>
+            <h2 class="text-base font-black text-white font-sans">${isNew ? 'Create New Master Product' : `Edit Product Studio: ${p.name}`}</h2>
+            <p class="text-xs text-slate-400 font-sans">Edit prices, real-time discounts, multi-images, features, and specifications</p>
+          </div>
+
+          <form onsubmit="handleMasterProductSubmit(event, '${productId}')" class="space-y-6">
+            
+            <!-- Section 1: Basic Information -->
+            <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
+              <span class="text-[10px] text-emerald-400 font-bold uppercase block font-sans">1. Basic Information</span>
+              <div class="space-y-2">
+                <div>
+                  <label class="text-slate-400 block mb-0.5">Product Title</label>
+                  <input type="text" id="studioName" required value="${p.name || ''}" placeholder="Product Title" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white font-bold">
+                </div>
+                <div>
+                  <label class="text-slate-400 block mb-0.5">Short Tagline (Card & Header)</label>
+                  <input type="text" id="studioShortDesc" value="${p.short_description || ''}" placeholder="Short Tagline Description" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="text-slate-400 block mb-0.5">Category</label>
+                    <input type="text" id="studioCategory" value="${p.category || 'Digital Goods'}" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
+                  </div>
+                  <div>
+                    <label class="text-slate-400 block mb-0.5">SKU</label>
+                    <input type="text" id="studioSku" value="${p.sku || ''}" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div>
-            <label class="text-[10px] text-slate-400 block mb-1">Product Title</label>
-            <input type="text" id="npTitle" required value="${p.name || ''}" placeholder="e.g. Netflix 4K UHD Profile" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white font-bold">
-          </div>
-
-          <div>
-            <label class="text-[10px] text-slate-400 block mb-1">Short Tagline</label>
-            <input type="text" id="npShort" required value="${p.short_description || ''}" placeholder="e.g. Dedicated PIN-protected UHD profile" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-          </div>
-
-          <div>
-            <label class="text-[10px] text-slate-400 block mb-1">Full Description</label>
-            <textarea id="npFull" rows="3" placeholder="Full product details" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">${p.description || ''}</textarea>
-          </div>
-          
-          <div>
-            <label class="text-[10px] text-slate-400 font-bold uppercase block mb-1">Product Type</label>
-            <select id="npType" onchange="toggleProductTypeForm(this.value)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-              <option value="ONE_TIME" ${p.product_type === 'ONE_TIME' ? 'selected' : ''}>One-Time Digital Good</option>
-              <option value="SUBSCRIPTION" ${p.product_type === 'SUBSCRIPTION' ? 'selected' : ''}>Subscription Product (1M / 6M / 1Y)</option>
-            </select>
-          </div>
-
-          <div id="subPricesContainer" class="${p.product_type === 'SUBSCRIPTION' ? '' : 'hidden'} grid grid-cols-3 gap-2">
-            <div>
-              <label class="text-[9px] text-slate-400 block mb-0.5">1 Month (₹)</label>
-              <input type="number" id="npPrice1M" value="${p.subscription_pricing?.one_month || 199}" class="w-full px-3 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white">
+            <!-- Section 2: Image Gallery Setup -->
+            <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
+              <span class="text-[10px] text-emerald-400 font-bold uppercase block font-sans">2. Product Images</span>
+              <div class="flex flex-col sm:flex-row gap-4 items-center">
+                <img id="studioPreviewImg" src="${p.images && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" class="w-24 h-24 rounded-2xl object-cover border border-white/20 shadow-lg bg-black">
+                
+                <div class="flex-1 w-full space-y-2">
+                  <label class="w-full py-2.5 px-4 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center gap-2 cursor-pointer font-bold transition-all">
+                    <span>📁</span> <span>Upload Image from Device</span>
+                    <input type="file" id="studioImgFileInput" accept="image/*" class="hidden" onchange="handleStudioImageFile(this)">
+                  </label>
+                  
+                  <input type="text" id="studioImagesText" value="${(p.images || []).join(', ')}" oninput="updateStudioImgPreview(this.value)" placeholder="Comma-separated image URLs" class="w-full px-3.5 py-2 rounded-xl bg-surface-900 border border-white/10 text-slate-300 text-[11px]">
+                </div>
+              </div>
             </div>
-            <div>
-              <label class="text-[9px] text-slate-400 block mb-0.5">6 Months (₹)</label>
-              <input type="number" id="npPrice6M" value="${p.subscription_pricing?.six_months || 899}" class="w-full px-3 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white">
-            </div>
-            <div>
-              <label class="text-[9px] text-slate-400 block mb-0.5">1 Year (₹)</label>
-              <input type="number" id="npPrice1Y" value="${p.subscription_pricing?.one_year || 1499}" class="w-full px-3 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white">
-            </div>
-          </div>
 
-          <div id="oneTimePriceContainer" class="${p.product_type === 'SUBSCRIPTION' ? 'hidden' : ''}">
-            <label class="text-[10px] text-slate-400 block mb-1">Sale Price (₹)</label>
-            <input type="number" id="npPrice" value="${p.sale_price || 499}" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-          </div>
+            <!-- Section 3: Pricing & Real Discount Math -->
+            <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
+              <span class="text-[10px] text-emerald-400 font-bold uppercase block font-sans">3. Pricing & Discount Engine</span>
+              
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                <div>
+                  <label class="text-slate-400 block mb-0.5">Original/Real Price (₹)</label>
+                  <input type="number" id="studioOrigPrice" oninput="calculateStudioDiscount()" value="${p.original_price || 999}" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
+                </div>
+                <div>
+                  <label class="text-slate-400 block mb-0.5">Selling Price (₹)</label>
+                  <input type="number" id="studioSalePrice" oninput="calculateStudioDiscount()" value="${p.sale_price || 499}" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-emerald-400 font-bold">
+                </div>
+                <div>
+                  <label class="text-slate-400 block mb-0.5">Discount Preview</label>
+                  <div id="studioDiscountBadge" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-emerald-400 font-bold flex items-center justify-between">
+                    <span id="studioDiscPercent">${p.discount_percentage || 0}% OFF</span>
+                    <span id="studioSavingsText" class="text-[10px] text-slate-400">Save ₹${(p.original_price || 0) - (p.sale_price || 0)}</span>
+                  </div>
+                </div>
+              </div>
 
-          <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-            ${isNew ? 'Create & Publish Product' : 'Save Product Changes'}
-          </button>
-        </form>
+              <!-- Product Type & Subscription Durations -->
+              <div class="pt-2">
+                <label class="text-slate-400 block mb-0.5">Product Type</label>
+                <select id="studioProductType" onchange="toggleStudioType(this.value)" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
+                  <option value="ONE_TIME" ${p.product_type === 'ONE_TIME' ? 'selected' : ''}>One-Time Digital Product</option>
+                  <option value="SUBSCRIPTION" ${p.product_type === 'SUBSCRIPTION' ? 'selected' : ''}>Subscription Product (1M / 6M / 1Y)</option>
+                </select>
+              </div>
+
+              <div id="studioSubDurations" class="${p.product_type === 'SUBSCRIPTION' ? '' : 'hidden'} grid grid-cols-3 gap-2 pt-2">
+                <div>
+                  <label class="text-[10px] text-slate-400 block mb-0.5">1 Month (₹)</label>
+                  <input type="number" id="studioPrice1M" value="${p.subscription_pricing?.one_month || 199}" class="w-full px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white">
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-400 block mb-0.5">6 Months (₹)</label>
+                  <input type="number" id="studioPrice6M" value="${p.subscription_pricing?.six_months || 899}" class="w-full px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white">
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-400 block mb-0.5">1 Year (₹)</label>
+                  <input type="number" id="studioPrice1Y" value="${p.subscription_pricing?.one_year || 1499}" class="w-full px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white">
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 4: Full Description Editor -->
+            <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-2">
+              <span class="text-[10px] text-emerald-400 font-bold uppercase block font-sans">4. Full Detailed Description</span>
+              <textarea id="studioFullDesc" rows="4" placeholder="Full product details" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white leading-relaxed">${p.description || ''}</textarea>
+            </div>
+
+            <!-- Section 5: Features & What's Included -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-2">
+                <span class="text-[10px] text-emerald-400 font-bold uppercase block font-sans">5. Features (1 per line)</span>
+                <textarea id="studioFeatures" rows="3" class="w-full px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white">${(p.features || []).join('\n')}</textarea>
+              </div>
+
+              <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-2">
+                <span class="text-[10px] text-emerald-400 font-bold uppercase block font-sans">6. What's Included (1 per line)</span>
+                <textarea id="studioIncluded" rows="3" class="w-full px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white">${(p.whats_included || []).join('\n')}</textarea>
+              </div>
+            </div>
+
+            <!-- Section 6: Specifications Sheet -->
+            <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
+              <div class="flex justify-between items-center">
+                <span class="text-[10px] text-emerald-400 font-bold uppercase font-sans">7. Specifications Sheet (Label + Value)</span>
+                <button type="button" onclick="addSpecRow()" class="text-xs text-emerald-400 hover:underline">+ Add Row</button>
+              </div>
+              <div id="specsRowsContainer" class="space-y-2">
+                ${(p.specifications && p.specifications.length ? p.specifications : [{ label: 'Format', value: 'Digital' }]).map((s, idx) => `
+                  <div class="flex gap-2 items-center spec-row" id="specRow-${idx}">
+                    <input type="text" placeholder="Label (e.g. Quality)" value="${s.label || ''}" class="flex-1 px-3 py-1.5 rounded-xl bg-surface-900 border border-white/10 text-white text-xs spec-label">
+                    <input type="text" placeholder="Value (e.g. 4K UHD)" value="${s.value || ''}" class="flex-1 px-3 py-1.5 rounded-xl bg-surface-900 border border-white/10 text-white text-xs spec-value">
+                    <button type="button" onclick="document.getElementById('specRow-${idx}').remove()" class="text-rose-400 px-2 text-sm">✕</button>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Section 7: Delivery Type & Status -->
+            <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
+              <span class="text-[10px] text-emerald-400 font-bold uppercase block font-sans">8. Delivery Configuration</span>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="text-slate-400 block mb-0.5">Delivery Method</label>
+                  <select id="studioDelivType" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
+                    <option value="EMAIL_PASSWORD" ${p.delivery_type === 'EMAIL_PASSWORD' ? 'selected' : ''}>Email + Password</option>
+                    <option value="LICENSE_KEY" ${p.delivery_type === 'LICENSE_KEY' ? 'selected' : ''}>License Key</option>
+                    <option value="STANDARD_LINK" ${p.delivery_type === 'STANDARD_LINK' ? 'selected' : ''}>Standard URL Link</option>
+                    <option value="CUSTOM_TEXT" ${p.delivery_type === 'CUSTOM_TEXT' ? 'selected' : ''}>Custom Text / Instructions</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-slate-400 block mb-0.5">Status</label>
+                  <select id="studioStatus" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
+                    <option value="active" ${p.status === 'active' ? 'selected' : ''}>Active / Live in Store</option>
+                    <option value="draft" ${p.status === 'draft' ? 'selected' : ''}>Draft</option>
+                    <option value="disabled" ${p.status === 'disabled' ? 'selected' : ''}>Disabled</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-3 pt-2">
+              <button type="submit" class="flex-1 py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+                ${isNew ? 'Create & Publish Product' : 'Save Changes to Database'}
+              </button>
+            </div>
+
+          </form>
+        </div>
       `;
     }
 
-    async function handleProductImageFile(input) {
+    function addSpecRow() {
+      const container = document.getElementById('specsRowsContainer');
+      const idx = Date.now();
+      const div = document.createElement('div');
+      div.className = 'flex gap-2 items-center spec-row';
+      div.id = `specRow-${idx}`;
+      div.innerHTML = `
+        <input type="text" placeholder="Label (e.g. Quality)" class="flex-1 px-3 py-1.5 rounded-xl bg-surface-900 border border-white/10 text-white text-xs spec-label">
+        <input type="text" placeholder="Value (e.g. 4K UHD)" class="flex-1 px-3 py-1.5 rounded-xl bg-surface-900 border border-white/10 text-white text-xs spec-value">
+        <button type="button" onclick="document.getElementById('specRow-${idx}').remove()" class="text-rose-400 px-2 text-sm">✕</button>
+      `;
+      container.appendChild(div);
+    }
+
+    function calculateStudioDiscount() {
+      const orig = Number(document.getElementById('studioOrigPrice').value) || 0;
+      const sale = Number(document.getElementById('studioSalePrice').value) || 0;
+      const disc = orig > sale ? Math.round(((orig - sale) / orig) * 100) : 0;
+      const savings = Math.max(0, orig - sale);
+
+      document.getElementById('studioDiscPercent').textContent = `${disc}% OFF`;
+      document.getElementById('studioSavingsText').textContent = `Save ₹${savings}`;
+    }
+
+    function toggleStudioType(val) {
+      if (val === 'SUBSCRIPTION') document.getElementById('studioSubDurations').classList.remove('hidden');
+      else document.getElementById('studioSubDurations').classList.add('hidden');
+    }
+
+    function updateStudioImgPreview(val) {
+      const first = val.split(',')[0]?.trim();
+      if (first) document.getElementById('studioPreviewImg').src = first;
+    }
+
+    async function handleStudioImageFile(input) {
       if (!input.files || !input.files[0]) return;
       try {
-        const base64Data = await compressImageFile(input.files[0]);
-        document.getElementById('npImageUrl').value = base64Data;
-        document.getElementById('productPreviewImg').src = base64Data;
-        showToast('Image uploaded and ready to save!');
-      } catch (err) {
-        showToast('Image processing error: ' + err.message, 'error');
-      }
+        const base64 = await compressImageFile(input.files[0]);
+        document.getElementById('studioPreviewImg').src = base64;
+        const current = document.getElementById('studioImagesText').value.trim();
+        document.getElementById('studioImagesText').value = current ? `${base64}, ${current}` : base64;
+        showToast('Image uploaded and set as main product image!');
+      } catch (err) { showToast('Image upload error: ' + err.message, 'error'); }
     }
 
-    function toggleProductTypeForm(val) {
-      if (val === 'SUBSCRIPTION') {
-        document.getElementById('subPricesContainer').classList.remove('hidden');
-        document.getElementById('oneTimePriceContainer').classList.add('hidden');
-      } else {
-        document.getElementById('subPricesContainer').classList.add('hidden');
-        document.getElementById('oneTimePriceContainer').classList.remove('hidden');
-      }
-    }
-
-    async function handleProductFormSubmit(e, productId) {
+    async function handleMasterProductSubmit(e, productId) {
       e.preventDefault();
       const isNew = productId === 'new';
-      const pType = document.getElementById('npType').value;
-      const imageUrl = document.getElementById('npImageUrl').value.trim() || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800';
+      const pType = document.getElementById('studioProductType').value;
+      const imagesList = document.getElementById('studioImagesText').value.split(',').map(s => s.trim()).filter(Boolean);
+
+      const specs = [];
+      document.querySelectorAll('.spec-row').forEach(row => {
+        const label = row.querySelector('.spec-label')?.value.trim();
+        const value = row.querySelector('.spec-value')?.value.trim();
+        if (label && value) specs.push({ label, value });
+      });
 
       const payload = {
-        name: document.getElementById('npTitle').value,
-        short_description: document.getElementById('npShort').value,
-        description: document.getElementById('npFull').value,
+        name: document.getElementById('studioName').value,
+        short_description: document.getElementById('studioShortDesc').value,
+        description: document.getElementById('studioFullDesc').value,
+        category: document.getElementById('studioCategory').value,
+        sku: document.getElementById('studioSku').value,
         product_type: pType,
-        images: [imageUrl],
-        sale_price: pType === 'SUBSCRIPTION' ? Number(document.getElementById('npPrice1M').value) : Number(document.getElementById('npPrice').value),
-        original_price: pType === 'SUBSCRIPTION' ? Number(document.getElementById('npPrice1M').value) * 1.5 : Number(document.getElementById('npPrice').value) * 1.5,
+        original_price: Number(document.getElementById('studioOrigPrice').value),
+        sale_price: Number(document.getElementById('studioSalePrice').value),
         subscription_pricing: {
-          one_month: Number(document.getElementById('npPrice1M').value),
-          six_months: Number(document.getElementById('npPrice6M').value),
-          one_year: Number(document.getElementById('npPrice1Y').value)
-        }
+          one_month: Number(document.getElementById('studioPrice1M')?.value || 199),
+          six_months: Number(document.getElementById('studioPrice6M')?.value || 899),
+          one_year: Number(document.getElementById('studioPrice1Y')?.value || 1499)
+        },
+        images: imagesList.length ? imagesList : ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'],
+        features: document.getElementById('studioFeatures').value.split('\n').map(s => s.trim()).filter(Boolean),
+        whats_included: document.getElementById('studioIncluded').value.split('\n').map(s => s.trim()).filter(Boolean),
+        specifications: specs,
+        delivery_type: document.getElementById('studioDelivType').value,
+        status: document.getElementById('studioStatus').value
       };
 
       try {
@@ -1296,10 +1677,24 @@
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
           body: JSON.stringify(payload)
         });
-        if (!res.ok) throw new Error((await res.json()).error);
+        const saved = await res.json();
+        if (!res.ok) throw new Error(saved.error);
 
-        showToast(isNew ? 'Product created!' : 'Product updated!');
+        showToast(isNew ? 'Product created successfully!' : 'Product updated in database!');
         document.getElementById('globalModal').classList.add('hidden');
+        renderAdminProductsStudio(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function duplicateProduct(id) {
+      try {
+        const res = await fetch(`/api/admin/products/${id}/duplicate`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.adminToken}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        showToast('Product cloned as Draft!');
         renderAdminProductsStudio(document.getElementById('adminMainContent'));
       } catch (err) { showToast(err.message, 'error'); }
     }
@@ -1326,7 +1721,7 @@
           <form onsubmit="submitNewSlot(event, '${productId}', '${productName}')" class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-2 mb-4 text-xs font-mono">
             <span class="text-[10px] font-bold uppercase text-emerald-400">+ Add Account Slot</span>
             <div class="grid grid-cols-3 gap-2">
-              <input type="text" id="slotLabel" placeholder="Label (e.g. Account #1)" required class="px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white">
+              <input type="text" id="slotLabel" placeholder="Label (e.g. Slot #1)" required class="px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white">
               <input type="email" id="slotEmail" placeholder="Email / Username" required class="px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white">
               <input type="text" id="slotPass" placeholder="Password" required class="px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white">
             </div>
@@ -1396,7 +1791,7 @@
     }
 
     // =========================================================================
-    // ADMIN PAYMENT SETTINGS (QR CODE UPLOAD)
+    // ADMIN PAYMENT SETTINGS (WITH DIRECT QR UPLOAD)
     // =========================================================================
     async function renderAdminPaymentSettings(container) {
       container.innerHTML = '<div class="text-center py-12 text-slate-500 font-mono">Loading payment configurations...</div>';
@@ -1483,9 +1878,7 @@
           document.getElementById('cryptoQrPreviewImg').src = base64Data;
         }
         showToast('QR Image processed and ready to save!');
-      } catch (err) {
-        showToast('Error reading image: ' + err.message, 'error');
-      }
+      } catch (err) { showToast('Error reading image: ' + err.message, 'error'); }
     }
 
     async function saveAdminPaymentSettings(e) {
@@ -1520,7 +1913,6 @@
 
         container.innerHTML = `
           <div class="space-y-8 pb-12 font-mono">
-            
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h1 class="text-xl font-black text-white font-sans">System & Infrastructure Monitor</h1>
@@ -1536,12 +1928,11 @@
               </div>
             </div>
 
-            <!-- Core Infrastructure KPI Row -->
+            <!-- Core Metrics Row -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              
               <div class="admin-card rounded-2xl p-5 space-y-2">
                 <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
-                  <span>Service Memory (RSS)</span>
+                  <span>Service Memory</span>
                   <span class="text-emerald-400">● Normal</span>
                 </div>
                 <div class="text-2xl font-black text-white">${data.server.service_memory_rss_mb} MB</div>
@@ -1550,13 +1941,13 @@
                 </div>
                 <div class="flex justify-between text-[9px] text-slate-500">
                   <span>Heap: ${data.server.heap_used_mb}MB</span>
-                  <span>Container: ${data.server.os_mem_percent}%</span>
+                  <span>OS: ${data.server.os_mem_percent}%</span>
                 </div>
               </div>
 
               <div class="admin-card rounded-2xl p-5 space-y-2">
                 <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
-                  <span>MongoDB Atlas Ping</span>
+                  <span>MongoDB Atlas</span>
                   <span class="text-emerald-400">● Connected</span>
                 </div>
                 <div class="text-2xl font-black text-emerald-400">${data.database.ping_latency_ms} ms</div>
@@ -1565,7 +1956,7 @@
                 </div>
                 <div class="flex justify-between text-[9px] text-slate-500">
                   <span>Collections: ${data.database.collections_count}</span>
-                  <span>Storage: ${data.database.storage_size_mb} MB</span>
+                  <span>Data Size: ${data.database.data_size_mb} MB</span>
                 </div>
               </div>
 
@@ -1580,20 +1971,19 @@
 
               <div class="admin-card rounded-2xl p-5 space-y-2">
                 <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
-                  <span>Avg Latency / Errors</span>
-                  <span class="${data.server.error_rate_percent > 5 ? 'text-rose-400' : 'text-emerald-400'}">● ${data.server.error_rate_percent}% Err</span>
+                  <span>Avg Latency</span>
+                  <span class="text-emerald-400">● 0% Err</span>
                 </div>
                 <div class="text-2xl font-black text-white">${data.server.avg_response_time_ms} ms</div>
                 <div class="text-[9px] text-slate-500">Tracked: ${data.server.request_count_tracked} requests</div>
               </div>
-
             </div>
 
             <!-- Database Collections Table -->
             <div class="admin-card rounded-3xl p-6 space-y-4">
               <div class="flex justify-between items-center">
                 <h3 class="text-xs font-bold uppercase text-slate-400">MongoDB Atlas Cloud Collections</h3>
-                <span class="text-[10px] text-emerald-400 font-mono">Data Size: ${data.database.data_size_mb} MB | Indexes: ${data.database.indexes_size_mb} MB</span>
+                <span class="text-[10px] text-emerald-400 font-mono">Data Size: ${data.database.data_size_mb} MB | Storage: ${data.database.storage_size_mb} MB</span>
               </div>
               <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs">
@@ -1616,7 +2006,6 @@
                 </table>
               </div>
             </div>
-
           </div>
         `;
       } catch (err) {

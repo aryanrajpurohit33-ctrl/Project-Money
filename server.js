@@ -14,7 +14,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const JWT_SECRET = process.env.JWT_SECRET || 'nexus_digital_super_secret_jwt_2026_key';
 
 // ----------------------------------------------------
-// PERFORMANCE & PRESENCE LOGGERS
+// PERFORMANCE & PRESENCE TRACKING
 // ----------------------------------------------------
 const requestLogs = [];
 const appErrorLogs = [];
@@ -63,7 +63,7 @@ setInterval(() => {
 }, 10000);
 
 // ----------------------------------------------------
-// MONGOOSE SCHEMAS & MODELS
+// MASTER DATABASE SCHEMAS & MODELS
 // ----------------------------------------------------
 
 const AdminSchema = new mongoose.Schema({
@@ -77,32 +77,55 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   mobile: { type: String, default: '' },
   password_hash: { type: String, required: true },
+  wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
   created_at: { type: Date, default: Date.now }
 });
 
+// Master Product Schema
 const ProductSchema = new mongoose.Schema({
   name: { type: String, required: true },
+  slug: { type: String, required: true, unique: true },
+  sku: { type: String, required: true, unique: true },
+  category: { type: String, default: 'Software & Digital Goods' },
+  tags: [String],
   short_description: { type: String, default: '' },
   description: { type: String, default: '' },
-  sku: { type: String, required: true, unique: true },
   product_type: { type: String, enum: ['ONE_TIME', 'SUBSCRIPTION'], default: 'ONE_TIME' },
-  original_price: { type: Number, required: true },
-  sale_price: { type: Number, required: true },
+  
+  // Real Reference Price vs Actual Selling Price
+  original_price: { type: Number, required: true, default: 999 },
+  sale_price: { type: Number, required: true, default: 499 },
   discount_percentage: { type: Number, default: 0 },
+  
+  // Multi-duration Subscription Tiers
   subscription_pricing: {
     one_month: { type: Number, default: 199 },
     six_months: { type: Number, default: 899 },
     one_year: { type: Number, default: 1499 }
   },
+  
   images: [{ type: String }],
+  features: [{ type: String }],
+  whats_included: [{ type: String }],
+  specifications: [{ label: String, value: String }],
+  
   delivery_type: { 
     type: String, 
     enum: ['EMAIL_PASSWORD', 'MOBILE_PASSWORD', 'STANDARD_LINK', 'DOWNLOADABLE_FILE', 'LICENSE_KEY', 'CUSTOM_TEXT'], 
     default: 'EMAIL_PASSWORD' 
   },
+  
   status: { type: String, enum: ['active', 'draft', 'archived', 'disabled'], default: 'active' },
+  featured: { type: Boolean, default: false },
+  best_seller: { type: Boolean, default: false },
+  
+  seo_title: { type: String, default: '' },
+  meta_description: { type: String, default: '' },
+  alt_text: { type: String, default: '' },
+  
+  sales_count: { type: Number, default: 0 },
   created_at: { type: Date, default: Date.now },
-  sales_count: { type: Number, default: 0 }
+  updated_at: { type: Date, default: Date.now }
 });
 
 const InventorySlotSchema = new mongoose.Schema({
@@ -213,7 +236,7 @@ const Order = mongoose.model('Order', OrderSchema);
 const PaymentSettings = mongoose.model('PaymentSettings', PaymentSettingsSchema);
 
 // ----------------------------------------------------
-// DATABASE INITIALIZATION
+// DATABASE SEEDING
 // ----------------------------------------------------
 async function initializeSystem() {
   try {
@@ -222,6 +245,7 @@ async function initializeSystem() {
       const salt = await bcrypt.genSalt(10);
       const hash = await bcrypt.hash('5669', salt);
       await Admin.create({ username: 'Aryan', password_hash: hash });
+      console.log('✓ Initialized SuperAdmin: Aryan / 5669');
     }
 
     const existingPaymentSettings = await PaymentSettings.findOne();
@@ -231,23 +255,64 @@ async function initializeSystem() {
     if (pCount === 0) {
       const subProduct = await Product.create({
         name: 'Authorized Streaming Subscription',
-        short_description: 'PIN-protected 4K UHD streaming profile with instant activation.',
-        description: 'Choose your desired subscription duration (1 Month, 6 Months, or 1 Year). Dedicated private profile on authorized high-speed streaming accounts.',
+        slug: 'authorized-streaming-subscription',
         sku: 'SUB-STRM-01',
+        category: 'Streaming & Accounts',
+        tags: ['netflix', 'streaming', '4k', 'uhd'],
+        short_description: 'PIN-protected 4K UHD streaming profile with instant activation.',
+        description: 'Enjoy Ultra HD 4K streaming across all your devices including Smart TVs, Phones, PCs, and Tablets. Private PIN lock ensures your profile stays private.',
         product_type: 'SUBSCRIPTION',
         original_price: 299,
         sale_price: 199,
-        subscription_pricing: {
-          one_month: 199,
-          six_months: 899,
-          one_year: 1499
-        },
-        images: ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=1000&auto=format&fit=crop&q=80'],
+        discount_percentage: 33,
+        subscription_pricing: { one_month: 199, six_months: 899, one_year: 1499 },
+        images: [
+          'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=1000&auto=format&fit=crop&q=80',
+          'https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?w=1000&auto=format&fit=crop&q=80'
+        ],
+        features: ['Ultra HD 4K Video Quality', 'Private PIN Lock Profile', 'Works on All Smart Devices', 'Instant Replacement Guarantee'],
+        whats_included: ['1x Private Profile Credentials', 'Exclusive 4-Digit PIN code', 'Quick Login Guide'],
+        specifications: [
+          { label: 'Quality', value: '4K HDR / Dolby Vision' },
+          { label: 'Screens', value: '1 Screen (Private Profile)' },
+          { label: 'Platform', value: 'Smart TV, Web, iOS, Android' },
+          { label: 'Delivery', value: 'Instant Manual Approval' }
+        ],
         delivery_type: 'EMAIL_PASSWORD'
       });
 
       await InventorySlot.create([
-        { product_id: subProduct._id, account_label: 'Account #1 (Dedicated)', email: 'stream_vip01@nexus.io', password: 'NexusPass@2026', status: 'AVAILABLE' }
+        { product_id: subProduct._id, account_label: 'Account Slot #1 (Dedicated)', email: 'stream_vip01@nexus.io', password: 'NexusPass@2026', status: 'AVAILABLE' },
+        { product_id: subProduct._id, account_label: 'Account Slot #2 (Dedicated)', email: 'stream_vip02@nexus.io', password: 'VaultStream#889', status: 'AVAILABLE' }
+      ]);
+
+      const oneTimeProduct = await Product.create({
+        name: 'Windows 11 Pro Genuine OEM Key',
+        slug: 'windows-11-pro-genuine-oem-key',
+        sku: 'WIN-11-PRO',
+        category: 'License Keys & OS',
+        tags: ['windows', 'microsoft', 'os', 'key', 'license'],
+        short_description: 'Lifetime activation for 1 PC with global Microsoft updates.',
+        description: 'Official OEM activation key for Microsoft Windows 11 Professional 64-bit/32-bit. Unlocks BitLocker encryption, Remote Desktop, Hyper-V, and full enterprise security suite.',
+        product_type: 'ONE_TIME',
+        original_price: 3999,
+        sale_price: 499,
+        discount_percentage: 87,
+        images: [
+          'https://images.unsplash.com/photo-1629654297299-c8506221ca97?w=1000&auto=format&fit=crop&q=80'
+        ],
+        features: ['Lifetime Permanent Activation', 'Direct Online Microsoft Activation', 'Global Multilingual Support', 'Full Security Updates'],
+        whats_included: ['1x 25-Digit License Key', 'Step-by-step Official Activation Guide'],
+        specifications: [
+          { label: 'Edition', value: 'Windows 11 Professional' },
+          { label: 'Architecture', value: '32/64 Bit Supported' },
+          { label: 'Validity', value: 'Lifetime / Permanent' }
+        ],
+        delivery_type: 'LICENSE_KEY'
+      });
+
+      await InventorySlot.create([
+        { product_id: oneTimeProduct._id, account_label: 'Key Slot #1', custom_text: 'W269N-WFGWX-YVC9B-4J6C9-T83GX', status: 'AVAILABLE' }
       ]);
     }
   } catch (err) {
@@ -256,7 +321,7 @@ async function initializeSystem() {
 }
 
 // ----------------------------------------------------
-// AUTH MIDDLEWARES
+// AUTHENTICATION MIDDLEWARES
 // ----------------------------------------------------
 function authCustomer(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -441,13 +506,14 @@ app.get('/api/payment-methods', async (req, res) => {
   }
 });
 
+// Catalog Retrieval with Real-Time Stock Count
 app.get('/api/products', async (req, res) => {
   try {
     const { search } = req.query;
     let query = { status: 'active' };
     if (search) {
       const regex = new RegExp(search, 'i');
-      query.$or = [{ name: regex }, { description: regex }, { sku: regex }];
+      query.$or = [{ name: regex }, { description: regex }, { sku: regex }, { tags: regex }, { category: regex }];
     }
     const products = await Product.find(query).sort({ created_at: -1 });
     const withStock = await Promise.all(products.map(async (p) => {
@@ -460,12 +526,31 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-app.get('/api/products/:id', async (req, res) => {
+// Dedicated Product Details API (Supports ID or Slug Lookup)
+app.get('/api/products/:identifier', async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const { identifier } = req.params;
+    let product = null;
+
+    if (mongoose.Types.ObjectId.isValid(identifier)) {
+      product = await Product.findById(identifier);
+    }
+    if (!product) {
+      product = await Product.findOne({ slug: identifier });
+    }
     if (!product) return res.status(404).json({ error: 'Product not found' });
+
     const availableCount = await InventorySlot.countDocuments({ product_id: product._id, status: 'AVAILABLE' });
-    res.json({ ...product.toObject(), in_stock: availableCount > 0, stock_count: availableCount });
+    
+    // Fetch related items from the same category
+    const related = await Product.find({ _id: { $ne: product._id }, status: 'active' }).limit(4);
+
+    res.json({ 
+      ...product.toObject(), 
+      in_stock: availableCount > 0, 
+      stock_count: availableCount,
+      related 
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -645,7 +730,7 @@ app.get('/api/customer/orders', authCustomer, async (req, res) => {
 });
 
 // ----------------------------------------------------
-// ADMIN PRODUCT CRUD & EDIT APIS
+// ADMIN CONTROL CENTER & PRODUCT STUDIO APIS
 // ----------------------------------------------------
 app.post('/api/admin/login', async (req, res) => {
   try {
@@ -892,10 +977,21 @@ app.get('/api/admin/products', authAdmin, async (req, res) => {
 // Create New Product
 app.post('/api/admin/products', authAdmin, async (req, res) => {
   try {
+    const { name, original_price, sale_price } = req.body;
+    const orig = Number(original_price) || 0;
+    const sale = Number(sale_price) || 0;
+    const discount = orig > sale ? Math.round(((orig - sale) / orig) * 100) : 0;
+    const generatedSlug = (name || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Date.now();
+
     const product = await Product.create({
       ...req.body,
+      slug: req.body.slug || generatedSlug,
       sku: req.body.sku || 'SKU-' + Date.now(),
-      images: req.body.images && req.body.images.length ? req.body.images : ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800']
+      original_price: orig,
+      sale_price: sale,
+      discount_percentage: discount,
+      images: req.body.images && req.body.images.length ? req.body.images : ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'],
+      updated_at: new Date()
     });
     res.status(201).json(product);
   } catch (err) {
@@ -903,15 +999,52 @@ app.post('/api/admin/products', authAdmin, async (req, res) => {
   }
 });
 
-// Update Existing Product (Including Images & Pricing)
+// Update Existing Product
 app.put('/api/admin/products/:id', authAdmin, async (req, res) => {
   try {
-    const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const { original_price, sale_price } = req.body;
+    const orig = Number(original_price) || 0;
+    const sale = Number(sale_price) || 0;
+    const discount = orig > sale ? Math.round(((orig - sale) / orig) * 100) : 0;
+
+    const updated = await Product.findByIdAndUpdate(req.params.id, {
+      ...req.body,
+      original_price: orig,
+      sale_price: sale,
+      discount_percentage: discount,
+      updated_at: new Date()
+    }, { new: true });
+
     if (!updated) return res.status(404).json({ error: 'Product not found' });
     recordActivity('product_updated', `Product updated: ${updated.name}`);
     res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+// Duplicate Product Endpoint
+app.post('/api/admin/products/:id/duplicate', authAdmin, async (req, res) => {
+  try {
+    const original = await Product.findById(req.params.id);
+    if (!original) return res.status(404).json({ error: 'Original product not found' });
+
+    const cloneData = original.toObject();
+    delete cloneData._id;
+    delete cloneData.created_at;
+    delete cloneData.updated_at;
+
+    cloneData.name = `${original.name} (Copy)`;
+    cloneData.slug = `${original.slug}-copy-${Date.now()}`;
+    cloneData.sku = `${original.sku}-COPY-${Math.floor(Math.random() * 1000)}`;
+    cloneData.status = 'draft';
+    cloneData.sales_count = 0;
+
+    const newProduct = await Product.create(cloneData);
+    recordActivity('product_duplicated', `Duplicated product: ${newProduct.name}`);
+    res.status(201).json(newProduct);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -951,7 +1084,7 @@ app.get('*', (req, res) => {
 });
 
 // ----------------------------------------------------
-// DATABASE STARTUP
+// START SERVER
 // ----------------------------------------------------
 const MONGODB_URI = process.env.MONGODB_URI;
 mongoose.connect(MONGODB_URI)
@@ -959,6 +1092,6 @@ mongoose.connect(MONGODB_URI)
     console.log('✓ Connected to MongoDB Atlas Cloud Database');
     await initializeSystem();
     const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => console.log(`✓ NEXUS Digital Hub running on port ${PORT}`));
+    app.listen(PORT, () => console.log(`✓ NEXUS Digital Engine running on port ${PORT}`));
   })
   .catch(err => console.error('✕ Failed to connect to MongoDB Atlas:', err.message));
