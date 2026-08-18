@@ -14,7 +14,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const JWT_SECRET = process.env.JWT_SECRET || 'nexus_digital_super_secret_jwt_2026_key';
 
 // ----------------------------------------------------
-// PERFORMANCE & PRESENCE TRACKING
+// PERFORMANCE & PRESENCE LOGGERS
 // ----------------------------------------------------
 const requestLogs = [];
 const appErrorLogs = [];
@@ -63,7 +63,7 @@ setInterval(() => {
 }, 10000);
 
 // ----------------------------------------------------
-// MASTER DATABASE SCHEMAS & MODELS
+// DATABASE SCHEMAS & MODELS
 // ----------------------------------------------------
 
 const AdminSchema = new mongoose.Schema({
@@ -77,11 +77,9 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   mobile: { type: String, default: '' },
   password_hash: { type: String, required: true },
-  wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
   created_at: { type: Date, default: Date.now }
 });
 
-// Master Product Schema
 const ProductSchema = new mongoose.Schema({
   name: { type: String, required: true },
   slug: { type: String, required: true, unique: true },
@@ -91,49 +89,37 @@ const ProductSchema = new mongoose.Schema({
   short_description: { type: String, default: '' },
   description: { type: String, default: '' },
   product_type: { type: String, enum: ['ONE_TIME', 'SUBSCRIPTION'], default: 'ONE_TIME' },
-  
-  // Real Reference Price vs Actual Selling Price
   original_price: { type: Number, required: true, default: 999 },
   sale_price: { type: Number, required: true, default: 499 },
   discount_percentage: { type: Number, default: 0 },
-  
-  // Multi-duration Subscription Tiers
   subscription_pricing: {
     one_month: { type: Number, default: 199 },
     six_months: { type: Number, default: 899 },
     one_year: { type: Number, default: 1499 }
   },
-  
   images: [{ type: String }],
   features: [{ type: String }],
   whats_included: [{ type: String }],
   specifications: [{ label: String, value: String }],
-  
   delivery_type: { 
     type: String, 
     enum: ['EMAIL_PASSWORD', 'MOBILE_PASSWORD', 'STANDARD_LINK', 'DOWNLOADABLE_FILE', 'LICENSE_KEY', 'CUSTOM_TEXT'], 
     default: 'EMAIL_PASSWORD' 
   },
-  
   status: { type: String, enum: ['active', 'draft', 'archived', 'disabled'], default: 'active' },
-  featured: { type: Boolean, default: false },
-  best_seller: { type: Boolean, default: false },
-  
-  seo_title: { type: String, default: '' },
-  meta_description: { type: String, default: '' },
-  alt_text: { type: String, default: '' },
-  
   sales_count: { type: Number, default: 0 },
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }
 });
 
+// Single Source of Truth for Credential Slots
 const InventorySlotSchema = new mongoose.Schema({
   product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-  account_label: { type: String, default: 'Account Slot' },
+  account_label: { type: String, required: true, default: 'Account Slot 1' },
   email: { type: String, default: '' },
   password: { type: String, default: '' },
   custom_text: { type: String, default: '' },
+  notes: { type: String, default: '' },
   status: { type: String, enum: ['AVAILABLE', 'RESERVED', 'ASSIGNED', 'EXPIRED', 'DISABLED'], default: 'AVAILABLE' },
   current_customer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   current_subscription_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Subscription', default: null },
@@ -146,16 +132,18 @@ const InventorySlotSchema = new mongoose.Schema({
     expires_at: Date,
     assigned_at: { type: Date, default: Date.now }
   }],
-  created_at: { type: Date, default: Date.now }
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now }
 });
 
+// Subscription referencing the assigned_slot_id (no permanent duplicated password)
 const SubscriptionSchema = new mongoose.Schema({
   order_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true },
   user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-  inventory_slot_id: { type: mongoose.Schema.Types.ObjectId, ref: 'InventorySlot', default: null },
+  assigned_slot_id: { type: mongoose.Schema.Types.ObjectId, ref: 'InventorySlot', default: null },
   product_name: String,
-  duration: { type: String, enum: ['1_MONTH', '6_MONTHS', '1_YEAR'], required: true },
+  duration: { type: String, enum: ['1_MONTH', '6_MONTHS', '1_YEAR', 'ONE_TIME'], required: true },
   start_at: { type: Date, default: Date.now },
   expires_at: { type: Date, required: true },
   status: { type: String, enum: ['ACTIVE', 'EXPIRED', 'REVOKED'], default: 'ACTIVE' },
@@ -197,12 +185,10 @@ const OrderSchema = new mongoose.Schema({
     product_type: String,
     duration: String,
     delivery_type: String,
-    subscription_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Subscription', default: null },
-    delivered_data: { type: mongoose.Schema.Types.Mixed, default: null }
+    subscription_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Subscription', default: null }
   }],
   subtotal: { type: Number, required: true },
   discount_amount: { type: Number, default: 0 },
-  coupon_code: { type: String, default: '' },
   total_amount: { type: Number, required: true },
   payment_method: { type: String, enum: ['UPI', 'CRYPTO'], default: 'UPI' },
   payment_status: { type: String, enum: ['Pending', 'Processing', 'Paid', 'Failed', 'Refunded'], default: 'Pending' },
@@ -236,7 +222,7 @@ const Order = mongoose.model('Order', OrderSchema);
 const PaymentSettings = mongoose.model('PaymentSettings', PaymentSettingsSchema);
 
 // ----------------------------------------------------
-// DATABASE SEEDING
+// DATABASE INITIALIZATION
 // ----------------------------------------------------
 async function initializeSystem() {
   try {
@@ -260,59 +246,26 @@ async function initializeSystem() {
         category: 'Streaming & Accounts',
         tags: ['netflix', 'streaming', '4k', 'uhd'],
         short_description: 'PIN-protected 4K UHD streaming profile with instant activation.',
-        description: 'Enjoy Ultra HD 4K streaming across all your devices including Smart TVs, Phones, PCs, and Tablets. Private PIN lock ensures your profile stays private.',
+        description: 'Enjoy Ultra HD 4K streaming across all your devices. Dedicated private profile on authorized high-speed streaming accounts.',
         product_type: 'SUBSCRIPTION',
         original_price: 299,
         sale_price: 199,
         discount_percentage: 33,
         subscription_pricing: { one_month: 199, six_months: 899, one_year: 1499 },
-        images: [
-          'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=1000&auto=format&fit=crop&q=80',
-          'https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?w=1000&auto=format&fit=crop&q=80'
-        ],
+        images: ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=1000&auto=format&fit=crop&q=80'],
         features: ['Ultra HD 4K Video Quality', 'Private PIN Lock Profile', 'Works on All Smart Devices', 'Instant Replacement Guarantee'],
-        whats_included: ['1x Private Profile Credentials', 'Exclusive 4-Digit PIN code', 'Quick Login Guide'],
+        whats_included: ['1x Private Profile Credentials', 'Exclusive PIN code', 'Quick Login Guide'],
         specifications: [
-          { label: 'Quality', value: '4K HDR / Dolby Vision' },
+          { label: 'Quality', value: '4K HDR' },
           { label: 'Screens', value: '1 Screen (Private Profile)' },
-          { label: 'Platform', value: 'Smart TV, Web, iOS, Android' },
           { label: 'Delivery', value: 'Instant Manual Approval' }
         ],
         delivery_type: 'EMAIL_PASSWORD'
       });
 
       await InventorySlot.create([
-        { product_id: subProduct._id, account_label: 'Account Slot #1 (Dedicated)', email: 'stream_vip01@nexus.io', password: 'NexusPass@2026', status: 'AVAILABLE' },
-        { product_id: subProduct._id, account_label: 'Account Slot #2 (Dedicated)', email: 'stream_vip02@nexus.io', password: 'VaultStream#889', status: 'AVAILABLE' }
-      ]);
-
-      const oneTimeProduct = await Product.create({
-        name: 'Windows 11 Pro Genuine OEM Key',
-        slug: 'windows-11-pro-genuine-oem-key',
-        sku: 'WIN-11-PRO',
-        category: 'License Keys & OS',
-        tags: ['windows', 'microsoft', 'os', 'key', 'license'],
-        short_description: 'Lifetime activation for 1 PC with global Microsoft updates.',
-        description: 'Official OEM activation key for Microsoft Windows 11 Professional 64-bit/32-bit. Unlocks BitLocker encryption, Remote Desktop, Hyper-V, and full enterprise security suite.',
-        product_type: 'ONE_TIME',
-        original_price: 3999,
-        sale_price: 499,
-        discount_percentage: 87,
-        images: [
-          'https://images.unsplash.com/photo-1629654297299-c8506221ca97?w=1000&auto=format&fit=crop&q=80'
-        ],
-        features: ['Lifetime Permanent Activation', 'Direct Online Microsoft Activation', 'Global Multilingual Support', 'Full Security Updates'],
-        whats_included: ['1x 25-Digit License Key', 'Step-by-step Official Activation Guide'],
-        specifications: [
-          { label: 'Edition', value: 'Windows 11 Professional' },
-          { label: 'Architecture', value: '32/64 Bit Supported' },
-          { label: 'Validity', value: 'Lifetime / Permanent' }
-        ],
-        delivery_type: 'LICENSE_KEY'
-      });
-
-      await InventorySlot.create([
-        { product_id: oneTimeProduct._id, account_label: 'Key Slot #1', custom_text: 'W269N-WFGWX-YVC9B-4J6C9-T83GX', status: 'AVAILABLE' }
+        { product_id: subProduct._id, account_label: 'Slot 1', email: 'account1@example.com', password: 'VaultStream#2026', status: 'AVAILABLE' },
+        { product_id: subProduct._id, account_label: 'Slot 2', email: 'account2@example.com', password: 'StreamBeast!889', status: 'AVAILABLE' }
       ]);
     }
   } catch (err) {
@@ -321,7 +274,7 @@ async function initializeSystem() {
 }
 
 // ----------------------------------------------------
-// AUTHENTICATION MIDDLEWARES
+// AUTH MIDDLEWARES
 // ----------------------------------------------------
 function authCustomer(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -446,7 +399,7 @@ app.get('/api/admin/system/infrastructure', authAdmin, async (req, res) => {
           { name: 'Products', count: productsCount, status: 'Healthy' },
           { name: 'Orders', count: ordersCount, status: 'Healthy' },
           { name: 'Transactions', count: txnsCount, status: 'Healthy' },
-          { name: 'Inventory Slots', count: invCount, status: 'Healthy' }
+          { name: 'Account Slots', count: invCount, status: 'Healthy' }
         ]
       },
       recent_api_metrics: requestLogs.slice(0, 8),
@@ -488,7 +441,7 @@ app.get('/api/admin/system/health-check', authAdmin, async (req, res) => {
 });
 
 // ----------------------------------------------------
-// STORE & CHECKOUT APIS
+// STORE & CUSTOMER APIS
 // ----------------------------------------------------
 app.post('/api/presence/heartbeat', (req, res) => {
   const { sessionId, page, action } = req.body;
@@ -506,7 +459,6 @@ app.get('/api/payment-methods', async (req, res) => {
   }
 });
 
-// Catalog Retrieval with Real-Time Stock Count
 app.get('/api/products', async (req, res) => {
   try {
     const { search } = req.query;
@@ -526,7 +478,6 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-// Dedicated Product Details API (Supports ID or Slug Lookup)
 app.get('/api/products/:identifier', async (req, res) => {
   try {
     const { identifier } = req.params;
@@ -541,8 +492,6 @@ app.get('/api/products/:identifier', async (req, res) => {
     if (!product) return res.status(404).json({ error: 'Product not found' });
 
     const availableCount = await InventorySlot.countDocuments({ product_id: product._id, status: 'AVAILABLE' });
-    
-    // Fetch related items from the same category
     const related = await Product.find({ _id: { $ne: product._id }, status: 'active' }).limit(4);
 
     res.json({ 
@@ -621,7 +570,7 @@ app.post('/api/checkout/initiate-order', authCustomer, async (req, res) => {
         product_type: p.product_type,
         duration,
         delivery_type: p.delivery_type,
-        delivered_data: null
+        subscription_id: null
       });
     }
 
@@ -688,10 +637,19 @@ app.post('/api/checkout/upload-proof-json', authCustomer, async (req, res) => {
   }
 });
 
+// =========================================================================
+// CUSTOMER PURCHASED ITEMS (DYNAMIC CREDENTIAL RESOLUTION FROM ASSIGNED SLOT)
+// =========================================================================
 app.get('/api/customer/orders', authCustomer, async (req, res) => {
   try {
     const orders = await Order.find({ user_id: req.user.id })
-      .populate('items.subscription_id')
+      .populate({
+        path: 'items.subscription_id',
+        populate: {
+          path: 'assigned_slot_id',
+          model: 'InventorySlot'
+        }
+      })
       .sort({ created_at: -1 });
 
     const now = new Date();
@@ -701,19 +659,31 @@ app.get('/api/customer/orders', authCustomer, async (req, res) => {
       const oObj = order.toObject();
 
       oObj.items = oObj.items.map(it => {
-        if (!isPaid) return { ...it, delivered_data: null };
+        if (!isPaid) {
+          return { ...it, delivered_data: null };
+        }
 
-        if (it.product_type === 'SUBSCRIPTION' && it.subscription_id) {
-          const expiresAt = new Date(it.subscription_id.expires_at);
-          const isExpired = now >= expiresAt;
+        const sub = it.subscription_id;
+        if (sub) {
+          const expiresAt = new Date(sub.expires_at);
+          const isExpired = now >= expiresAt || sub.status !== 'ACTIVE';
+          const slot = sub.assigned_slot_id;
+
+          // Single source of truth: If active, return CURRENT live credentials from the slot
+          const liveCredentials = (!isExpired && slot && slot.status !== 'DISABLED') ? {
+            account_label: slot.account_label,
+            email: slot.email,
+            password: slot.password,
+            custom_text: slot.custom_text
+          } : null;
 
           return {
             ...it,
             is_subscription: true,
             is_expired: isExpired,
-            start_at: it.subscription_id.start_at,
-            expires_at: it.subscription_id.expires_at,
-            delivered_data: isExpired ? null : it.delivered_data
+            start_at: sub.start_at,
+            expires_at: sub.expires_at,
+            delivered_data: liveCredentials
           };
         }
 
@@ -730,7 +700,116 @@ app.get('/api/customer/orders', authCustomer, async (req, res) => {
 });
 
 // ----------------------------------------------------
-// ADMIN CONTROL CENTER & PRODUCT STUDIO APIS
+// DEDICATED ACCOUNT SLOTS APIS (ADMIN ONLY)
+// ----------------------------------------------------
+
+// 1. List All Slots with Multi-Product & Status Filtering
+app.get('/api/admin/slots', authAdmin, async (req, res) => {
+  try {
+    const { product_id, status, search } = req.query;
+    let filter = {};
+
+    if (product_id && product_id !== 'ALL') filter.product_id = product_id;
+    if (status && status !== 'ALL') filter.status = status;
+    if (search) {
+      const regex = new RegExp(search, 'i');
+      filter.$or = [{ account_label: regex }, { email: regex }];
+    }
+
+    const slots = await InventorySlot.find(filter)
+      .populate('product_id', 'name sku product_type')
+      .populate('current_customer_id', 'name email')
+      .populate('current_subscription_id', 'start_at expires_at duration status')
+      .sort({ created_at: -1 });
+
+    const totalSlots = await InventorySlot.countDocuments();
+    const availableSlots = await InventorySlot.countDocuments({ status: 'AVAILABLE' });
+    const assignedSlots = await InventorySlot.countDocuments({ status: 'ASSIGNED' });
+    const expiredSlots = await InventorySlot.countDocuments({ status: 'EXPIRED' });
+    const disabledSlots = await InventorySlot.countDocuments({ status: 'DISABLED' });
+
+    res.json({
+      slots,
+      stats: {
+        total: totalSlots,
+        available: availableSlots,
+        assigned: assignedSlots,
+        expired: expiredSlots,
+        disabled: disabledSlots
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. Create a New Account Slot
+app.post('/api/admin/slots', authAdmin, async (req, res) => {
+  try {
+    const { product_id, account_label, email, password, custom_text, notes, status } = req.body;
+    if (!product_id || !email) {
+      return res.status(400).json({ error: 'Product and Email/Username are required' });
+    }
+
+    const slot = await InventorySlot.create({
+      product_id,
+      account_label: account_label || 'Account Slot',
+      email,
+      password: password || '',
+      custom_text: custom_text || '',
+      notes: notes || '',
+      status: status || 'AVAILABLE'
+    });
+
+    recordActivity('slot_created', `New slot "${slot.account_label}" created for product`);
+    res.status(201).json(slot);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// 3. Edit Account Slot (Live Syncs to Active Customer!)
+app.put('/api/admin/slots/:id', authAdmin, async (req, res) => {
+  try {
+    const { account_label, email, password, custom_text, notes, status } = req.body;
+    
+    const slot = await InventorySlot.findById(req.params.id);
+    if (!slot) return res.status(404).json({ error: 'Account slot not found' });
+
+    if (account_label !== undefined) slot.account_label = account_label;
+    if (email !== undefined) slot.email = email;
+    if (password !== undefined) slot.password = password;
+    if (custom_text !== undefined) slot.custom_text = custom_text;
+    if (notes !== undefined) slot.notes = notes;
+    if (status !== undefined) slot.status = status;
+    slot.updated_at = new Date();
+
+    await slot.save();
+
+    recordActivity('slot_updated', `Credentials updated for slot "${slot.account_label}". Live synced to active customers.`);
+    res.json(slot);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// 4. Delete Account Slot
+app.delete('/api/admin/slots/:id', authAdmin, async (req, res) => {
+  try {
+    const slot = await InventorySlot.findById(req.params.id);
+    if (!slot) return res.status(404).json({ error: 'Slot not found' });
+    if (slot.status === 'ASSIGNED') {
+      return res.status(400).json({ error: 'Cannot delete an active assigned slot. Please revoke or reassign the subscription first.' });
+    }
+    await InventorySlot.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ----------------------------------------------------
+// ADMIN TRANSACTIONS & CONFIRMATION WITH SLOT BINDING
 // ----------------------------------------------------
 app.post('/api/admin/login', async (req, res) => {
   try {
@@ -757,24 +836,6 @@ app.get('/api/admin/stats', authAdmin, async (req, res) => {
     const activeSubs = await Subscription.countDocuments({ status: 'ACTIVE', expires_at: { $gt: new Date() } });
 
     res.json({ totalRevenue, pendingPayments, activeSubs });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/admin/subscriptions', authAdmin, async (req, res) => {
-  try {
-    const now = new Date();
-    const subs = await Subscription.find()
-      .populate('user_id', 'name email')
-      .populate('product_id', 'name')
-      .populate('inventory_slot_id', 'account_label email')
-      .sort({ created_at: -1 });
-
-    const totalActive = subs.filter(s => s.status === 'ACTIVE' && s.expires_at > now).length;
-    const totalExpired = subs.filter(s => s.expires_at <= now || s.status === 'EXPIRED').length;
-
-    res.json({ subscriptions: subs, totalActive, totalExpired });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -830,6 +891,7 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
     const order = await Order.findById(txn.order_id).session(session);
     const item = order.items[0];
 
+    // Atomically find & lock selected slot or next available slot
     let slot = null;
     if (slot_id) {
       slot = await InventorySlot.findOneAndUpdate(
@@ -845,7 +907,7 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
       );
     }
 
-    if (!slot) throw new Error('No available slot found. Please create an account slot under Product Studio first.');
+    if (!slot) throw new Error('No available account slot found for this product. Please add an account slot under "Account Slots".');
 
     const startAt = new Date();
     const expiresAt = new Date(startAt);
@@ -853,24 +915,22 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
     if (item.duration === '1_MONTH') expiresAt.setMonth(expiresAt.getMonth() + 1);
     else if (item.duration === '6_MONTHS') expiresAt.setMonth(expiresAt.getMonth() + 6);
     else if (item.duration === '1_YEAR') expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-    else expiresAt.setDate(expiresAt.getDate() + 30);
+    else expiresAt.setFullYear(expiresAt.getFullYear() + 50); // Lifetime / One-time
 
-    if (item.product_type === 'SUBSCRIPTION') {
-      const createdSub = await Subscription.create([{
-        order_id: order._id,
-        user_id: order.user_id,
-        product_id: item.product_id,
-        inventory_slot_id: slot._id,
-        product_name: item.name,
-        duration: item.duration,
-        start_at: startAt,
-        expires_at: expiresAt,
-        status: 'ACTIVE'
-      }], { session });
+    const createdSub = await Subscription.create([{
+      order_id: order._id,
+      user_id: order.user_id,
+      product_id: item.product_id,
+      assigned_slot_id: slot._id,
+      product_name: item.name,
+      duration: item.duration,
+      start_at: startAt,
+      expires_at: expiresAt,
+      status: 'ACTIVE'
+    }], { session });
 
-      slot.current_subscription_id = createdSub[0]._id;
-      item.subscription_id = createdSub[0]._id;
-    }
+    slot.current_subscription_id = createdSub[0]._id;
+    item.subscription_id = createdSub[0]._id;
 
     slot.assignment_history.push({
       customer_name: order.customer_name,
@@ -881,13 +941,6 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
       expires_at: expiresAt
     });
     await slot.save({ session });
-
-    item.delivered_data = {
-      account_label: slot.account_label,
-      email: slot.email,
-      password: slot.password,
-      custom_text: slot.custom_text
-    };
 
     txn.status = 'CONFIRMED';
     txn.verified_at = new Date();
@@ -901,7 +954,7 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
     await session.commitTransaction();
     session.endSession();
 
-    recordActivity('subscription_activated', `Subscription confirmed & ${slot.account_label} assigned to ${order.customer_name}`);
+    recordActivity('subscription_activated', `Payment verified. Bound slot "${slot.account_label}" to ${order.customer_name}`);
     res.json({ success: true });
 
   } catch (err) {
@@ -926,40 +979,9 @@ app.post('/api/admin/transactions/:id/reject', authAdmin, async (req, res) => {
   }
 });
 
-app.get('/api/admin/products/:id/slots', authAdmin, async (req, res) => {
-  try {
-    const slots = await InventorySlot.find({ product_id: req.params.id }).sort({ created_at: -1 });
-    res.json(slots);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/admin/products/:id/slots', authAdmin, async (req, res) => {
-  try {
-    const slot = await InventorySlot.create({
-      product_id: req.params.id,
-      account_label: req.body.account_label || 'Account Slot',
-      email: req.body.email,
-      password: req.body.password,
-      custom_text: req.body.custom_text || '',
-      status: 'AVAILABLE'
-    });
-    res.status(201).json(slot);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-app.delete('/api/admin/slots/:id', authAdmin, async (req, res) => {
-  try {
-    await InventorySlot.findByIdAndDelete(req.params.id);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
+// ----------------------------------------------------
+// ADMIN PRODUCT STUDIO APIS
+// ----------------------------------------------------
 app.get('/api/admin/products', authAdmin, async (req, res) => {
   try {
     const products = await Product.find().sort({ created_at: -1 });
@@ -974,7 +996,6 @@ app.get('/api/admin/products', authAdmin, async (req, res) => {
   }
 });
 
-// Create New Product
 app.post('/api/admin/products', authAdmin, async (req, res) => {
   try {
     const { name, original_price, sale_price } = req.body;
@@ -999,7 +1020,6 @@ app.post('/api/admin/products', authAdmin, async (req, res) => {
   }
 });
 
-// Update Existing Product
 app.put('/api/admin/products/:id', authAdmin, async (req, res) => {
   try {
     const { original_price, sale_price } = req.body;
@@ -1023,7 +1043,6 @@ app.put('/api/admin/products/:id', authAdmin, async (req, res) => {
   }
 });
 
-// Duplicate Product Endpoint
 app.post('/api/admin/products/:id/duplicate', authAdmin, async (req, res) => {
   try {
     const original = await Product.findById(req.params.id);
@@ -1084,7 +1103,7 @@ app.get('*', (req, res) => {
 });
 
 // ----------------------------------------------------
-// START SERVER
+// DATABASE STARTUP
 // ----------------------------------------------------
 const MONGODB_URI = process.env.MONGODB_URI;
 mongoose.connect(MONGODB_URI)
