@@ -75,9 +75,7 @@
 
         <nav class="p-4 space-y-1.5 text-xs font-semibold">
           <button onclick="navigate('home')" id="nav-home" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-all"><span>🏠</span> <span>Home</span></button>
-          <button onclick="navigate('products')" id="nav-products" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-all"><span>🛍</span> <span>Products</span></button>
-          <button onclick="navigate('categories')" id="nav-categories" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-all"><span>📂</span> <span>Categories</span></button>
-          <button onclick="navigate('deals')" id="nav-deals" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-all"><span>🔥</span> <span>Special Deals</span></button>
+          <button onclick="navigate('products')" id="nav-products" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-all"><span>🛍</span> <span>All Products</span></button>
           <button onclick="navigate('cart')" id="nav-cart" class="nav-btn w-full flex items-center justify-between px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-all">
             <div class="flex items-center gap-3"><span>🛒</span> <span>My Cart</span></div>
             <span id="cartCountBadge" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-gray-950">0</span>
@@ -130,7 +128,6 @@
       adminUsername: localStorage.getItem('nexus_admin_user') || '',
       cart: JSON.parse(localStorage.getItem('nexus_cart') || '[]'),
       appliedCoupon: null,
-      categories: [],
       currentView: 'home',
       currentProduct: null
     };
@@ -182,8 +179,6 @@
         case 'home': renderHomeView(root); break;
         case 'products': renderProductsView(root, params); break;
         case 'product-details': renderProductDetailsPage(root, params.id); break;
-        case 'categories': renderCategoriesView(root); break;
-        case 'deals': renderProductsView(root, { deal: true, title: '🔥 Special Deals' }); break;
         case 'cart': renderCartView(root); break;
         case 'checkout': renderCheckoutView(root); break;
         case 'orders': renderOrdersView(root); break;
@@ -198,19 +193,11 @@
       }
     }
 
-    // ----------------------------------------------------
-    // 1. HOME & CARD SYSTEM
-    // ----------------------------------------------------
     async function renderHomeView(root) {
       root.innerHTML = '<div class="text-center py-20 text-slate-500 font-bold animate-pulse">Loading digital marketplace...</div>';
       try {
-        const [prodRes, infoRes] = await Promise.all([
-          fetch('/api/products?featured=true'),
-          fetch('/api/store/info')
-        ]);
-        const featuredProducts = await prodRes.json();
-        const info = await infoRes.json();
-        state.categories = info.categories || [];
+        const prodRes = await fetch('/api/products');
+        const allProducts = await prodRes.json();
 
         root.innerHTML = `
           <div class="relative rounded-3xl overflow-hidden glass p-8 sm:p-14 border border-emerald-500/20 bg-gradient-to-r from-emerald-950/40 via-surface-900 to-surface-950">
@@ -218,29 +205,16 @@
               <span class="px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-black uppercase inline-block">⚡ Instant Automated Delivery</span>
               <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">Unlock Premium <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">Digital Goods</span></h1>
               <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">Genuine license keys, accounts, software source codes, and development assets. Unlocked immediately upon purchase.</p>
-              <div class="flex flex-wrap gap-3 pt-3">
-                <button onclick="navigate('products')" class="px-6 py-3 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase">Browse Catalog</button>
-                <button onclick="navigate('deals')" class="px-6 py-3 rounded-2xl glass text-white font-bold text-xs uppercase">View Deals</button>
+              <div class="pt-2">
+                <button onclick="navigate('products')" class="px-7 py-3.5 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Browse Catalog</button>
               </div>
             </div>
           </div>
 
           <section class="space-y-4">
-            <h2 class="text-lg font-black text-white">Categories</h2>
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
-              ${state.categories.map(c => `
-                <div onclick="navigate('products', { category: '${c.name}' })" class="glass-card rounded-2xl p-4 text-center cursor-pointer group">
-                  <div class="text-2xl mb-1.5">${c.icon || '📂'}</div>
-                  <h3 class="text-xs font-black text-white group-hover:text-emerald-400">${c.name}</h3>
-                </div>
-              `).join('')}
-            </div>
-          </section>
-
-          <section class="space-y-4">
-            <h2 class="text-lg font-black text-white">Featured Digital Products</h2>
+            <h2 class="text-lg font-black text-white">All Digital Products</h2>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              ${featuredProducts.map(p => renderProductCardHTML(p)).join('')}
+              ${allProducts.map(p => renderProductCardHTML(p)).join('')}
             </div>
           </section>
         `;
@@ -260,7 +234,6 @@
               <img src="${p.images[0] || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
             </div>
             <div class="p-5 space-y-2">
-              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">${p.category}</span>
               <h3 class="text-sm font-bold text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">${p.name}</h3>
               <p class="text-xs text-slate-400 line-clamp-2">${p.short_description || p.description}</p>
             </div>
@@ -280,9 +253,6 @@
       `;
     }
 
-    // ----------------------------------------------------
-    // 2. DEDICATED PRODUCT DETAILS PAGE
-    // ----------------------------------------------------
     async function renderProductDetailsPage(root, productId) {
       root.innerHTML = '<div class="text-center py-20 text-slate-500 font-bold animate-pulse">Loading verified digital asset...</div>';
       try {
@@ -295,23 +265,16 @@
 
         root.innerHTML = `
           <div class="space-y-12">
-            
-            <!-- Breadcrumbs / Top Back Button -->
             <div class="flex items-center justify-between text-xs text-slate-400">
               <button onclick="navigate('products')" class="flex items-center gap-2 hover:text-white">
                 <span>←</span> <span>Back to Products</span>
               </button>
               <div class="flex items-center gap-2">
-                <span class="text-emerald-400 font-bold">${p.category}</span>
-                <span>/</span>
-                <span class="font-mono text-slate-500">${p.sku}</span>
+                <span class="font-mono text-slate-500">SKU: ${p.sku}</span>
               </div>
             </div>
 
-            <!-- Product Hero Viewport -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              
-              <!-- Left Gallery -->
               <div class="lg:col-span-7 space-y-4">
                 <div class="h-72 sm:h-96 w-full rounded-3xl overflow-hidden glass border border-white/10 relative">
                   <img id="mainDetailImage" src="${mainImage}" class="w-full h-full object-cover">
@@ -322,17 +285,15 @@
                   ` : ''}
                 </div>
 
-                <!-- Thumbnails -->
                 ${p.images && p.images.length > 1 ? `
                   <div class="flex gap-3 overflow-x-auto pb-2">
-                    ${p.images.map((img, i) => `
+                    ${p.images.map((img) => `
                       <img onclick="document.getElementById('mainDetailImage').src = '${img}'" src="${img}" class="w-20 h-20 rounded-2xl object-cover glass cursor-pointer border border-white/10 hover:border-emerald-400 transition-all">
                     `).join('')}
                   </div>
                 ` : ''}
               </div>
 
-              <!-- Right Purchase Panel -->
               <div class="lg:col-span-5 space-y-6">
                 <div class="space-y-2">
                   <span class="px-3 py-1 rounded-full bg-surface-900 border border-white/10 text-emerald-400 font-bold text-[10px] uppercase tracking-wider inline-block">
@@ -342,7 +303,6 @@
                   <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">${p.short_description || ''}</p>
                 </div>
 
-                <!-- Price Box -->
                 <div class="p-5 rounded-3xl glass border border-white/5 space-y-2">
                   <div class="flex items-center gap-3">
                     <span class="text-3xl font-black text-white">₹${p.sale_price}</span>
@@ -355,7 +315,6 @@
                   </div>
                 </div>
 
-                <!-- Buttons -->
                 <div class="space-y-3">
                   <button onclick="buyNow('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${p.sale_price}, '${mainImage}', '${p.delivery_type}')" ${!p.in_stock ? 'disabled' : ''} class="w-full py-4 rounded-2xl ${p.in_stock ? 'bg-emerald-500 hover:bg-emerald-400 text-gray-950' : 'bg-gray-800 text-gray-500'} font-black text-xs uppercase tracking-wider shadow-xl shadow-emerald-500/20 active:scale-95 transition-all">
                     ${p.in_stock ? '⚡ Buy Now & Unlock Instantly' : 'Out of Stock'}
@@ -365,26 +324,20 @@
                   </button>
                 </div>
 
-                <!-- Guarantees -->
                 <div class="grid grid-cols-2 gap-3 text-[11px] text-slate-400 pt-2">
                   <div class="flex items-center gap-2"><span>🛡️</span> <span>Verified Product</span></div>
                   <div class="flex items-center gap-2"><span>⚡</span> <span>Instant Cloud Access</span></div>
                 </div>
               </div>
-
             </div>
 
-            <!-- Full Description & Information Specs -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
               <div class="lg:col-span-8 space-y-8">
-                
-                <!-- Detailed Info -->
                 <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
                   <h3 class="text-sm font-black text-white uppercase tracking-wider">Product Overview</h3>
                   <div class="text-xs text-slate-300 leading-relaxed whitespace-pre-line">${p.description}</div>
                 </div>
 
-                <!-- Features Checklist -->
                 ${p.features && p.features.length ? `
                   <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
                     <h3 class="text-sm font-black text-white uppercase tracking-wider">Key Features</h3>
@@ -398,7 +351,6 @@
                   </div>
                 ` : ''}
 
-                <!-- What's Included -->
                 ${p.whats_included && p.whats_included.length ? `
                   <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
                     <h3 class="text-sm font-black text-white uppercase tracking-wider">What's Included</h3>
@@ -411,13 +363,9 @@
                     </div>
                   </div>
                 ` : ''}
-
               </div>
 
-              <!-- Right Specifications Table & FAQs -->
               <div class="lg:col-span-4 space-y-6">
-                
-                <!-- Specifications Sheet -->
                 ${p.specifications && p.specifications.length ? `
                   <div class="glass rounded-3xl p-6 space-y-4">
                     <h3 class="text-sm font-black text-white uppercase tracking-wider">Product Specifications</h3>
@@ -436,7 +384,6 @@
                   </div>
                 ` : ''}
 
-                <!-- FAQs -->
                 ${p.faqs && p.faqs.length ? `
                   <div class="glass rounded-3xl p-6 space-y-4">
                     <h3 class="text-sm font-black text-white uppercase tracking-wider">Frequently Asked Questions</h3>
@@ -450,20 +397,8 @@
                     </div>
                   </div>
                 ` : ''}
-
               </div>
             </div>
-
-            <!-- Related Products -->
-            ${p.related && p.related.length ? `
-              <div class="space-y-4 pt-6 border-t border-white/5">
-                <h3 class="text-lg font-black text-white">Related ${p.category} Products</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  ${p.related.map(rel => renderProductCardHTML(rel)).join('')}
-                </div>
-              </div>
-            ` : ''}
-
           </div>
         `;
       } catch (err) {
@@ -476,9 +411,30 @@
       navigate('checkout');
     }
 
-    // ----------------------------------------------------
-    // 3. ADMIN PRODUCT MANAGEMENT & LIVE STUDIO
-    // ----------------------------------------------------
+    async function renderProductsView(root, filters = {}) {
+      let queryUrl = '/api/products?';
+      if (filters.search) queryUrl += `search=${encodeURIComponent(filters.search)}&`;
+
+      const res = await fetch(queryUrl);
+      const products = await res.json();
+
+      root.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-xl font-black text-white">${filters.title || 'All Digital Products'}</h1>
+              <p class="text-xs text-slate-400">${products.length} products available</p>
+            </div>
+          </div>
+          ${products.length === 0 ? `<div class="glass rounded-3xl p-16 text-center text-xs text-slate-400">No products found.</div>` : `
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              ${products.map(p => renderProductCardHTML(p)).join('')}
+            </div>
+          `}
+        </div>
+      `;
+    }
+
     async function renderAdminDashboard(root) {
       root.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold animate-pulse">Loading live studio...</div>';
 
@@ -495,7 +451,7 @@
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h1 class="text-xl font-black text-white">Product Studio & Store Manager</h1>
-                <p class="text-xs text-slate-400">Total catalog control, live duplication, pricing & inventory</p>
+                <p class="text-xs text-slate-400">Catalog control, live duplication, pricing & inventory</p>
               </div>
               <div class="flex gap-2">
                 <button onclick="navigate('admin-edit-product', { id: 'new' })" class="px-5 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20">
@@ -505,7 +461,6 @@
               </div>
             </div>
 
-            <!-- Stats -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div class="glass rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase font-bold">Total Sales</span><div class="text-2xl font-black text-emerald-400">₹${stats.totalRevenue}</div></div>
               <div class="glass rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase font-bold">Orders Delivered</span><div class="text-2xl font-black text-white">${stats.totalOrders}</div></div>
@@ -513,7 +468,6 @@
               <div class="glass rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase font-bold">Customers</span><div class="text-2xl font-black text-white">${stats.totalCustomers}</div></div>
             </div>
 
-            <!-- Catalog Table -->
             <div class="glass rounded-3xl p-6 space-y-4">
               <h3 class="text-xs font-bold uppercase text-slate-400">Product Inventory & Actions</h3>
               <div class="overflow-x-auto">
@@ -521,7 +475,6 @@
                   <thead>
                     <tr class="border-b border-white/5 text-slate-500">
                       <th class="pb-3">Product</th>
-                      <th class="pb-3">Category</th>
                       <th class="pb-3">Price</th>
                       <th class="pb-3">Delivery Type</th>
                       <th class="pb-3">Status</th>
@@ -541,7 +494,6 @@
                             </div>
                           </div>
                         </td>
-                        <td class="py-3.5 text-slate-400">${p.category}</td>
                         <td class="py-3.5 font-mono">₹${p.sale_price}</td>
                         <td class="py-3.5 font-mono text-emerald-400 text-[10px]">${p.delivery_type}</td>
                         <td class="py-3.5">
@@ -563,7 +515,6 @@
                 </table>
               </div>
             </div>
-
           </div>
         `;
       } catch (err) {
@@ -571,16 +522,13 @@
       }
     }
 
-    // ----------------------------------------------------
-    // 4. ADMIN EDIT/CREATE PRODUCT FULL-PAGE STUDIO
-    // ----------------------------------------------------
     async function renderAdminEditProductPage(root, productId) {
       const isNew = productId === 'new';
       let p = {
         name: '',
         short_description: '',
         description: '',
-        category: 'Software',
+        category: 'Digital Goods',
         tags: [],
         sku: 'SKU-' + Date.now(),
         original_price: 999,
@@ -592,9 +540,7 @@
         whats_included: ['Digital License Key', 'Setup Guide'],
         specifications: [{ label: 'Format', value: 'Cloud Digital' }],
         faqs: [{ question: 'How is it delivered?', answer: 'Delivered automatically upon checkout.' }],
-        status: 'active',
-        featured: true,
-        deal: true
+        status: 'active'
       };
 
       if (!isNew) {
@@ -604,7 +550,6 @@
 
       root.innerHTML = `
         <div class="max-w-4xl mx-auto space-y-8 pb-12">
-          
           <div class="flex items-center justify-between">
             <div>
               <h1 class="text-xl font-black text-white">${isNew ? 'Create New Digital Product' : `Editing: ${p.name}`}</h1>
@@ -614,8 +559,6 @@
           </div>
 
           <form onsubmit="saveProductChanges(event, '${productId}')" class="space-y-6 text-xs">
-            
-            <!-- Basic Information -->
             <div class="glass rounded-3xl p-6 space-y-4">
               <h3 class="font-bold uppercase tracking-wider text-slate-400">1. Basic Information</h3>
               <div class="space-y-3">
@@ -624,17 +567,7 @@
                 <textarea id="edDesc" rows="4" placeholder="Full Detailed Description" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">${p.description || ''}</textarea>
               </div>
 
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label class="text-[10px] uppercase font-bold text-slate-500 block mb-1">Category</label>
-                  <select id="edCategory" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-                    <option value="Software" ${p.category === 'Software' ? 'selected' : ''}>Software</option>
-                    <option value="Accounts" ${p.category === 'Accounts' ? 'selected' : ''}>Accounts</option>
-                    <option value="License Keys" ${p.category === 'License Keys' ? 'selected' : ''}>License Keys</option>
-                    <option value="Templates" ${p.category === 'Templates' ? 'selected' : ''}>Templates</option>
-                    <option value="Courses" ${p.category === 'Courses' ? 'selected' : ''}>Courses</option>
-                  </select>
-                </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label class="text-[10px] uppercase font-bold text-slate-500 block mb-1">SKU</label>
                   <input type="text" id="edSku" value="${p.sku || ''}" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white font-mono">
@@ -650,7 +583,6 @@
               </div>
             </div>
 
-            <!-- Pricing & Auto Discount Engine -->
             <div class="glass rounded-3xl p-6 space-y-4">
               <h3 class="font-bold uppercase tracking-wider text-slate-400">2. Pricing & Delivery Method</h3>
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -682,13 +614,11 @@
               </div>
             </div>
 
-            <!-- Images Manager -->
             <div class="glass rounded-3xl p-6 space-y-4">
               <h3 class="font-bold uppercase tracking-wider text-slate-400">3. Product Images (Comma separated URLs)</h3>
               <textarea id="edImages" rows="2" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white font-mono text-[11px]">${(p.images || []).join(', ')}</textarea>
             </div>
 
-            <!-- Features & What's Included -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div class="glass rounded-3xl p-6 space-y-3">
                 <h3 class="font-bold uppercase tracking-wider text-slate-400">4. Features (One per line)</h3>
@@ -700,13 +630,11 @@
               </div>
             </div>
 
-            <!-- Save Controls -->
             <div class="flex gap-4 pt-4">
               <button type="submit" class="flex-1 py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black uppercase tracking-wider shadow-xl shadow-emerald-500/20 active:scale-95">
                 Save & Update Database
               </button>
             </div>
-
           </form>
         </div>
       `;
@@ -727,7 +655,7 @@
         name: document.getElementById('edName').value,
         short_description: document.getElementById('edShortDesc').value,
         description: document.getElementById('edDesc').value,
-        category: document.getElementById('edCategory').value,
+        category: 'Digital Goods',
         sku: document.getElementById('edSku').value,
         status: document.getElementById('edStatus').value,
         original_price: Number(document.getElementById('edOrigPrice').value),
@@ -789,9 +717,6 @@
       }
     }
 
-    // ----------------------------------------------------
-    // INVENTORY STOCK ATTACHMENT MODAL
-    // ----------------------------------------------------
     function renderAddInventoryModal(productId, productName, deliveryType) {
       const modal = document.getElementById('productModal');
       const container = document.getElementById('productModalContent');
@@ -855,9 +780,6 @@
       }
     }
 
-    // ----------------------------------------------------
-    // CART & CHECKOUT
-    // ----------------------------------------------------
     function addToCart(product_id, name, price, image, delivery_type) {
       const exists = state.cart.find(i => i.product_id === product_id);
       if (exists) return showToast('Item already in your cart', 'error');
@@ -1141,51 +1063,6 @@
     function handleGlobalSearch(val) {
       if (!val.trim()) return renderProductsView(document.getElementById('appRoot'));
       navigate('products', { search: val, title: `Search results for "${val}"` });
-    }
-
-    async function renderProductsView(root, filters = {}) {
-      let queryUrl = '/api/products?';
-      if (filters.category) queryUrl += `category=${encodeURIComponent(filters.category)}&`;
-      if (filters.deal) queryUrl += `deal=true&`;
-      if (filters.search) queryUrl += `search=${encodeURIComponent(filters.search)}&`;
-
-      const res = await fetch(queryUrl);
-      const products = await res.json();
-
-      root.innerHTML = `
-        <div class="space-y-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <h1 class="text-xl font-black text-white">${filters.title || (filters.category || 'All Digital Products')}</h1>
-              <p class="text-xs text-slate-400">${products.length} products available</p>
-            </div>
-          </div>
-          ${products.length === 0 ? `<div class="glass rounded-3xl p-16 text-center text-xs text-slate-400">No products found.</div>` : `
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              ${products.map(p => renderProductCardHTML(p)).join('')}
-            </div>
-          `}
-        </div>
-      `;
-    }
-
-    async function renderCategoriesView(root) {
-      const res = await fetch('/api/store/info');
-      const data = await res.json();
-      root.innerHTML = `
-        <div class="space-y-6">
-          <h1 class="text-xl font-black text-white">Browse Categories</h1>
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            ${(data.categories || []).map(c => `
-              <div onclick="navigate('products', { category: '${c.name}' })" class="glass-card rounded-3xl p-6 cursor-pointer space-y-2">
-                <div class="text-3xl">${c.icon || '📂'}</div>
-                <h3 class="text-sm font-black text-white">${c.name}</h3>
-                <p class="text-xs text-slate-400">${c.description || ''}</p>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      `;
     }
 
     document.addEventListener('DOMContentLoaded', () => {
