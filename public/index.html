@@ -37,7 +37,7 @@
       transition: background-color 0.6s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    /* Dynamic Glow Backgrounds */
+    /* Ambient Dynamic Aura */
     .flavor-glow {
       position: fixed;
       border-radius: 50%;
@@ -47,7 +47,7 @@
       transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    /* 3D Can Stage & Physics */
+    /* 3D Interactive Stage */
     .can-stage {
       perspective: 1200px;
     }
@@ -112,11 +112,16 @@
       filter: drop-shadow(0 0 16px var(--theme-color));
       transition: filter 0.5s ease;
     }
+
+    /* SVG Can Gradients & Lighting */
+    .can-metal-sheen {
+      filter: drop-shadow(0 30px 40px rgba(0, 0, 0, 0.9));
+    }
   </style>
 </head>
 <body class="relative flex flex-col justify-between p-4 sm:p-8 select-none" id="appBody">
 
-  <!-- Ambient Glow Effects -->
+  <!-- Ambient Dynamic Glows -->
   <div id="orbTop" class="flavor-glow top-[-10%] left-[10%] w-[450px] h-[450px] bg-[#10b981]/25"></div>
   <div id="orbBottom" class="flavor-glow bottom-[-10%] right-[10%] w-[400px] h-[400px] bg-[#10b981]/15"></div>
 
@@ -180,18 +185,71 @@
       </div>
     </div>
 
-    <!-- Center 3D Can with Native Local Fallbacks -->
+    <!-- Center 3D Vector Monster Can (100% Reliable Render) -->
     <div class="lg:col-span-5 flex items-center justify-center relative order-1 lg:order-2 can-stage min-h-[380px] sm:min-h-[460px]">
       <div id="particleContainer" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
 
-      <div id="canWrapper" class="can-3d-wrapper relative flex items-center justify-center">
-        <img 
-          id="canImage" 
-          src="/assets/monster-green.png" 
-          onerror="this.onerror=null; this.src='https://www.pngall.com/wp-content/uploads/5/Monster-Energy-PNG-Image.png';"
-          alt="Monster Energy Can"
-          class="w-[180px] sm:w-[240px] max-h-[420px] object-contain drop-shadow-[0_25px_35px_rgba(0,0,0,0.9)] transition-all duration-300 cursor-grab active:cursor-grabbing"
-        />
+      <div id="canWrapper" class="can-3d-wrapper relative flex items-center justify-center cursor-grab active:cursor-grabbing">
+        
+        <svg class="w-[190px] sm:w-[250px] h-[390px] sm:h-[450px] can-metal-sheen" viewBox="0 0 200 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <!-- Metallic Can Rim Gradient -->
+            <linearGradient id="metalRim" x1="0" y1="0" x2="200" y2="0" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#475569"/>
+              <stop offset="25%" stop-color="#94a3b8"/>
+              <stop offset="50%" stop-color="#f8fafc"/>
+              <stop offset="75%" stop-color="#64748b"/>
+              <stop offset="100%" stop-color="#1e293b"/>
+            </linearGradient>
+
+            <!-- Dynamic Body Gradient (Morphed by JS) -->
+            <linearGradient id="canBodyGrad" x1="0" y1="0" x2="200" y2="0" gradientUnits="userSpaceOnUse">
+              <stop id="bodyStop1" offset="0%" stop-color="#05070a"/>
+              <stop id="bodyStop2" offset="28%" stop-color="#151b24"/>
+              <stop id="bodyStop3" offset="55%" stop-color="#2a3441"/>
+              <stop id="bodyStop4" offset="78%" stop-color="#11161d"/>
+              <stop id="bodyStop5" offset="100%" stop-color="#05070a"/>
+            </linearGradient>
+
+            <!-- Metal Reflection Sheen -->
+            <linearGradient id="specularGlint" x1="0" y1="0" x2="200" y2="0" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
+              <stop offset="38%" stop-color="#ffffff" stop-opacity="0.04"/>
+              <stop offset="48%" stop-color="#ffffff" stop-opacity="0.25"/>
+              <stop offset="54%" stop-color="#ffffff" stop-opacity="0.06"/>
+              <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Top Rim / Tab -->
+          <path d="M 38 18 Q 100 8 162 18 L 168 32 Q 100 24 32 32 Z" fill="url(#metalRim)"/>
+          <ellipse cx="100" cy="20" rx="60" ry="8" fill="#0f172a" stroke="url(#metalRim)" stroke-width="2"/>
+          <ellipse cx="100" cy="18" rx="20" ry="4" fill="#64748b"/>
+
+          <!-- Can Neck -->
+          <path d="M 32 32 Q 100 24 168 32 L 180 55 Q 100 48 20 55 Z" fill="url(#metalRim)"/>
+
+          <!-- Main Cylinder Body -->
+          <path d="M 20 55 Q 100 48 180 55 L 180 375 Q 100 385 20 375 Z" fill="url(#canBodyGrad)"/>
+          
+          <!-- Gloss Highlights Layer -->
+          <path d="M 20 55 Q 100 48 180 55 L 180 375 Q 100 385 20 375 Z" fill="url(#specularGlint)"/>
+
+          <!-- Bottom Taper Base -->
+          <path d="M 20 375 Q 100 385 180 375 L 168 402 Q 100 412 32 402 Z" fill="url(#metalRim)"/>
+          <path d="M 32 402 Q 100 412 168 402 L 160 410 Q 100 418 40 410 Z" fill="#0f172a"/>
+
+          <!-- Dynamic Monster Claw Graphic on Can -->
+          <g id="canClawGraphic" transform="translate(48, 115) scale(4.4)" class="transition-all duration-300">
+            <!-- Glow Shadow -->
+            <path id="svgClawGlow" d="M18.8 2.3c-.4.2-1.1.9-1.5 1.5-.7 1.1-2 4.4-2.8 7.3-.6 2-.9 2.5-1.3 2.1-.3-.3-.5-1.5-.8-3.7-.4-3.2-.8-4.7-1.4-5.3-.8-.8-1.5-.6-2 .7-.6 1.4-.9 4.3-1 8.5 0 2.2-.2 2.7-.8 2.1-.5-.5-.7-1.9-.9-4.8-.2-3.8-.5-5.2-1.4-5.9-.6-.4-1.2-.2-1.6.5-.4.8-.4 2.8 0 7.8.6 6.8 1.1 8.9 2.3 9.4.8.3 1.3 0 1.9-1.2.6-1.2 1.3-4.5 1.6-7.5.3-2.6.5-3.1.9-2.2.4.9.8 3.5 1.3 8.3.4 3.7.8 4.7 1.7 4.9.9.2 1.5-.4 2.3-2.3 1.2-3 2.8-9.8 3.2-13.6.4-3 .3-3.7-.4-4.2-.5-.3-1-.1-1.6.4z" fill="#10b981" filter="drop-shadow(0 0 6px #10b981)"/>
+          </g>
+
+          <!-- Monster Brand Typography on Can -->
+          <text id="canTextFlavor" x="100" y="275" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-style="italic" font-size="11" fill="#ffffff" letter-spacing="3" text-anchor="middle">ENERGY</text>
+          <text id="canTextEdition" x="100" y="292" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="9" fill="#10b981" letter-spacing="4" text-anchor="middle">ORIGINAL</text>
+        </svg>
+
       </div>
     </div>
 
@@ -267,7 +325,8 @@
         caffeine: "160 mg",
         calories: "210 kcal",
         sugar: "54 g",
-        canImg: "/assets/monster-green.png"
+        bodyStops: ["#05070a", "#151b24", "#2a3441", "#11161d", "#05070a"],
+        labelColor: "#10b981"
       },
       {
         name: "MANGO LOCO",
@@ -279,7 +338,8 @@
         caffeine: "160 mg",
         calories: "200 kcal",
         sugar: "48 g",
-        canImg: "/assets/monster-mango.png"
+        bodyStops: ["#0c1a24", "#0e3a43", "#126775", "#0e3a43", "#0c1a24"],
+        labelColor: "#f97316"
       },
       {
         name: "ZERO ULTRA",
@@ -291,7 +351,8 @@
         caffeine: "150 mg",
         calories: "10 kcal",
         sugar: "0 g",
-        canImg: "/assets/monster-white.png"
+        bodyStops: ["#cbd5e1", "#e2e8f0", "#ffffff", "#e2e8f0", "#94a3b8"],
+        labelColor: "#0284c7"
       },
       {
         name: "PIPELINE PUNCH",
@@ -303,7 +364,8 @@
         caffeine: "160 mg",
         calories: "190 kcal",
         sugar: "46 g",
-        canImg: "/assets/monster-pink.png"
+        bodyStops: ["#4a0426", "#831843", "#be185d", "#831843", "#4a0426"],
+        labelColor: "#fda4af"
       }
     ];
 
@@ -317,11 +379,12 @@
 
       const f = FLAVORS[idx];
       const can = document.getElementById('canWrapper');
-      const canImg = document.getElementById('canImage');
 
+      // 1. Flip can animation
       can.classList.remove('can-enter');
       can.classList.add('can-switching');
 
+      // 2. Global theme colors
       document.documentElement.style.setProperty('--theme-color', f.color);
       document.getElementById('clawLogo').style.color = f.color;
       document.getElementById('clawLogo').style.filter = `drop-shadow(0 0 16px ${f.color})`;
@@ -332,6 +395,7 @@
       document.getElementById('orbTop').style.backgroundColor = f.glowTop;
       document.getElementById('orbBottom').style.backgroundColor = f.glowBottom;
 
+      // Update Button selection states
       document.querySelectorAll('.flavor-selector').forEach((btn, bIdx) => {
         if (bIdx === idx) {
           btn.style.borderColor = f.color;
@@ -342,8 +406,8 @@
         }
       });
 
+      // 3. Morph Can Texture & UI
       setTimeout(() => {
-        canImg.src = f.canImg;
         document.getElementById('bgGiantWord').textContent = f.name;
         document.getElementById('flavorTitle').textContent = f.name;
         document.getElementById('flavorSubhead').textContent = f.subhead;
@@ -352,6 +416,20 @@
         document.getElementById('statCalories').textContent = f.calories;
         document.getElementById('statSugar').textContent = f.sugar;
 
+        // Apply SVG can gradient stops & claw color
+        f.bodyStops.forEach((col, i) => {
+          document.getElementById(`bodyStop${i + 1}`).setAttribute('stop-color', col);
+        });
+
+        const svgClaw = document.getElementById('svgClawGlow');
+        svgClaw.setAttribute('fill', f.color);
+        svgClaw.setAttribute('filter', `drop-shadow(0 0 8px ${f.color})`);
+
+        document.getElementById('canTextEdition').textContent = f.name;
+        document.getElementById('canTextEdition').setAttribute('fill', f.labelColor);
+        document.getElementById('canTextFlavor').setAttribute('fill', idx === 2 ? '#0f172a' : '#ffffff');
+
+        // Can entrance
         can.classList.remove('can-switching');
         can.classList.add('can-enter');
         spawnParticles(f.color);
@@ -377,6 +455,7 @@
       }
     }
 
+    // 3D Parallax Tilt Effect
     const stage = document.querySelector('.can-stage');
     const can = document.getElementById('canWrapper');
 
