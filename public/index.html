@@ -16,13 +16,20 @@
       theme: {
         extend: {
           fontFamily: {
-            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
           },
           colors: {
+            canvas: '#04080F',
             brand: {
+              300: '#86efac',
               400: '#4ade80',
-              500: '#22c55e',
-              600: '#16a34a',
+              500: '#10b981',
+              600: '#059669',
+            },
+            surface: {
+              card: 'rgba(11, 19, 32, 0.72)',
+              input: 'rgba(7, 13, 22, 0.65)',
+              border: 'rgba(255, 255, 255, 0.07)'
             }
           }
         }
@@ -42,238 +49,410 @@
       overflow: hidden;
       margin: 0;
       padding: 0;
-      background-color: #030712;
-      color: #f3f4f6;
+      background-color: #04080F;
+      color: #f8fafc;
       font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
-    /* Ambient Glow */
+    /* Ambient Cinematic Background Glows */
     .ambient-orb {
       position: absolute;
       border-radius: 50%;
-      filter: blur(80px);
+      filter: blur(90px);
       pointer-events: none;
       will-change: transform, opacity;
-      animation: float-ambient 18s ease-in-out infinite alternate;
+      animation: floatOrb 22s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
     }
-    .orb-1 {
-      top: -5%;
-      left: -10%;
-      width: 320px;
-      height: 320px;
-      background: radial-gradient(circle, rgba(34, 197, 94, 0.16) 0%, transparent 70%);
+    .orb-primary {
+      top: -12%;
+      left: 15%;
+      width: 380px;
+      height: 380px;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.14) 0%, rgba(5, 150, 105, 0.04) 55%, transparent 70%);
     }
-    .orb-2 {
-      bottom: -10%;
-      right: -10%;
-      width: 350px;
-      height: 350px;
-      background: radial-gradient(circle, rgba(16, 185, 129, 0.13) 0%, transparent 70%);
-    }
-
-    @keyframes float-ambient {
-      0% { transform: translate(0, 0) scale(1); }
-      100% { transform: translate(25px, -20px) scale(1.05); }
+    .orb-secondary {
+      bottom: -15%;
+      right: 10%;
+      width: 440px;
+      height: 440px;
+      background: radial-gradient(circle, rgba(14, 165, 233, 0.08) 0%, rgba(16, 185, 129, 0.03) 60%, transparent 75%);
+      animation-delay: -7s;
     }
 
-    /* Glass Card */
-    .glass-card {
-      background: rgba(17, 24, 39, 0.7);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+    @keyframes floatOrb {
+      0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.8; }
+      50% { transform: translate3d(30px, -25px, 0) scale(1.06); opacity: 1; }
+      100% { transform: translate3d(-25px, 35px, 0) scale(0.95); opacity: 0.75; }
+    }
+
+    /* Subtle Cinematic Light Sweep */
+    .light-sweep {
+      position: fixed;
+      inset: -100% -100% -100% -100%;
+      background: radial-gradient(circle 800px at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(16, 185, 129, 0.035), transparent 70%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Fintech Card Surface & Glowing Active Edge */
+    .fintech-card {
+      background: linear-gradient(165deg, rgba(16, 26, 42, 0.75) 0%, rgba(8, 14, 24, 0.85) 100%);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      box-shadow: 
+        0 30px 60px -15px rgba(0, 0, 0, 0.85),
+        0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+        0 1px 0 0 rgba(255, 255, 255, 0.12) inset;
+      transition: border-color 0.4s ease, box-shadow 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .fintech-card:focus-within {
+      border-color: rgba(16, 185, 129, 0.28);
+      box-shadow: 
+        0 30px 60px -15px rgba(0, 0, 0, 0.85),
+        0 0 40px -10px rgba(16, 185, 129, 0.15),
+        0 0 0 1px rgba(16, 185, 129, 0.15) inset,
+        0 1px 0 0 rgba(255, 255, 255, 0.15) inset;
+    }
+
+    /* Brand Logo Breathing Glow */
+    .logo-container {
+      box-shadow: 0 0 25px -4px rgba(16, 185, 129, 0.35);
+      animation: logoBreathing 4.5s ease-in-out infinite alternate;
+    }
+    @keyframes logoBreathing {
+      0% { box-shadow: 0 0 18px -4px rgba(16, 185, 129, 0.25); border-color: rgba(52, 211, 153, 0.4); }
+      100% { box-shadow: 0 0 32px 0px rgba(16, 185, 129, 0.48); border-color: rgba(52, 211, 153, 0.8); }
+    }
+
+    /* Input Field Treatment */
+    .input-field-group {
+      position: relative;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .input-control {
+      background: rgba(6, 11, 19, 0.7);
       border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .input-control:focus {
+      background: rgba(7, 14, 25, 0.95);
+      border-color: rgba(52, 211, 153, 0.65);
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.14), 0 4px 16px -2px rgba(0, 0, 0, 0.4);
+    }
+    .input-control:focus + .field-icon,
+    .input-field-group:focus-within .field-icon {
+      color: #34d399;
+      transform: scale(1.04);
+    }
+    .field-icon {
+      transition: color 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    /* Inputs */
-    .input-field {
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.09);
-      transition: all 0.2s ease;
+    /* Custom Fintech Checkbox */
+    .custom-checkbox {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 17px;
+      height: 17px;
+      border-radius: 5px;
+      background: rgba(6, 11, 19, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      cursor: pointer;
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      outline: none;
+      margin: 0;
     }
-    .input-field:focus {
-      border-color: rgba(74, 222, 128, 0.6);
-      background: rgba(15, 23, 42, 0.9);
-      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
+    .custom-checkbox:checked {
+      background: #10b981;
+      border-color: #10b981;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+      transform: scale(1.05);
+    }
+    .custom-checkbox:active {
+      transform: scale(0.92);
+    }
+    .checkbox-icon {
+      pointer-events: none;
+      opacity: 0;
+      transform: scale(0.5);
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .custom-checkbox:checked + .checkbox-icon {
+      opacity: 1;
+      transform: scale(1);
     }
 
-    /* Micro Animations */
-    .login-shake {
-      animation: shake-error 0.5s cubic-bezier(.36,.07,.19,.97) both;
+    /* Action Button Glow & Sweep */
+    .btn-action {
+      background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+      box-shadow: 
+        0 10px 24px -6px rgba(16, 185, 129, 0.4),
+        0 1px 0 0 rgba(255, 255, 255, 0.35) inset,
+        0 -1px 0 0 rgba(0, 0, 0, 0.2) inset;
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
     }
-    @keyframes shake-error {
+    .btn-action:hover {
+      background: linear-gradient(180deg, #34d399 0%, #059669 100%);
+      box-shadow: 
+        0 12px 28px -4px rgba(16, 185, 129, 0.52),
+        0 1px 0 0 rgba(255, 255, 255, 0.45) inset;
+      transform: translateY(-1px);
+    }
+    .btn-action:active {
+      transform: translateY(1px) scale(0.985);
+      box-shadow: 0 4px 14px -2px rgba(16, 185, 129, 0.35);
+    }
+    .btn-action::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -60%;
+      width: 220%;
+      height: 200%;
+      background: linear-gradient(75deg, transparent 35%, rgba(255, 255, 255, 0.22) 50%, transparent 65%);
+      transform: rotate(20deg) translate3d(-100%, 0, 0);
+      transition: transform 0.75s ease;
+      pointer-events: none;
+    }
+    .btn-action:hover::after {
+      transform: rotate(20deg) translate3d(100%, 0, 0);
+    }
+
+    /* Micro Vibrations & Shake */
+    .field-error-state {
+      border-color: rgba(239, 68, 68, 0.65) !important;
+      background: rgba(239, 68, 68, 0.05) !important;
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12) !important;
+    }
+    .shake-anim {
+      animation: smoothShake 0.48s cubic-bezier(.36,.07,.19,.97) both;
+    }
+    @keyframes smoothShake {
       10%, 90% { transform: translate3d(-2px, 0, 0); }
-      20%, 80% { transform: translate3d(4px, 0, 0); }
+      20%, 80% { transform: translate3d(3.5px, 0, 0); }
       30%, 50%, 70% { transform: translate3d(-5px, 0, 0); }
       40%, 60% { transform: translate3d(5px, 0, 0); }
     }
 
-    .view-screen {
-      transition: opacity 0.35s ease, transform 0.35s ease;
-    }
-    .view-hidden {
+    /* Staggered Staged Entrance Sequence */
+    .stagger-item {
       opacity: 0;
-      transform: scale(0.96);
-      pointer-events: none;
-      display: none;
+      transform: translate3d(0, 16px, 0);
+      transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1), transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+      will-change: opacity, transform;
+    }
+    .stagger-visible {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+
+    /* Reduced Motion Fallback */
+    @media (prefers-reduced-motion: reduce) {
+      .ambient-orb, .logo-container, .btn-action::after {
+        animation: none !important;
+      }
+      .stagger-item {
+        transition: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+      }
     }
   </style>
 </head>
-<body class="h-[100dvh] w-full flex items-center justify-center p-3 sm:p-5 relative select-none">
+<body class="h-[100dvh] w-full flex items-center justify-center p-4 sm:p-6 relative select-none">
 
-  <!-- Ambient Glow Background -->
-  <div class="ambient-orb orb-1"></div>
-  <div class="ambient-orb orb-2"></div>
+  <!-- Cinematic Atmosphere -->
+  <div class="ambient-orb orb-primary"></div>
+  <div class="ambient-orb orb-secondary"></div>
+  <div class="light-sweep"></div>
+  <div class="fixed inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none opacity-40"></div>
 
-  <!-- Geometric Grid Pattern Overlay -->
-  <div class="fixed inset-0 bg-[linear-gradient(to_right,#1f293708_1px,transparent_1px),linear-gradient(to_bottom,#1f293708_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] pointer-events-none"></div>
-
-  <!-- 1. COMPACT LOGIN CONTAINER -->
-  <main id="loginScreen" class="view-screen w-full max-w-[390px] relative z-10">
-    <div id="loginCard" class="glass-card rounded-2xl px-5 py-6 sm:px-8 sm:py-7">
+  <!-- ========================================== -->
+  <!-- 1. PREMIUM LOGIN CARD -->
+  <!-- ========================================== -->
+  <main id="loginScreen" class="w-full max-w-[390px] relative z-10">
+    <div id="loginCard" class="fintech-card rounded-[22px] px-6 py-7 sm:px-8 sm:py-8">
       
-      <!-- Brand Header -->
-      <div class="flex flex-col items-center text-center mb-5">
-        <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-brand-500 to-emerald-400 p-[1px] shadow-md shadow-brand-500/20 mb-2.5 flex items-center justify-center">
-          <div class="w-full h-full bg-gray-950 rounded-[11px] flex items-center justify-center">
-            <svg class="w-6 h-6 text-brand-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-            </svg>
-          </div>
+      <!-- Logo & Refined Header -->
+      <div class="flex flex-col items-center text-center mb-6">
+        <div id="el-logo" class="stagger-item logo-container w-[52px] h-[52px] rounded-[15px] bg-[#070D16] border border-emerald-400/50 flex items-center justify-center mb-3">
+          <svg class="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
         </div>
-        <h1 class="text-xl font-bold tracking-tight text-white leading-tight">Project Money</h1>
-        <p class="text-[11px] font-medium text-gray-400 mt-0.5">Sign in to your control center</p>
+        <h1 id="el-title" class="stagger-item text-[22px] font-bold tracking-tight text-white leading-tight">Project Money</h1>
+        <p id="el-subtitle" class="stagger-item text-[12px] font-medium text-slate-400 mt-1">Sign in to your control center</p>
       </div>
 
       <!-- Live Error Notification -->
-      <div id="errorAlert" class="hidden mb-3.5 p-2.5 rounded-lg bg-red-500/10 border border-red-500/25 flex items-center gap-2 text-[11px] text-red-400">
-        <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <div id="errorAlert" class="hidden mb-4 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-2.5 text-[11.5px] text-red-400 transition-all duration-300">
+        <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
-        <span id="errorMessage">Invalid credentials.</span>
+        <span id="errorMessage">Invalid credentials. Check username or password.</span>
       </div>
 
-      <!-- Login Form -->
-      <form id="loginForm" class="space-y-3" onsubmit="handleLogin(event)" autocomplete="off">
+      <!-- Authentication Form -->
+      <form id="loginForm" class="space-y-3.5" onsubmit="handleLogin(event)" autocomplete="off">
         
-        <!-- Username Input -->
-        <div class="space-y-1">
-          <label for="usernameInput" class="block text-[11px] font-medium text-gray-300">Username</label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-              </svg>
-            </div>
+        <!-- Username Field -->
+        <div id="el-user" class="stagger-item space-y-1.5 input-field-group">
+          <label for="usernameInput" class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 pl-0.5">Username</label>
+          <div class="relative flex items-center">
             <input 
               type="text" 
               id="usernameInput" 
               placeholder="aryan"
               required 
-              class="input-field w-full pl-9 pr-3 py-2.5 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none"
+              class="input-control w-full pl-10 pr-3.5 py-2.5 rounded-xl text-[13.5px] font-normal text-white placeholder-slate-600 focus:outline-none"
             />
+            <div class="field-icon absolute left-3.5 pointer-events-none text-slate-500 flex items-center justify-center">
+              <svg class="w-[17px] h-[17px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
           </div>
         </div>
 
-        <!-- Password Input -->
-        <div class="space-y-1">
-          <label for="passwordInput" class="block text-[11px] font-medium text-gray-300">Password</label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>
-            </div>
+        <!-- Password Field -->
+        <div id="el-pass" class="stagger-item space-y-1.5 input-field-group">
+          <label for="passwordInput" class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 pl-0.5">Password</label>
+          <div class="relative flex items-center">
             <input 
               type="password" 
               id="passwordInput" 
               placeholder="••••••"
               required 
-              class="input-field w-full pl-9 pr-10 py-2.5 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none"
+              class="input-control w-full pl-10 pr-10 py-2.5 rounded-xl text-[13.5px] font-normal text-white placeholder-slate-600 focus:outline-none tracking-wider"
             />
+            <div class="field-icon absolute left-3.5 pointer-events-none text-slate-500 flex items-center justify-center">
+              <svg class="w-[17px] h-[17px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
             <button 
               type="button" 
               onclick="togglePasswordVisibility()" 
-              class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-300 focus:outline-none"
+              class="absolute right-3 text-slate-500 hover:text-slate-300 transition-colors focus:outline-none p-1"
               tabindex="-1"
+              aria-label="Toggle password visibility"
             >
               <svg id="eyeIcon" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
               </svg>
-              <svg id="eyeOffIcon" class="w-4 h-4 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg id="eyeOffIcon" class="w-4 h-4 hidden text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>
               </svg>
             </button>
           </div>
         </div>
 
-        <!-- Options -->
-        <div class="flex items-center justify-between pt-0.5 pb-1">
-          <label class="flex items-center gap-2 cursor-pointer select-none">
-            <input type="checkbox" id="rememberMe" class="w-3.5 h-3.5 rounded bg-gray-900 border-gray-700 text-brand-500 focus:ring-0 accent-brand-500 cursor-pointer">
-            <span class="text-[11px] text-gray-400">Remember me</span>
+        <!-- Custom Checkbox & Options -->
+        <div id="el-options" class="stagger-item flex items-center justify-between pt-1 pb-1">
+          <label class="flex items-center gap-2.5 cursor-pointer select-none group">
+            <div class="relative flex items-center justify-center">
+              <input type="checkbox" id="rememberMe" class="custom-checkbox">
+              <svg class="checkbox-icon absolute w-3 h-3 text-gray-950" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
+            <span class="text-[11.5px] font-medium text-slate-400 group-hover:text-slate-300 transition-colors">Remember me</span>
           </label>
-          <a href="javascript:void(0)" onclick="handleForgotPassword()" class="text-[11px] text-gray-400 hover:text-brand-400">Forgot password?</a>
+          <a href="javascript:void(0)" onclick="handleForgotPassword()" class="text-[11.5px] font-medium text-slate-400 hover:text-emerald-400 transition-colors">Forgot password?</a>
         </div>
 
-        <!-- Submit Button -->
-        <button 
-          type="submit" 
-          id="loginBtn" 
-          class="w-full py-2.5 px-4 bg-brand-500 hover:bg-brand-400 active:scale-[0.98] text-gray-950 font-bold text-sm rounded-xl shadow-md shadow-brand-500/20 transition-all duration-150 flex items-center justify-center gap-2 focus:outline-none"
-        >
-          <span id="btnText">Sign In</span>
-          <svg id="btnSpinner" class="hidden animate-spin h-4 w-4 text-gray-950" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-        </button>
+        <!-- Action Button -->
+        <div id="el-button" class="stagger-item pt-1">
+          <button 
+            type="submit" 
+            id="loginBtn" 
+            class="btn-action w-full py-2.5 px-4 text-gray-950 font-bold text-[13.5px] rounded-xl flex items-center justify-center gap-2 focus:outline-none"
+          >
+            <span id="btnText">Sign In</span>
+            <svg id="btnSpinner" class="hidden animate-spin h-4 w-4 text-gray-950" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </button>
+        </div>
 
       </form>
 
       <!-- Bottom Hint -->
-      <div class="mt-4 text-center">
-        <p class="text-[10px] text-gray-500 font-mono">Demo: aryan / 123</p>
+      <div id="el-hint" class="stagger-item mt-4 text-center">
+        <p class="text-[10.5px] font-medium text-slate-500 tracking-wide font-mono">Demo Login: <span class="text-slate-400">aryan</span> / <span class="text-slate-400">123</span></p>
       </div>
 
     </div>
   </main>
 
-  <!-- 2. COMPACT EMPTY HOME PAGE -->
-  <section id="homeScreen" class="view-screen view-hidden w-full max-w-[390px] relative z-10">
-    <div class="glass-card rounded-2xl px-6 py-8 text-center border border-white/10">
-      
-      <div class="w-12 h-12 rounded-full bg-brand-500/10 border border-brand-500/30 flex items-center justify-center mx-auto mb-4">
-        <svg class="w-6 h-6 text-brand-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <!-- ========================================== -->
+  <!-- 2. EMPTY HOME PAGE CANVAS -->
+  <!-- ========================================== -->
+  <section id="homeScreen" class="hidden w-full max-w-[390px] relative z-10 opacity-0 transition-all duration-500">
+    <div class="fintech-card rounded-[22px] px-6 py-8 text-center">
+      <div class="w-13 h-13 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4 p-3.5 shadow-lg shadow-emerald-500/10">
+        <svg class="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"/>
         </svg>
       </div>
 
-      <h2 class="text-xl font-bold text-white tracking-tight">Welcome, <span class="text-brand-400">Aryan</span></h2>
-      <p class="text-xs text-gray-400 mt-1.5 leading-relaxed">Authentication verified. Empty canvas ready.</p>
+      <h2 class="text-xl font-bold text-white tracking-tight">Welcome, <span class="text-emerald-400">Aryan</span></h2>
+      <p class="text-xs text-slate-400 mt-1.5">Authenticated control center session initialized.</p>
 
-      <div class="my-6 py-2.5 px-4 rounded-lg bg-gray-900/60 border border-gray-800 text-[11px] font-mono text-gray-400 flex items-center justify-center gap-2">
-        <span class="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse"></span>
+      <div class="my-6 py-2.5 px-4 rounded-xl bg-black/40 border border-white/5 text-[11px] font-mono text-slate-400 flex items-center justify-center gap-2">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
         <span>Canvas Ready • No Modules Loaded</span>
       </div>
 
       <button 
         type="button" 
         onclick="handleLogout()" 
-        class="py-2 px-5 rounded-lg bg-gray-800/80 hover:bg-gray-700 active:scale-[0.98] text-[11px] font-semibold text-gray-300 transition-all border border-gray-700"
+        class="py-2 px-5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-[0.98] text-[11px] font-semibold text-slate-300 transition-all border border-slate-700 focus:outline-none"
       >
         Sign Out
       </button>
-
     </div>
   </section>
 
+  <!-- Scripts -->
   <script>
     const AUTH_CONFIG = {
       username: 'aryan',
       password: '123'
     };
 
+    // Staggered Entrance Orchestration
+    document.addEventListener('DOMContentLoaded', () => {
+      const staggerElements = [
+        'el-logo',
+        'el-title',
+        'el-subtitle',
+        'el-user',
+        'el-pass',
+        'el-options',
+        'el-button',
+        'el-hint'
+      ];
+
+      staggerElements.forEach((id, index) => {
+        const el = document.getElementById(id);
+        if (el) {
+          setTimeout(() => {
+            el.classList.add('stagger-visible');
+          }, 60 + index * 45);
+        }
+      });
+    });
+
+    // Password Visibility Toggle
     function togglePasswordVisibility() {
       const passwordInput = document.getElementById('passwordInput');
       const eyeIcon = document.getElementById('eyeIcon');
@@ -291,26 +470,42 @@
     }
 
     function handleForgotPassword() {
-      showError("Use username 'aryan' and password '123'.");
+      showError("Temporary mode active: use username 'aryan' and password '123'.");
     }
 
+    // High-Fidelity Error Choreography
     function showError(message) {
       const alert = document.getElementById('errorAlert');
       const errorText = document.getElementById('errorMessage');
       const loginCard = document.getElementById('loginCard');
+      const userInput = document.getElementById('usernameInput');
+      const passInput = document.getElementById('passwordInput');
 
       errorText.textContent = message;
       alert.classList.remove('hidden');
 
-      loginCard.classList.remove('login-shake');
-      void loginCard.offsetWidth;
-      loginCard.classList.add('login-shake');
+      // Highlight input error state
+      userInput.classList.add('field-error-state');
+      passInput.classList.add('field-error-state');
+
+      // Shake animation
+      loginCard.classList.remove('shake-anim');
+      void loginCard.offsetWidth; // Trigger reflow
+      loginCard.classList.add('shake-anim');
+
+      setTimeout(() => {
+        userInput.classList.remove('field-error-state');
+        passInput.classList.remove('field-error-state');
+      }, 2500);
     }
 
     function clearError() {
       document.getElementById('errorAlert').classList.add('hidden');
+      document.getElementById('usernameInput').classList.remove('field-error-state');
+      document.getElementById('passwordInput').classList.remove('field-error-state');
     }
 
+    // Login Flow
     function handleLogin(e) {
       e.preventDefault();
       clearError();
@@ -321,30 +516,32 @@
       const btnText = document.getElementById('btnText');
       const btnSpinner = document.getElementById('btnSpinner');
 
+      // Enter Loading State
       loginBtn.disabled = true;
-      btnText.textContent = "Authenticating...";
+      btnText.textContent = "Verifying...";
       btnSpinner.classList.remove('hidden');
 
       setTimeout(() => {
         if (userVal === AUTH_CONFIG.username && passVal === AUTH_CONFIG.password) {
-          btnText.textContent = "Success";
+          btnText.textContent = "Authenticated";
           
           setTimeout(() => {
             const loginScreen = document.getElementById('loginScreen');
             const homeScreen = document.getElementById('homeScreen');
 
+            loginScreen.style.transition = 'opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
             loginScreen.style.opacity = '0';
             loginScreen.style.transform = 'scale(0.96)';
 
             setTimeout(() => {
-              loginScreen.classList.add('view-hidden');
-              homeScreen.classList.remove('view-hidden');
+              loginScreen.classList.add('hidden');
+              homeScreen.classList.remove('hidden');
               
               void homeScreen.offsetWidth;
               homeScreen.style.opacity = '1';
               homeScreen.style.transform = 'scale(1)';
-            }, 250);
-          }, 250);
+            }, 300);
+          }, 300);
 
         } else {
           loginBtn.disabled = false;
@@ -352,9 +549,10 @@
           btnSpinner.classList.add('hidden');
           showError("Invalid username or password.");
         }
-      }, 500);
+      }, 550);
     }
 
+    // Logout Flow
     function handleLogout() {
       const loginScreen = document.getElementById('loginScreen');
       const homeScreen = document.getElementById('homeScreen');
@@ -373,13 +571,13 @@
       homeScreen.style.transform = 'scale(0.96)';
 
       setTimeout(() => {
-        homeScreen.classList.add('view-hidden');
-        loginScreen.classList.remove('view-hidden');
+        homeScreen.classList.add('hidden');
+        loginScreen.classList.remove('hidden');
 
         void loginScreen.offsetWidth;
         loginScreen.style.opacity = '1';
         loginScreen.style.transform = 'scale(1)';
-      }, 250);
+      }, 300);
     }
   </script>
 </body>
