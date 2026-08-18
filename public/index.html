@@ -3,9 +3,121 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Clean Canvas</title>
+  <title>Cloud Storage • MongoDB Atlas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #030712; color: #f9fafb; }
+    .glass { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); }
+  </style>
 </head>
-<body style="margin: 0; background-color: #030712; color: #94a3b8; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif;">
-  <p>Ready for a new project</p>
+<body class="min-h-screen p-4 sm:p-8 flex flex-col items-center">
+
+  <div class="w-full max-w-2xl space-y-6">
+    
+    <!-- Status Header -->
+    <header class="flex items-center justify-between glass rounded-2xl p-4 sm:p-6 shadow-xl">
+      <div class="flex items-center gap-3">
+        <div class="w-3.5 h-3.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_12px_#10b981]"></div>
+        <div>
+          <h1 class="text-base font-bold text-white leading-tight">MongoDB Cloud Vault</h1>
+          <p class="text-xs text-slate-400">Connected & Synced in Realtime</p>
+        </div>
+      </div>
+      <span class="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>
+    </header>
+
+    <!-- Entry Input Form -->
+    <div class="glass rounded-2xl p-6 shadow-xl space-y-4">
+      <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400">Store New Record</h2>
+      <div class="space-y-3">
+        <input type="text" id="recordTitle" placeholder="Title / Label..." class="w-full px-4 py-3 rounded-xl bg-gray-950/60 border border-white/10 text-sm focus:outline-none focus:border-emerald-500 transition-all text-white">
+        <textarea id="recordContent" placeholder="Content / Data / JSON string..." rows="3" class="w-full px-4 py-3 rounded-xl bg-gray-950/60 border border-white/10 text-sm focus:outline-none focus:border-emerald-500 transition-all text-white"></textarea>
+        <button onclick="saveRecord()" id="saveBtn" class="w-full py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider bg-emerald-500 hover:bg-emerald-400 text-gray-950 transition-all active:scale-[0.98] shadow-lg shadow-emerald-500/20">
+          Save to MongoDB Atlas
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Records List -->
+    <div class="space-y-3">
+      <div class="flex items-center justify-between px-1">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Stored Records</h2>
+        <button onclick="loadRecords()" class="text-xs text-emerald-400 hover:underline">Refresh</button>
+      </div>
+      <div id="recordsContainer" class="space-y-3">
+        <div class="text-center py-8 text-xs text-slate-500">Loading records from Atlas...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    async function loadRecords() {
+      const container = document.getElementById('recordsContainer');
+      try {
+        const res = await fetch('/api/notes');
+        const items = await res.json();
+
+        if (items.length === 0) {
+          container.innerHTML = '<div class="glass rounded-xl p-6 text-center text-xs text-slate-500">No records found. Add your first entry above.</div>';
+          return;
+        }
+
+        container.innerHTML = items.map(item => `
+          <div class="glass rounded-xl p-4 flex items-start justify-between gap-4 transition-all">
+            <div class="space-y-1">
+              <h3 class="text-sm font-bold text-white">${item.title || 'Untitled'}</h3>
+              <p class="text-xs text-slate-300 whitespace-pre-wrap">${item.content || ''}</p>
+              <span class="text-[10px] text-slate-500 block font-mono pt-1">${new Date(item.createdAt).toLocaleString()}</span>
+            </div>
+            <button onclick="deleteRecord('${item._id}')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/20 transition-all">
+              Delete
+            </button>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = `<div class="glass rounded-xl p-4 text-center text-xs text-rose-400">Error loading data: ${err.message}</div>`;
+      }
+    }
+
+    async function saveRecord() {
+      const title = document.getElementById('recordTitle').value.trim();
+      const content = document.getElementById('recordContent').value.trim();
+      if (!title && !content) return;
+
+      const btn = document.getElementById('saveBtn');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      try {
+        await fetch('/api/notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, content })
+        });
+        document.getElementById('recordTitle').value = '';
+        document.getElementById('recordContent').value = '';
+        await loadRecords();
+      } catch (err) {
+        alert('Failed to save: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save to MongoDB Atlas';
+      }
+    }
+
+    async function deleteRecord(id) {
+      if (!confirm('Permanently delete this record from Atlas?')) return;
+      try {
+        await fetch('/api/notes/' + id, { method: 'DELETE' });
+        await loadRecords();
+      } catch (err) {
+        alert('Failed to delete: ' + err.message);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadRecords);
+  </script>
 </body>
 </html>
