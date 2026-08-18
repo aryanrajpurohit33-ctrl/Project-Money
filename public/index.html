@@ -72,7 +72,7 @@
   <div id="appBackdrop" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden transition-opacity"></div>
   <div id="mainViewport" class="flex flex-1 min-h-screen"></div>
 
-  <!-- Global Modal for Inspection & Studio Edit Forms -->
+  <!-- Global Modal -->
   <div id="globalModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
     <div class="glass max-w-3xl w-full rounded-3xl p-6 relative max-h-[90vh] overflow-y-auto custom-scroll" id="globalModalContent"></div>
   </div>
@@ -202,10 +202,7 @@
                 <button onclick="toggleCustomerDrawer(true)" class="lg:hidden p-2 rounded-xl bg-white/5 text-slate-300">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
-                <div class="relative w-48 sm:w-80">
-                  <input type="text" oninput="handleStoreSearch(this.value)" placeholder="Search products, accounts, keys..." class="w-full pl-9 pr-4 py-2 rounded-xl bg-surface-900 border border-white/10 text-xs text-white placeholder-slate-500 focus:border-emerald-500 outline-none">
-                  <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                </div>
+                <span class="text-xs font-bold text-slate-400">Digital Goods & Subscriptions</span>
               </div>
               <div class="flex items-center gap-3">
                 <button onclick="navigate('cart')" class="relative p-2.5 rounded-xl bg-surface-900 border border-white/5 text-slate-300">
@@ -248,53 +245,41 @@
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            ${products.map(p => {
-              const savings = p.original_price > p.sale_price ? p.original_price - p.sale_price : 0;
-              return `
-                <div class="glass-card rounded-3xl overflow-hidden flex flex-col justify-between border border-white/5 relative group cursor-pointer" onclick="navigate('product-details', { id: '${p._id}' })">
-                  ${p.discount_percentage > 0 ? `
-                    <span class="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full bg-rose-500 text-white font-black text-[10px] uppercase">
-                      ${p.discount_percentage}% OFF
-                    </span>
-                  ` : ''}
-                  <span class="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-full bg-surface-950/80 border border-white/10 text-emerald-400 font-bold text-[9px] uppercase">
-                    ${p.product_type === 'SUBSCRIPTION' ? '🔄 Subscription' : '⚡ One-Time'}
-                  </span>
+            ${products.map(p => `
+              <div class="glass-card rounded-3xl overflow-hidden flex flex-col justify-between border border-white/5 relative group cursor-pointer" onclick="navigate('product-details', { id: '${p._id}' })">
+                <span class="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full ${p.product_type === 'SUBSCRIPTION' ? 'bg-indigo-500' : 'bg-emerald-500'} text-white font-black text-[10px] uppercase">
+                  ${p.product_type === 'SUBSCRIPTION' ? '🔄 Subscription' : '⚡ One-Time'}
+                </span>
 
-                  <div>
-                    <div class="h-48 w-full overflow-hidden bg-surface-900">
-                      <img src="${p.images && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                    </div>
-                    <div class="p-5 space-y-2">
-                      <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">${p.category || 'Digital Good'}</span>
-                      <h3 class="text-sm font-bold text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">${p.name}</h3>
-                      <p class="text-xs text-slate-400 line-clamp-2">${p.short_description || p.description}</p>
-                    </div>
+                <div>
+                  <div class="h-48 w-full overflow-hidden bg-surface-900">
+                    <img src="${p.images && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                   </div>
-
-                  <div class="px-5 pb-5 pt-2 flex items-center justify-between border-t border-white/5" onclick="event.stopPropagation()">
-                    <div>
-                      <div class="flex items-center gap-2">
-                        <span class="text-base font-black text-white">₹${p.sale_price}</span>
-                        ${p.original_price > p.sale_price ? `<span class="text-xs text-slate-500 line-through">₹${p.original_price}</span>` : ''}
-                      </div>
-                      ${savings > 0 ? `<span class="text-[10px] text-emerald-400 font-bold block">Save ₹${savings}</span>` : ''}
-                    </div>
-                    <button onclick="navigate('product-details', { id: '${p._id}' })" class="px-4 py-2 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95">
-                      View Details
-                    </button>
+                  <div class="p-5 space-y-2">
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">${p.category || 'Digital Good'}</span>
+                    <h3 class="text-sm font-bold text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">${p.name}</h3>
+                    <p class="text-xs text-slate-400 line-clamp-2">${p.short_description || p.description}</p>
                   </div>
                 </div>
-              `;
-            }).join('')}
+
+                <div class="px-5 pb-5 pt-2 flex items-center justify-between border-t border-white/5" onclick="event.stopPropagation()">
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-base font-black text-white">₹${p.sale_price}</span>
+                      ${p.original_price > p.sale_price ? `<span class="text-xs text-slate-500 line-through">₹${p.original_price}</span>` : ''}
+                    </div>
+                  </div>
+                  <button onclick="navigate('product-details', { id: '${p._id}' })" class="px-4 py-2 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95">
+                    View Details
+                  </button>
+                </div>
+              </div>
+            `).join('')}
           </div>
         </div>
       `;
     }
 
-    // =========================================================================
-    // DEDICATED CUSTOMER PRODUCT DETAILS PAGE
-    // =========================================================================
     let selectedSubDuration = '1_MONTH';
     let currentSelectedPrice = 199;
 
@@ -334,14 +319,6 @@
                   </span>
                 ` : ''}
               </div>
-
-              ${imagesList.length > 1 ? `
-                <div class="flex gap-3 overflow-x-auto pb-2 custom-scroll">
-                  ${imagesList.map(img => `
-                    <img onclick="document.getElementById('detailMainImage').src='${img}'" src="${img}" class="w-20 h-20 rounded-2xl object-cover glass cursor-pointer border border-white/10 hover:border-emerald-400 transition-all">
-                  `).join('')}
-                </div>
-              ` : ''}
             </div>
 
             <div class="lg:col-span-5 space-y-6">
@@ -391,69 +368,6 @@
                 <button onclick="addToCart('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${currentSelectedPrice}, '${imagesList[0]}', '${p.delivery_type}')" ${!isAvailable ? 'disabled' : ''} class="w-full py-4 rounded-2xl glass hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all">
                   Add to Cart
                 </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div class="lg:col-span-8 space-y-8">
-              <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
-                <h3 class="text-sm font-black text-white uppercase tracking-wider">About This Product</h3>
-                <div class="text-xs text-slate-300 leading-relaxed whitespace-pre-line">${p.description}</div>
-              </div>
-
-              ${p.features && p.features.length ? `
-                <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
-                  <h3 class="text-sm font-black text-white uppercase tracking-wider">Key Features</h3>
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    ${p.features.map(f => `
-                      <div class="flex items-center gap-3 p-3 rounded-2xl bg-surface-950 text-xs text-slate-300">
-                        <span class="text-emerald-400 font-black">✓</span> <span>${f}</span>
-                      </div>
-                    `).join('')}
-                  </div>
-                </div>
-              ` : ''}
-
-              ${p.whats_included && p.whats_included.length ? `
-                <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
-                  <h3 class="text-sm font-black text-white uppercase tracking-wider">What's Included</h3>
-                  <div class="space-y-2">
-                    ${p.whats_included.map(item => `
-                      <div class="p-3.5 rounded-2xl bg-surface-950 text-xs text-slate-300 flex items-center gap-3">
-                        <span class="text-emerald-400">📦</span> <span>${item}</span>
-                      </div>
-                    `).join('')}
-                  </div>
-                </div>
-              ` : ''}
-            </div>
-
-            <div class="lg:col-span-4 space-y-6">
-              ${p.specifications && p.specifications.length ? `
-                <div class="glass rounded-3xl p-6 space-y-4">
-                  <h3 class="text-sm font-black text-white uppercase tracking-wider">Product Specifications</h3>
-                  <div class="overflow-x-auto">
-                    <table class="w-full text-left text-xs">
-                      <tbody class="divide-y divide-white/5">
-                        ${p.specifications.map(s => `
-                          <tr>
-                            <td class="py-2.5 text-slate-400 font-medium">${s.label}</td>
-                            <td class="py-2.5 text-white font-bold text-right">${s.value}</td>
-                          </tr>
-                        `).join('')}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ` : ''}
-
-              <div class="glass rounded-3xl p-6 space-y-3">
-                <h3 class="text-sm font-black text-white uppercase tracking-wider">Delivery Information</h3>
-                <p class="text-xs text-slate-400 leading-relaxed">
-                  Delivery Method: <strong class="text-emerald-400">${p.delivery_type?.replace('_', ' ') || ''}</strong>.
-                  Credentials or license keys are assigned and accessible under your "Purchased Items" tab as soon as your payment screenshot is verified.
-                </p>
               </div>
             </div>
           </div>
@@ -530,7 +444,7 @@
     }
 
     // =========================================================================
-    // CHECKOUT & SCREENSHOT SUBMISSION
+    // CHECKOUT & PROOF SUBMISSION
     // =========================================================================
     async function renderStoreCheckout(container) {
       if (!state.token) return renderCustomerAuthPrompt(container, 'checkout');
@@ -931,11 +845,6 @@
       navigate('home');
     }
 
-    function handleStoreSearch(val) {
-      if (!val.trim()) return renderStoreProducts(document.getElementById('storeContent'));
-      renderStoreProducts(document.getElementById('storeContent'), { search: val, title: `Search results for "${val}"` });
-    }
-
     // =========================================================================
     // DEDICATED SAAS ADMIN CONTROL CENTER
     // =========================================================================
@@ -1077,10 +986,246 @@
     }
 
     // =========================================================================
+    // TRANSACTIONS QUEUE (WITH INSTANT INLINE SLOT CREATION + SELECTION)
+    // =========================================================================
+    async function renderAdminTransactions(container) {
+      container.innerHTML = '<div class="text-center py-12 text-slate-500 font-mono">Loading transactions...</div>';
+      const res = await fetch('/api/admin/transactions', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+      const txns = await res.json();
+
+      container.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex justify-between items-center">
+            <div>
+              <h2 class="text-lg font-black text-white">Manual Payment & Subscription Verification Queue</h2>
+              <p class="text-xs text-slate-400">Verify screenshots and assign an existing slot or create a new one on-the-fly</p>
+            </div>
+            <button onclick="switchAdminSection('transactions')" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs">
+              ↻ Refresh Queue
+            </button>
+          </div>
+
+          <div class="admin-card rounded-3xl p-6">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs min-w-[780px]">
+                <thead>
+                  <tr class="border-b border-admin-border text-slate-500 font-mono">
+                    <th class="pb-3">TXN / Order</th>
+                    <th class="pb-3">Customer</th>
+                    <th class="pb-3">Product / Duration</th>
+                    <th class="pb-3">Amount</th>
+                    <th class="pb-3">Proof</th>
+                    <th class="pb-3">Assign Account Slot</th>
+                    <th class="pb-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-admin-border font-mono">
+                  ${txns.map(t => `
+                    <tr>
+                      <td class="py-3.5">
+                        <span class="font-bold text-white block">${t.txn_id}</span>
+                        <span class="text-[10px] text-slate-500">${t.payment_method}</span>
+                      </td>
+                      <td class="py-3.5 text-slate-300">${t.customer_name}</td>
+                      <td class="py-3.5">
+                        <span class="text-white font-bold block">${t.product_name || 'Product'}</span>
+                        <span class="text-[10px] ${t.duration !== 'ONE_TIME' ? 'text-indigo-400 font-bold' : 'text-slate-500'}">${t.duration.replace('_', ' ')}</span>
+                      </td>
+                      <td class="py-3.5 text-emerald-400 font-bold">₹${t.amount}</td>
+                      <td class="py-3.5">
+                        ${t.has_proof ? `
+                          <button onclick="viewProofModal('${t._id}', '${t.txn_id}')" class="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-bold text-[11px]">
+                            🔍 View Proof
+                          </button>
+                        ` : '<span class="text-slate-500">No proof</span>'}
+                      </td>
+                      <td class="py-3.5">
+                        ${t.status === 'PROCESSING' ? `
+                          <div class="flex items-center gap-1.5">
+                            <select id="slotSelect-${t._id}" class="px-3 py-1.5 rounded-xl bg-surface-950 border border-admin-border text-[11px] text-emerald-400 max-w-[200px]">
+                              ${(t.available_slots || []).map(s => `
+                                <option value="${s._id}">${s.account_label} (${s.email}) [${s.usage}]</option>
+                              `).join('')}
+                              ${!(t.available_slots && t.available_slots.length) ? '<option value="">✕ No slots available</option>' : ''}
+                            </select>
+                            <button type="button" onclick="openInlineSlotModal('${t._id}', '${t.product_id}', '${(t.product_name || '').replace(/'/g, "\\'")}')" class="px-2 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-[10px] font-bold whitespace-nowrap">
+                              + New Slot
+                            </button>
+                          </div>
+                        ` : '<span class="text-slate-500">Bound & Assigned</span>'}
+                      </td>
+                      <td class="py-3.5 text-right space-x-2">
+                        ${t.status === 'PROCESSING' ? `
+                          <button onclick="confirmAndAssignTransaction('${t._id}')" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-gray-950 font-black">Confirm</button>
+                          <button onclick="rejectTransaction('${t._id}')" class="px-3 py-1.5 rounded-lg bg-rose-500/20 text-rose-400 font-bold">Reject</button>
+                        ` : `
+                          <span class="px-2 py-0.5 rounded text-[10px] ${t.status === 'CONFIRMED' ? 'text-emerald-400 bg-emerald-500/10' : 'text-rose-400 bg-rose-500/10'}">${t.status}</span>
+                        `}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Modal to create and immediately assign a slot to this transaction
+    function openInlineSlotModal(txnId, productId, productName) {
+      const modal = document.getElementById('globalModal');
+      const content = document.getElementById('globalModalContent');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      content.innerHTML = `
+        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+        <div class="space-y-4 font-mono text-xs">
+          <div>
+            <h3 class="text-base font-black text-white font-sans">+ Create & Assign Slot Instantly</h3>
+            <p class="text-xs text-slate-400 font-sans">For Product: <strong class="text-emerald-400">${productName}</strong></p>
+          </div>
+
+          <form onsubmit="handleInlineSlotSubmit(event, '${txnId}')" class="space-y-3">
+            <div>
+              <label class="text-slate-400 block mb-1">Slot Label</label>
+              <input type="text" id="inlineSlotLabel" required value="Slot 1 (Private)" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white">
+            </div>
+
+            <div>
+              <label class="text-slate-400 block mb-1">Email / Username</label>
+              <input type="email" id="inlineSlotEmail" required placeholder="account@example.com" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white">
+            </div>
+
+            <div>
+              <label class="text-slate-400 block mb-1">Password</label>
+              <input type="text" id="inlineSlotPass" required placeholder="Enter password" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-emerald-400 font-bold">
+            </div>
+
+            <div>
+              <label class="text-slate-400 block mb-1">Max Users Capacity</label>
+              <input type="number" id="inlineSlotMax" min="1" max="100" value="1" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white">
+            </div>
+
+            <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95">
+              Create Slot & Confirm Order
+            </button>
+          </form>
+        </div>
+      `;
+    }
+
+    async function handleInlineSlotSubmit(e, txnId) {
+      e.preventDefault();
+      const payload = {
+        create_new_slot: {
+          account_label: document.getElementById('inlineSlotLabel').value.trim(),
+          email: document.getElementById('inlineSlotEmail').value.trim(),
+          password: document.getElementById('inlineSlotPass').value.trim(),
+          max_active_users: Number(document.getElementById('inlineSlotMax').value) || 1
+        }
+      };
+
+      try {
+        const res = await fetch(`/api/admin/transactions/${txnId}/confirm-and-assign`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.adminToken}`
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to create and assign slot');
+
+        showToast('Slot created in MongoDB and assigned to customer!');
+        document.getElementById('globalModal').classList.add('hidden');
+        renderAdminTransactions(document.getElementById('adminMainContent'));
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function viewProofModal(txnDbId, txnId) {
+      const modal = document.getElementById('globalModal');
+      const content = document.getElementById('globalModalContent');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono">Loading proof...</div>';
+
+      try {
+        const res = await fetch(`/api/admin/transactions/${txnDbId}/proof`, {
+          headers: { 'Authorization': `Bearer ${state.adminToken}` }
+        });
+        const data = await res.json();
+
+        content.innerHTML = `
+          <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+          <h3 class="text-base font-bold text-white mb-3 font-mono">Payment Proof (${txnId})</h3>
+          <div class="rounded-2xl overflow-hidden glass max-h-[75vh] flex items-center justify-center bg-black/90 p-2">
+            <img src="${data.proof_screenshot}" class="max-h-[70vh] w-auto object-contain rounded-xl shadow-2xl">
+          </div>
+        `;
+      } catch (err) {
+        content.innerHTML = `<div class="text-center py-8 text-rose-400">Error: ${err.message}</div>`;
+      }
+    }
+
+    async function confirmAndAssignTransaction(id) {
+      const selectEl = document.getElementById(`slotSelect-${id}`);
+      const slot_id = selectEl ? selectEl.value : null;
+
+      if (!slot_id) {
+        alert('Please select an available slot or click "+ New Slot" to create one instantly.');
+        return;
+      }
+
+      if (!confirm('Confirm this payment, bind the selected account slot, and activate the customer subscription?')) return;
+
+      try {
+        const res = await fetch(`/api/admin/transactions/${id}/confirm-and-assign`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.adminToken}`
+          },
+          body: JSON.stringify({ slot_id })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        showToast('Subscription activated and account slot bound!');
+        renderAdminTransactions(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function rejectTransaction(id) {
+      const reason = prompt('Enter rejection reason:', 'Payment screenshot invalid.');
+      if (reason === null) return;
+
+      try {
+        const res = await fetch(`/api/admin/transactions/${id}/reject`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.adminToken}`
+          },
+          body: JSON.stringify({ reason })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        showToast('Transaction rejected');
+        renderAdminTransactions(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    // =========================================================================
     // DEDICATED ACCOUNT SLOTS PAGE
     // =========================================================================
     async function renderAdminAccountSlots(container) {
-      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading Account Slots suite from MongoDB Atlas...</div>';
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading Account Slots from database...</div>';
 
       try {
         let queryUrl = `/api/admin/slots?`;
@@ -1099,7 +1244,6 @@
 
         container.innerHTML = `
           <div class="space-y-8 font-mono">
-            
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h1 class="text-xl font-black text-white font-sans">Account Slots Management</h1>
@@ -1110,7 +1254,6 @@
               </button>
             </div>
 
-            <!-- Database-backed KPI Cards -->
             <div class="grid grid-cols-2 sm:grid-cols-6 gap-3">
               <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase block">Total Slots</span><span class="text-xl font-black text-white">${stats.total}</span></div>
               <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-emerald-400 uppercase block">🟢 Available</span><span class="text-xl font-black text-emerald-400">${stats.available}</span></div>
@@ -1120,7 +1263,6 @@
               <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase block">⚪ Disabled</span><span class="text-xl font-black text-slate-400">${stats.disabled}</span></div>
             </div>
 
-            <!-- Filter & Search Controls -->
             <div class="admin-card rounded-2xl p-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
               <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                 <select id="slotProductFilter" onchange="state.slotFilterProduct=this.value; renderAdminAccountSlots(document.getElementById('adminMainContent'))" class="px-3 py-2 rounded-xl bg-surface-950 border border-admin-border text-xs text-white">
@@ -1140,7 +1282,6 @@
               <input type="text" oninput="handleSlotSearch(this.value)" placeholder="Search by slot, email, or customer..." class="w-full sm:w-64 px-4 py-2 rounded-xl bg-surface-950 border border-admin-border text-xs text-white placeholder-slate-500">
             </div>
 
-            <!-- Main Inventory Table View -->
             <div class="admin-card rounded-3xl p-6">
               <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs min-w-[850px]" id="accountSlotsTable">
@@ -1195,7 +1336,6 @@
                 </table>
               </div>
             </div>
-
           </div>
         `;
       } catch (err) {
@@ -1234,14 +1374,7 @@
             <p class="text-xs text-slate-400 font-sans">Single source of truth. Any changes immediately update active customer viewports.</p>
           </div>
 
-          ${currentStatus === 'ASSIGNED' || currentStatus === 'FULL' ? `
-            <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-sans">
-              ⚠️ <strong>Live Sync Notice:</strong> This slot is assigned to active customers. Updating these credentials will immediately update the login information shown on their Purchased Items page.
-            </div>
-          ` : ''}
-
           <form onsubmit="handleSlotFormSubmit(event, '${slotId}')" class="space-y-4">
-            
             ${isNew ? `
               <div>
                 <label class="text-slate-400 block mb-1">Select Service / Product</label>
@@ -1280,11 +1413,6 @@
               </div>
             </div>
 
-            <div>
-              <label class="text-slate-400 block mb-1">Admin Notes (Optional)</label>
-              <input type="text" id="slotFormNotes" value="${slotData.notes || ''}" placeholder="Internal notes" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
-            </div>
-
             <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
               ${isNew ? 'Save Account Slot to Database' : 'Save Changes & Sync to Customer'}
             </button>
@@ -1302,8 +1430,7 @@
         email: document.getElementById('slotFormEmail').value.trim(),
         password: document.getElementById('slotFormPassword').value.trim(),
         max_active_users: Number(document.getElementById('slotFormMaxUsers').value) || 1,
-        status: document.getElementById('slotFormStatus').value,
-        notes: document.getElementById('slotFormNotes').value.trim()
+        status: document.getElementById('slotFormStatus').value
       };
 
       if (isNew) {
@@ -1390,20 +1517,6 @@
             </div>
           </div>
 
-          <div class="space-y-3">
-            <h3 class="text-xs font-bold text-slate-400 font-sans uppercase">Historical Tenants (${slot.assignment_history?.length || 0})</h3>
-            <div class="space-y-1.5 max-h-36 overflow-y-auto custom-scroll">
-              ${(slot.assignment_history || []).length === 0 ? `
-                <div class="p-3 rounded-xl bg-surface-950 text-slate-500 text-center text-[10px]">No historical leases.</div>
-              ` : slot.assignment_history.map(h => `
-                <div class="p-2.5 rounded-xl bg-surface-950 text-[10px] flex justify-between text-slate-400">
-                  <span>${h.customer_name} (${h.customer_email})</span>
-                  <span>${new Date(h.start_at).toLocaleDateString()} → ${new Date(h.expires_at).toLocaleDateString()}</span>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-
           <div class="flex justify-end gap-2 pt-2 border-t border-admin-border">
             <button onclick="openSlotFormModal('${slot._id}', '${slot.status}')" class="px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 font-bold">Edit Credentials</button>
             <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="px-4 py-2 rounded-xl bg-white/5 text-slate-400">Close</button>
@@ -1434,152 +1547,6 @@
         if (regex.test(row.textContent)) row.classList.remove('hidden');
         else row.classList.add('hidden');
       });
-    }
-
-    // =========================================================================
-    // TRANSACTIONS QUEUE
-    // =========================================================================
-    async function renderAdminTransactions(container) {
-      container.innerHTML = '<div class="text-center py-12 text-slate-500 font-mono">Loading transactions...</div>';
-      const res = await fetch('/api/admin/transactions', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
-      const txns = await res.json();
-
-      container.innerHTML = `
-        <div class="space-y-6">
-          <div>
-            <h2 class="text-lg font-black text-white">Manual Payment & Subscription Verification Queue</h2>
-            <p class="text-xs text-slate-400">Inspect screenshots and choose which account slot to assign to the customer</p>
-          </div>
-
-          <div class="admin-card rounded-3xl p-6">
-            <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs min-w-[700px]">
-                <thead>
-                  <tr class="border-b border-admin-border text-slate-500 font-mono">
-                    <th class="pb-3">TXN / Order</th>
-                    <th class="pb-3">Customer</th>
-                    <th class="pb-3">Product / Duration</th>
-                    <th class="pb-3">Amount</th>
-                    <th class="pb-3">Proof</th>
-                    <th class="pb-3">Assign Account Slot</th>
-                    <th class="pb-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-admin-border font-mono">
-                  ${txns.map(t => `
-                    <tr>
-                      <td class="py-3.5">
-                        <span class="font-bold text-white block">${t.txn_id}</span>
-                        <span class="text-[10px] text-slate-500">${t.payment_method}</span>
-                      </td>
-                      <td class="py-3.5 text-slate-300">${t.customer_name}</td>
-                      <td class="py-3.5">
-                        <span class="text-white font-bold block">${t.product_name || 'Product'}</span>
-                        <span class="text-[10px] ${t.duration !== 'ONE_TIME' ? 'text-indigo-400 font-bold' : 'text-slate-500'}">${t.duration.replace('_', ' ')}</span>
-                      </td>
-                      <td class="py-3.5 text-emerald-400 font-bold">₹${t.amount}</td>
-                      <td class="py-3.5">
-                        ${t.has_proof ? `
-                          <button onclick="viewProofModal('${t._id}', '${t.txn_id}')" class="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-bold text-[11px]">
-                            🔍 View Proof
-                          </button>
-                        ` : '<span class="text-slate-500">No proof</span>'}
-                      </td>
-                      <td class="py-3.5">
-                        ${t.status === 'PROCESSING' ? `
-                          <select id="slotSelect-${t._id}" class="px-3 py-1.5 rounded-xl bg-surface-950 border border-admin-border text-[11px] text-emerald-400">
-                            ${(t.available_slots || []).map(s => `
-                              <option value="${s._id}">${s.account_label} (${s.email}) [${s.usage}]</option>
-                            `).join('')}
-                            ${!(t.available_slots && t.available_slots.length) ? '<option value="">✕ No slots available</option>' : ''}
-                          </select>
-                        ` : '<span class="text-slate-500">Bound & Assigned</span>'}
-                      </td>
-                      <td class="py-3.5 text-right space-x-2">
-                        ${t.status === 'PROCESSING' ? `
-                          <button onclick="confirmAndAssignTransaction('${t._id}')" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-gray-950 font-black">Confirm & Assign</button>
-                          <button onclick="rejectTransaction('${t._id}')" class="px-3 py-1.5 rounded-lg bg-rose-500/20 text-rose-400 font-bold">Reject</button>
-                        ` : `
-                          <span class="px-2 py-0.5 rounded text-[10px] ${t.status === 'CONFIRMED' ? 'text-emerald-400 bg-emerald-500/10' : 'text-rose-400 bg-rose-500/10'}">${t.status}</span>
-                        `}
-                      </td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    async function viewProofModal(txnDbId, txnId) {
-      const modal = document.getElementById('globalModal');
-      const content = document.getElementById('globalModalContent');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-
-      content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono">Loading proof...</div>';
-
-      try {
-        const res = await fetch(`/api/admin/transactions/${txnDbId}/proof`, {
-          headers: { 'Authorization': `Bearer ${state.adminToken}` }
-        });
-        const data = await res.json();
-
-        content.innerHTML = `
-          <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
-          <h3 class="text-base font-bold text-white mb-3 font-mono">Payment Proof (${txnId})</h3>
-          <div class="rounded-2xl overflow-hidden glass max-h-[75vh] flex items-center justify-center bg-black/90 p-2">
-            <img src="${data.proof_screenshot}" class="max-h-[70vh] w-auto object-contain rounded-xl shadow-2xl">
-          </div>
-        `;
-      } catch (err) {
-        content.innerHTML = `<div class="text-center py-8 text-rose-400">Error: ${err.message}</div>`;
-      }
-    }
-
-    async function confirmAndAssignTransaction(id) {
-      const selectEl = document.getElementById(`slotSelect-${id}`);
-      const slot_id = selectEl ? selectEl.value : null;
-
-      if (!confirm('Confirm this payment, bind the selected account slot, and activate the customer subscription?')) return;
-
-      try {
-        const res = await fetch(`/api/admin/transactions/${id}/confirm-and-assign`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${state.adminToken}`
-          },
-          body: JSON.stringify({ slot_id })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-
-        showToast('Subscription activated and account slot bound!');
-        renderAdminTransactions(document.getElementById('adminMainContent'));
-      } catch (err) { showToast(err.message, 'error'); }
-    }
-
-    async function rejectTransaction(id) {
-      const reason = prompt('Enter rejection reason:', 'Payment screenshot invalid.');
-      if (reason === null) return;
-
-      try {
-        const res = await fetch(`/api/admin/transactions/${id}/reject`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${state.adminToken}`
-          },
-          body: JSON.stringify({ reason })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        showToast('Transaction rejected');
-        renderAdminTransactions(document.getElementById('adminMainContent'));
-      } catch (err) { showToast(err.message, 'error'); }
     }
 
     // =========================================================================
@@ -1705,7 +1672,6 @@
           </div>
 
           <form onsubmit="handleMasterProductSubmit(event, '${productId}')" class="space-y-6">
-            
             <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
               <span class="text-[10px] text-emerald-400 font-bold uppercase block font-sans">1. Basic Information</span>
               <div class="space-y-2">

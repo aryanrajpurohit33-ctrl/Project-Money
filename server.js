@@ -270,138 +270,6 @@ function authAdmin(req, res, next) {
 }
 
 // ----------------------------------------------------
-// SYSTEM & INFRASTRUCTURE MONITORING
-// ----------------------------------------------------
-app.get('/api/admin/system/infrastructure', authAdmin, async (req, res) => {
-  try {
-    const memUsage = process.memoryUsage();
-    const rssMB = Math.round((memUsage.rss / 1024 / 1024) * 10) / 10;
-    const heapUsedMB = Math.round((memUsage.heapUsed / 1024 / 1024) * 10) / 10;
-    const heapTotalMB = Math.round((memUsage.heapTotal / 1024 / 1024) * 10) / 10;
-
-    const osFreeMemMB = Math.round(os.freemem() / 1024 / 1024);
-    const osTotalMemMB = Math.round(os.totalmem() / 1024 / 1024);
-    const osUsedMemMB = osTotalMemMB - osFreeMemMB;
-    const osMemPercent = Math.round((osUsedMemMB / osTotalMemMB) * 100);
-
-    let dbStatus = 'Disconnected';
-    let dbDataSizeMB = 0;
-    let dbStorageSizeMB = 0;
-    let dbIndexesSizeMB = 0;
-    let dbCollectionsCount = 0;
-    let dbPingMs = 0;
-
-    if (mongoose.connection.readyState === 1) {
-      dbStatus = 'Connected';
-      const pingStart = Date.now();
-      const stats = await mongoose.connection.db.stats();
-      dbPingMs = Date.now() - pingStart;
-
-      dbDataSizeMB = Math.round((stats.dataSize / 1024 / 1024) * 100) / 100;
-      dbStorageSizeMB = Math.round((stats.storageSize / 1024 / 1024) * 100) / 100;
-      dbIndexesSizeMB = Math.round((stats.indexSize / 1024 / 1024) * 100) / 100;
-      dbCollectionsCount = stats.collections;
-    }
-
-    const [usersCount, productsCount, ordersCount, txnsCount, invCount] = await Promise.all([
-      User.countDocuments(),
-      Product.countDocuments(),
-      Order.countDocuments(),
-      Transaction.countDocuments(),
-      InventorySlot.countDocuments()
-    ]);
-
-    const recentRequests = requestLogs.slice(0, 50);
-    const avgResponseTime = recentRequests.length > 0
-      ? Math.round(recentRequests.reduce((a, b) => a + b.responseTime, 0) / recentRequests.length)
-      : 12;
-
-    const errorCount = recentRequests.filter(r => r.statusCode >= 400).length;
-    const errorRatePercent = recentRequests.length > 0
-      ? Math.round((errorCount / recentRequests.length) * 100)
-      : 0;
-
-    const uptimeSec = Math.floor(process.uptime());
-    const days = Math.floor(uptimeSec / 86400);
-    const hours = Math.floor((uptimeSec % 86400) / 3600);
-    const mins = Math.floor((uptimeSec % 3600) / 60);
-    const formattedUptime = `${days > 0 ? days + 'd ' : ''}${hours}h ${mins}m ${uptimeSec % 60}s`;
-
-    const isRender = !!process.env.RENDER;
-    const hostingDetails = {
-      provider: isRender ? 'Render Cloud (Production)' : 'Node.js Standalone Container',
-      service_id: process.env.RENDER_SERVICE_ID || 'Container-Local',
-      node_version: process.version,
-      platform: `${os.type()} ${os.arch()}`,
-      environment: process.env.NODE_ENV || 'production'
-    };
-
-    res.json({
-      server: {
-        status: 'Operational',
-        uptime_seconds: uptimeSec,
-        uptime_formatted: formattedUptime,
-        service_memory_rss_mb: rssMB,
-        heap_used_mb: heapUsedMB,
-        heap_total_mb: heapTotalMB,
-        os_used_mem_mb: osUsedMemMB,
-        os_total_mem_mb: osTotalMemMB,
-        os_mem_percent: osMemPercent,
-        avg_response_time_ms: avgResponseTime,
-        error_rate_percent: errorRatePercent,
-        request_count_tracked: requestLogs.length,
-        hosting: hostingDetails
-      },
-      database: {
-        status: dbStatus,
-        ping_latency_ms: dbPingMs,
-        data_size_mb: dbDataSizeMB,
-        storage_size_mb: dbStorageSizeMB,
-        indexes_size_mb: dbIndexesSizeMB,
-        collections_count: dbCollectionsCount,
-        collections: [
-          { name: 'Users', count: usersCount, status: 'Healthy' },
-          { name: 'Products', count: productsCount, status: 'Healthy' },
-          { name: 'Orders', count: ordersCount, status: 'Healthy' },
-          { name: 'Transactions', count: txnsCount, status: 'Healthy' },
-          { name: 'Account Slots', count: invCount, status: 'Healthy' }
-        ]
-      },
-      recent_api_metrics: requestLogs.slice(0, 8),
-      recent_errors: appErrorLogs.slice(0, 10),
-      timestamp: new Date()
-    });
-
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/admin/system/health-check', authAdmin, async (req, res) => {
-  const results = {
-    frontend: { status: 'Operational', latency_ms: 2 },
-    backend: { status: 'Operational', uptime_sec: Math.floor(process.uptime()) },
-    database: { status: 'Disconnected', latency_ms: null },
-    auth_service: { status: 'Operational', algorithm: 'HS256' },
-    payment_gateway: { status: 'Operational', configured: true },
-    digital_delivery: { status: 'Operational', stock_ready: true }
-  };
-
-  try {
-    const dbStart = Date.now();
-    await mongoose.connection.db.admin().ping();
-    results.database.status = 'Connected';
-    results.database.latency_ms = Date.now() - dbStart;
-
-    res.json({ success: true, timestamp: new Date(), checks: results });
-  } catch (err) {
-    results.database.status = 'Degraded';
-    results.database.error = err.message;
-    res.status(500).json({ success: false, checks: results });
-  }
-});
-
-// ----------------------------------------------------
 // STORE & CUSTOMER APIS
 // ----------------------------------------------------
 app.post('/api/presence/heartbeat', (req, res) => {
@@ -420,7 +288,6 @@ app.get('/api/payment-methods', async (req, res) => {
   }
 });
 
-// Product Catalog - In Stock state is determined strictly by Admin Status (Active = In Stock)
 app.get('/api/products', async (req, res) => {
   try {
     const { search } = req.query;
@@ -440,7 +307,6 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-// Product Details - In Stock state is determined strictly by Admin Status
 app.get('/api/products/:identifier', async (req, res) => {
   try {
     const { identifier } = req.params;
@@ -820,7 +686,7 @@ app.delete('/api/admin/slots/:id', authAdmin, async (req, res) => {
 });
 
 // ----------------------------------------------------
-// ADMIN TRANSACTIONS & CONFIRMATION
+// ADMIN TRANSACTIONS (DYNAMIC LIVE SLOT MATCHING)
 // ----------------------------------------------------
 app.post('/api/admin/login', async (req, res) => {
   try {
@@ -852,6 +718,7 @@ app.get('/api/admin/stats', authAdmin, async (req, res) => {
   }
 });
 
+// Live dynamic slot population regardless of transaction timestamp
 app.get('/api/admin/transactions', authAdmin, async (req, res) => {
   try {
     const txns = await Transaction.find().select('-proof_screenshot').sort({ created_at: -1 });
@@ -862,9 +729,14 @@ app.get('/api/admin/transactions', authAdmin, async (req, res) => {
       const order = await Order.findById(t.order_id);
       
       let availableSlots = [];
+      let productId = null;
+
       if (order && order.items.length > 0) {
+        productId = order.items[0].product_id;
+        
+        // Query ALL non-disabled slots for this product created at ANY time
         const slots = await InventorySlot.find({
-          product_id: order.items[0].product_id,
+          product_id: productId,
           status: { $ne: 'DISABLED' }
         }).select('_id account_label email max_active_users status');
 
@@ -888,6 +760,7 @@ app.get('/api/admin/transactions', authAdmin, async (req, res) => {
 
       return {
         ...t.toObject(),
+        product_id: productId,
         has_proof: !!(doc && doc.proof_screenshot),
         available_slots: availableSlots
       };
@@ -908,12 +781,13 @@ app.get('/api/admin/transactions/:id/proof', authAdmin, async (req, res) => {
   }
 });
 
+// Confirm Payment + Assign (Supports selecting existing slot OR creating on-the-fly)
 app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    const { slot_id } = req.body;
+    const { slot_id, create_new_slot } = req.body;
     const txn = await Transaction.findById(req.params.id).session(session);
     if (!txn) throw new Error('Transaction not found');
     if (txn.status === 'CONFIRMED') throw new Error('Transaction is already confirmed');
@@ -923,7 +797,19 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
     const now = new Date();
 
     let slot = null;
-    if (slot_id) {
+
+    // Support creating slot directly during transaction confirmation
+    if (create_new_slot && create_new_slot.email) {
+      slot = await InventorySlot.create([{
+        product_id: item.product_id,
+        account_label: create_new_slot.account_label || 'Slot ' + Math.floor(Math.random() * 1000),
+        email: create_new_slot.email.trim(),
+        password: create_new_slot.password || '',
+        max_active_users: Number(create_new_slot.max_active_users) || 1,
+        status: 'AVAILABLE'
+      }], { session });
+      slot = slot[0];
+    } else if (slot_id) {
       slot = await InventorySlot.findById(slot_id).session(session);
       if (!slot || slot.status === 'DISABLED') throw new Error('Selected slot is invalid or disabled');
       
@@ -956,7 +842,9 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
       }
     }
 
-    if (!slot) throw new Error('No available account slot with open capacity found for this product. Please add an account slot under "Account Slots".');
+    if (!slot) {
+      throw new Error('No available account slot found for this product. Click "+ New Slot" to create one instantly.');
+    }
 
     const startAt = new Date();
     const expiresAt = new Date(startAt);
