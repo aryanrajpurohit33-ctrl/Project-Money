@@ -287,7 +287,7 @@ function authAdmin(req, res, next) {
 }
 
 // ----------------------------------------------------
-// SYSTEM & INFRASTRUCTURE MONITORING ENDPOINT
+// SYSTEM & INFRASTRUCTURE MONITORING
 // ----------------------------------------------------
 app.get('/api/admin/system/infrastructure', authAdmin, async (req, res) => {
   try {
@@ -394,7 +394,6 @@ app.get('/api/admin/system/infrastructure', authAdmin, async (req, res) => {
   }
 });
 
-// Full Multi-Subsystem Health Check
 app.get('/api/admin/system/health-check', authAdmin, async (req, res) => {
   const results = {
     frontend: { status: 'Operational', latency_ms: 2 },
@@ -646,7 +645,7 @@ app.get('/api/customer/orders', authCustomer, async (req, res) => {
 });
 
 // ----------------------------------------------------
-// ADMIN CONTROL CENTER APIS
+// ADMIN PRODUCT CRUD & EDIT APIS
 // ----------------------------------------------------
 app.post('/api/admin/login', async (req, res) => {
   try {
@@ -890,14 +889,27 @@ app.get('/api/admin/products', authAdmin, async (req, res) => {
   }
 });
 
+// Create New Product
 app.post('/api/admin/products', authAdmin, async (req, res) => {
   try {
     const product = await Product.create({
       ...req.body,
       sku: req.body.sku || 'SKU-' + Date.now(),
-      images: ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800']
+      images: req.body.images && req.body.images.length ? req.body.images : ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800']
     });
     res.status(201).json(product);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Update Existing Product (Including Images & Pricing)
+app.put('/api/admin/products/:id', authAdmin, async (req, res) => {
+  try {
+    const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updated) return res.status(404).json({ error: 'Product not found' });
+    recordActivity('product_updated', `Product updated: ${updated.name}`);
+    res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
