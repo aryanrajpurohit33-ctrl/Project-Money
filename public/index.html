@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>NEXUS DIGITAL — Digital Marketplace</title>
+  <title>NEXUS DIGITAL — Digital Marketplace & Admin Control</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -70,21 +70,21 @@
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
+  <!-- Toast Notification Hub -->
   <div id="toastHub" class="fixed top-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
-  <div id="drawerOverlay" onclick="toggleCustomerSidebar(false)" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden transition-opacity"></div>
 
-  <!-- ROOT CONTAINER (Renders Storefront View OR Standalone Admin Center) -->
-  <div id="mainViewport" class="flex flex-1 min-h-screen">
-    <!-- Injected dynamically -->
-  </div>
+  <!-- Global Backdrop Overlay for Mobile Drawers -->
+  <div id="appBackdrop" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden transition-opacity"></div>
 
-  <!-- Global Modal for Inspection & Admin Modals -->
-  <div id="globalModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+  <!-- Main Viewport Canvas -->
+  <div id="mainViewport" class="flex flex-1 min-h-screen"></div>
+
+  <!-- Global Modal for Inspection & Proof -->
+  <div id="globalModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
     <div class="glass max-w-2xl w-full rounded-3xl p-6 relative max-h-[90vh] overflow-y-auto custom-scroll" id="globalModalContent"></div>
   </div>
 
   <script>
-    // State Store
     const state = {
       sessionId: 'sess_' + Math.random().toString(36).substring(2, 12),
       user: JSON.parse(localStorage.getItem('nexus_user') || 'null'),
@@ -112,7 +112,40 @@
       }, 3200);
     }
 
-    // Presence Heartbeat Ping (Real-time live visitor tracking)
+    function closeAllDrawers() {
+      document.getElementById('appBackdrop').classList.add('hidden');
+      const cSide = document.getElementById('customerSidebar');
+      if (cSide) cSide.classList.add('-translate-x-full');
+      const aSide = document.getElementById('adminSidebar');
+      if (aSide) aSide.classList.add('-translate-x-full');
+      document.getElementById('globalModal').classList.add('hidden');
+    }
+
+    function toggleCustomerDrawer(open) {
+      const side = document.getElementById('customerSidebar');
+      const drop = document.getElementById('appBackdrop');
+      if (open) {
+        side.classList.remove('-translate-x-full');
+        drop.classList.remove('hidden');
+      } else {
+        side.classList.add('-translate-x-full');
+        drop.classList.add('hidden');
+      }
+    }
+
+    function toggleAdminDrawer(open) {
+      const side = document.getElementById('adminSidebar');
+      const drop = document.getElementById('appBackdrop');
+      if (open) {
+        side.classList.remove('-translate-x-full');
+        drop.classList.remove('hidden');
+      } else {
+        side.classList.add('-translate-x-full');
+        drop.classList.add('hidden');
+      }
+    }
+
+    // Heartbeat Presence Monitor
     function sendHeartbeat(action = '') {
       fetch('/api/presence/heartbeat', {
         method: 'POST',
@@ -126,9 +159,10 @@
     }
     setInterval(sendHeartbeat, 15000);
 
-    // Navigation Dispatcher
+    // Global Router
     function navigate(view, params = {}) {
       state.currentView = view;
+      closeAllDrawers();
       sendHeartbeat();
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -140,18 +174,17 @@
         return;
       }
 
-      // Otherwise render Customer Storefront Layout
       renderStorefrontLayout(viewport, view, params);
     }
 
     // =========================================================================
-    // CUSTOMER STOREFRONT LAYOUT & VIEWS
+    // CUSTOMER STOREFRONT LAYOUT
     // =========================================================================
     function renderStorefrontLayout(viewport, view, params) {
       viewport.innerHTML = `
         <div class="flex flex-1 min-h-screen relative w-full bg-surface-950">
           
-          <!-- Customer Sidebar -->
+          <!-- Store Mobile / Desktop Sidebar -->
           <aside id="customerSidebar" class="fixed lg:static top-0 bottom-0 left-0 w-64 bg-surface-900 border-r border-white/5 z-50 flex flex-col justify-between transition-transform duration-300 -translate-x-full lg:translate-x-0">
             <div>
               <div class="p-6 border-b border-white/5 flex items-center justify-between">
@@ -162,18 +195,18 @@
                     <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">DIGITAL STORE</span>
                   </div>
                 </div>
-                <button onclick="toggleCustomerSidebar(false)" class="lg:hidden text-slate-400 p-1">✕</button>
+                <button onclick="toggleCustomerDrawer(false)" class="lg:hidden text-slate-400 p-1">✕</button>
               </div>
 
               <nav class="p-4 space-y-1.5 text-xs font-semibold">
-                <button onclick="navigate('home')" id="cnav-home" class="cnav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all"><span>🏠</span> <span>Home</span></button>
-                <button onclick="navigate('products')" id="cnav-products" class="cnav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all"><span>🛍</span> <span>All Products</span></button>
-                <button onclick="navigate('cart')" id="cnav-cart" class="cnav-btn w-full flex items-center justify-between px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">
+                <button onclick="navigate('home')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all"><span>🏠</span> <span>Home</span></button>
+                <button onclick="navigate('products')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all"><span>🛍</span> <span>All Products</span></button>
+                <button onclick="navigate('cart')" class="w-full flex items-center justify-between px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">
                   <div class="flex items-center gap-3"><span>🛒</span> <span>My Cart</span></div>
                   <span class="cart-count-badge px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-gray-950">${state.cart.length}</span>
                 </button>
-                <button onclick="navigate('orders')" id="cnav-orders" class="cnav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all"><span>📦</span> <span>Purchased Items</span></button>
-                <button onclick="navigate('account')" id="cnav-account" class="cnav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all"><span>👤</span> <span>${state.user ? state.user.name : 'My Account'}</span></button>
+                <button onclick="navigate('orders')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all"><span>📦</span> <span>Purchased Items</span></button>
+                <button onclick="navigate('account')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all"><span>👤</span> <span>${state.user ? state.user.name : 'My Account'}</span></button>
               </nav>
             </div>
 
@@ -184,11 +217,11 @@
             </div>
           </aside>
 
-          <!-- Store Content Canvas -->
+          <!-- Main Store Body -->
           <div class="flex-1 flex flex-col min-w-0">
             <header class="sticky top-0 z-30 glass border-b border-white/5 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
               <div class="flex items-center gap-3">
-                <button onclick="toggleCustomerSidebar(true)" class="lg:hidden p-2 rounded-xl bg-white/5 text-slate-300">
+                <button onclick="toggleCustomerDrawer(true)" class="lg:hidden p-2 rounded-xl bg-white/5 text-slate-300">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
                 <div class="relative w-48 sm:w-80">
@@ -204,9 +237,7 @@
               </div>
             </header>
 
-            <main id="storeContent" class="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-8">
-              <!-- Content view rendered below -->
-            </main>
+            <main id="storeContent" class="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-8"></main>
           </div>
 
         </div>
@@ -224,28 +255,19 @@
       }
     }
 
-    function toggleCustomerSidebar(open) {
-      const sidebar = document.getElementById('customerSidebar');
-      const overlay = document.getElementById('drawerOverlay');
-      if (sidebar) {
-        if (open) { sidebar.classList.remove('-translate-x-full'); overlay.classList.remove('hidden'); }
-        else { sidebar.classList.add('-translate-x-full'); overlay.classList.add('hidden'); }
-      }
-    }
-
     async function renderStoreHome(container) {
-      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold animate-pulse">Loading verified digital goods...</div>';
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold animate-pulse">Loading digital goods...</div>';
       const res = await fetch('/api/products');
       const products = await res.json();
 
       container.innerHTML = `
         <div class="relative rounded-3xl overflow-hidden glass p-8 sm:p-14 border border-emerald-500/20 bg-gradient-to-r from-emerald-950/40 via-surface-900 to-surface-950">
           <div class="max-w-2xl space-y-4">
-            <span class="px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-black uppercase inline-block">⚡ Verified Instant Fulfillment</span>
+            <span class="px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-black uppercase inline-block">⚡ Verified Instant Delivery</span>
             <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">Premium <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">Digital Goods</span> Marketplace</h1>
-            <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">Official license keys, software source code, and accounts. Pay with UPI or Crypto with fast verified unlock.</p>
+            <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">Official license keys, software source code, and verified accounts. Pay with UPI or Crypto with fast verified unlock.</p>
             <div class="pt-2">
-              <button onclick="navigate('products')" class="px-7 py-3.5 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95">Browse All Products</button>
+              <button onclick="navigate('products')" class="px-7 py-3.5 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95">Browse Catalog</button>
             </div>
           </div>
         </div>
@@ -405,7 +427,7 @@
     }
 
     // =========================================================================
-    // CHECKOUT & MANUAL PAYMENT STATE MACHINE
+    // STORE CHECKOUT & PAYMENT FLOW
     // =========================================================================
     async function renderStoreCheckout(container) {
       if (!state.token) return renderCustomerAuthPrompt(container, 'checkout');
@@ -419,14 +441,12 @@
         <div class="max-w-4xl mx-auto space-y-8">
           <div>
             <h1 class="text-2xl font-black text-white">Choose Payment Method</h1>
-            <p class="text-xs text-slate-400">Select how you want to pay and submit proof for admin verification</p>
+            <p class="text-xs text-slate-400">Select payment method and upload transfer proof for manual verification</p>
           </div>
 
           <div id="checkoutStep1" class="grid grid-cols-1 md:grid-cols-12 gap-8">
-            <!-- Left: Method Selector -->
             <div class="md:col-span-7 space-y-4">
               
-              <!-- UPI Option -->
               <div onclick="selectPaymentMethod('UPI')" id="methodCardUPI" class="glass rounded-3xl p-6 cursor-pointer border-2 border-emerald-500/80 space-y-2">
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-3">
@@ -440,7 +460,6 @@
                 </div>
               </div>
 
-              <!-- Crypto Option -->
               <div onclick="selectPaymentMethod('CRYPTO')" id="methodCardCrypto" class="glass rounded-3xl p-6 cursor-pointer border border-white/5 space-y-2">
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-3">
@@ -454,35 +473,29 @@
                 </div>
               </div>
 
-              <!-- Coupon Bar -->
               <div class="glass rounded-2xl p-4 flex gap-2">
-                <input type="text" id="storeCouponInput" placeholder="Discount Code (e.g. SAVE20)" class="flex-1 px-4 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-xs text-white uppercase">
+                <input type="text" id="storeCouponInput" placeholder="Coupon Code (e.g. SAVE20)" class="flex-1 px-4 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-xs text-white uppercase">
                 <button onclick="applyStoreCoupon()" class="px-5 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs">Apply</button>
               </div>
               <div id="storeCouponMsg" class="text-xs"></div>
             </div>
 
-            <!-- Right: Dynamic Payment Detail & Order Confirmation -->
             <div class="md:col-span-5 space-y-4">
               <div class="glass rounded-3xl p-6 space-y-4">
                 <h3 class="text-xs font-bold uppercase text-slate-400">Order Total</h3>
                 <div class="flex justify-between text-base font-black text-white">
-                  <span>Payable Amount:</span>
+                  <span>Payable:</span>
                   <span id="chkFinalAmount" class="text-emerald-400 font-mono">₹${subtotal}</span>
                 </div>
 
                 <button onclick="startPaymentFlow()" id="startPayBtn" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider">
-                  Proceed to Payment Details →
+                  Proceed to Payment →
                 </button>
               </div>
             </div>
           </div>
 
-          <!-- Step 2: Payment Details & Screenshot Upload Form (Hidden Initially) -->
-          <div id="checkoutStep2" class="hidden space-y-6">
-            <!-- Dynamic QR Code & Address Renderer -->
-          </div>
-
+          <div id="checkoutStep2" class="hidden space-y-6"></div>
         </div>
       `;
     }
@@ -543,7 +556,6 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
 
-        // Show Step 2: Payment instructions + screenshot upload
         document.getElementById('checkoutStep1').classList.add('hidden');
         const step2 = document.getElementById('checkoutStep2');
         step2.classList.remove('hidden');
@@ -586,27 +598,26 @@
                 <h3 class="text-base font-black text-white font-mono">${txn.txn_id}</h3>
               </div>
               <div class="text-right">
-                <span class="text-[10px] text-slate-500">PAYABLE</span>
+                <span class="text-[10px] text-slate-500">AMOUNT</span>
                 <div class="text-lg font-black text-emerald-400 font-mono">₹${txn.amount}</div>
               </div>
             </div>
 
             ${detailsHTML}
 
-            <!-- Proof Upload Form -->
             <form onsubmit="submitPaymentProof(event, '${txn.txn_id}')" class="space-y-4 pt-4 border-t border-white/5">
-              <label class="text-xs font-bold text-white block">Upload Payment Screenshot / Transfer Proof (JPG, PNG, WEBP)</label>
+              <label class="text-xs font-bold text-white block">Upload Payment Proof Screenshot (JPG, PNG, WEBP)</label>
               <input type="file" id="proofFileInput" accept="image/png, image/jpeg, image/webp" required class="w-full text-xs text-slate-400 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20">
               
               <button type="submit" id="submitProofBtn" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider">
-                Submit Payment Proof for Admin Verification
+                Submit Payment Proof for Verification
               </button>
             </form>
           </div>
         `;
       } catch (err) {
         btn.disabled = false;
-        btn.textContent = 'Proceed to Payment Details →';
+        btn.textContent = 'Proceed to Payment →';
         showToast(err.message, 'error');
       }
     }
@@ -638,19 +649,18 @@
         localStorage.removeItem('nexus_cart');
         document.querySelectorAll('.cart-count-badge').forEach(b => b.textContent = '0');
 
-        showToast('Payment proof submitted. Waiting for admin verification!');
+        showToast('Proof submitted! Payment is being verified.');
         navigate('orders');
       } catch (err) {
         btn.disabled = false;
-        btn.textContent = 'Submit Payment Proof for Admin Verification';
+        btn.textContent = 'Submit Payment Proof for Verification';
         showToast(err.message, 'error');
       }
     }
 
-    // Customer Orders / Purchased Items with Manual Lock Shield
     async function renderStoreOrders(container) {
       if (!state.token) return renderCustomerAuthPrompt(container, 'orders');
-      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold">Loading your items...</div>';
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold">Loading vault...</div>';
 
       try {
         const res = await fetch('/api/customer/orders', {
@@ -662,7 +672,7 @@
           <div class="max-w-4xl mx-auto space-y-6">
             <div>
               <h1 class="text-xl font-black text-white">Purchased Digital Goods</h1>
-              <p class="text-xs text-slate-400">Digital credentials appear below as soon as payment is confirmed by Admin.</p>
+              <p class="text-xs text-slate-400">Credentials will unlock as soon as your payment proof is confirmed by the admin.</p>
             </div>
 
             ${orders.length === 0 ? `<div class="glass rounded-3xl p-12 text-center text-xs text-slate-400">No orders found.</div>` : `
@@ -694,7 +704,7 @@
                             ${isPaid ? renderCustomerUnlockedItemHTML(item) : `
                               <div class="p-3 rounded-xl bg-surface-900 border border-amber-500/20 text-xs text-amber-400 flex items-center gap-2">
                                 <span>🔒</span>
-                                <span>Credentials locked. Your payment proof is currently under review by our admin.</span>
+                                <span>Credentials locked. Your payment proof is under verification.</span>
                               </div>
                             `}
                           </div>
@@ -722,7 +732,7 @@
               <button onclick="navigator.clipboard.writeText('${d.email}'); showToast('Copied!')" class="text-emerald-400">Copy</button>
             </div>
             <div class="p-3 rounded-xl bg-surface-900 flex justify-between">
-              <span class="font-mono text-white select-all">Password: ${d.password}</span>
+              <span class="font-mono text-white select-all">Pass: ${d.password}</span>
               <button onclick="navigator.clipboard.writeText('${d.password}'); showToast('Copied!')" class="text-emerald-400">Copy</button>
             </div>
           </div>
@@ -731,7 +741,7 @@
         return `
           <div class="p-3 rounded-xl bg-surface-900 text-xs font-mono text-emerald-400 flex justify-between">
             <span class="select-all font-bold">Key: ${d.license_key}</span>
-            <button onclick="navigator.clipboard.writeText('${d.license_key}'); showToast('Key copied!')" class="text-emerald-400">Copy Key</button>
+            <button onclick="navigator.clipboard.writeText('${d.license_key}'); showToast('Key copied!')" class="text-emerald-400 font-bold">Copy Key</button>
           </div>
         `;
       } else if (item.delivery_type === 'STANDARD_LINK') {
@@ -743,7 +753,7 @@
     function renderCustomerAuthPrompt(container, returnView) {
       container.innerHTML = `
         <div class="max-w-md mx-auto glass rounded-3xl p-8 space-y-4">
-          <h2 class="text-lg font-black text-white text-center">Customer Login / Signup</h2>
+          <h2 class="text-lg font-black text-white text-center">Customer Account</h2>
           <form onsubmit="handleCustomerLogin(event, '${returnView}')" class="space-y-3">
             <input type="email" id="cLogEmail" required placeholder="Email" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
             <input type="password" id="cLogPass" required placeholder="Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
@@ -825,9 +835,8 @@
     }
 
     // =========================================================================
-    // DEDICATED SEPARATE SAAS ADMIN CONTROL CENTER
+    // DEDICATED SAAS ADMIN CONTROL CENTER (NO BLUR OVERLAY BUG)
     // =========================================================================
-
     function renderAdminLogin(viewport) {
       viewport.innerHTML = `
         <div class="min-h-screen w-full bg-admin-bg flex items-center justify-center p-4">
@@ -868,24 +877,24 @@
         state.adminUsername = data.username;
         localStorage.setItem('nexus_admin_token', data.token);
         localStorage.setItem('nexus_admin_user', data.username);
-        showToast('Admin Session Authorized');
+        showToast('Admin Authorized');
         navigate('admin-center');
       } catch (err) { showToast(err.message, 'error'); }
     }
 
     function renderAdminSaaSLayout(viewport) {
       viewport.innerHTML = `
-        <div class="flex flex-1 min-h-screen w-full bg-admin-bg font-sans text-slate-200">
+        <div class="flex flex-1 min-h-screen w-full bg-admin-bg font-sans text-slate-200 relative">
           
-          <!-- Distinct SaaS Admin Sidebar -->
-          <aside class="w-64 bg-admin-sidebar border-r border-admin-border flex flex-col justify-between">
+          <!-- Admin Sidebar (Responsive) -->
+          <aside id="adminSidebar" class="fixed lg:static top-0 bottom-0 left-0 w-64 bg-admin-sidebar border-r border-admin-border flex flex-col justify-between z-50 transition-transform duration-300 -translate-x-full lg:translate-x-0">
             <div>
               <div class="p-6 border-b border-admin-border flex items-center justify-between">
                 <div>
-                  <span class="text-xs font-black text-emerald-400 uppercase tracking-widest block font-mono">NEXUS SAAS v2.6</span>
-                  <span class="text-sm font-bold text-white">Admin Control</span>
+                  <span class="text-xs font-black text-emerald-400 uppercase tracking-widest block font-mono">NEXUS CONTROL</span>
+                  <span class="text-sm font-bold text-white">Admin Hub</span>
                 </div>
-                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                <button onclick="toggleAdminDrawer(false)" class="lg:hidden text-slate-400 p-1">✕</button>
               </div>
 
               <nav class="p-4 space-y-1 text-xs font-bold">
@@ -895,33 +904,32 @@
                   <span id="pendingTxnCountBadge" class="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-400 font-mono">0</span>
                 </button>
                 <button onclick="switchAdminSection('products')" id="adnav-products" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🛍 <span>Product Studio</span></button>
-                <button onclick="switchAdminSection('payment-settings')" id="adnav-payment-settings" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">💰 <span>Payment Gateway (UPI/Crypto)</span></button>
+                <button onclick="switchAdminSection('payment-settings')" id="adnav-payment-settings" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">💰 <span>Payment Gateway</span></button>
               </nav>
             </div>
 
             <div class="p-4 border-t border-admin-border space-y-2">
-              <button onclick="navigate('home')" class="w-full py-2.5 rounded-xl bg-white/5 text-slate-400 hover:text-white text-xs font-bold">👁 View Customer Store</button>
+              <button onclick="navigate('home')" class="w-full py-2.5 rounded-xl bg-white/5 text-slate-400 hover:text-white text-xs font-bold">👁 Customer Store</button>
               <button onclick="adminSignOut()" class="w-full py-2.5 rounded-xl bg-rose-500/10 text-rose-400 text-xs font-bold">🚪 End Admin Session</button>
             </div>
           </aside>
 
-          <!-- Main Admin Canvas -->
+          <!-- Main Admin Body -->
           <div class="flex-1 flex flex-col min-w-0">
-            <header class="h-16 border-b border-admin-border bg-admin-sidebar/50 px-8 flex items-center justify-between">
+            <header class="h-16 border-b border-admin-border bg-admin-sidebar/50 px-4 sm:px-8 flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <span class="text-xs text-slate-400 font-mono">Authenticated: ${state.adminUsername}</span>
+                <button onclick="toggleAdminDrawer(true)" class="lg:hidden p-2 rounded-xl bg-white/5 text-slate-300">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <span class="text-xs text-slate-400 font-mono">Admin: ${state.adminUsername}</span>
               </div>
-              <div class="flex items-center gap-4 text-xs">
-                <div class="flex items-center gap-2">
-                  <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  <span class="font-bold text-white">Live Engine Ready</span>
-                </div>
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="text-xs font-bold text-emerald-400 font-mono">Online</span>
               </div>
             </header>
 
-            <main id="adminMainContent" class="flex-1 p-8 space-y-8 max-w-7xl w-full mx-auto">
-              <!-- Render Section -->
-            </main>
+            <main id="adminMainContent" class="flex-1 p-4 sm:p-8 space-y-8 max-w-7xl w-full mx-auto"></main>
           </div>
 
         </div>
@@ -932,6 +940,7 @@
 
     function switchAdminSection(sec) {
       state.adminSection = sec;
+      closeAllDrawers();
       const content = document.getElementById('adminMainContent');
       if (!content) return;
 
@@ -956,30 +965,29 @@
       const stats = await statsRes.json();
       const live = await liveRes.json();
 
-      document.getElementById('pendingTxnCountBadge').textContent = stats.pendingPayments || '0';
+      const pBadge = document.getElementById('pendingTxnCountBadge');
+      if (pBadge) pBadge.textContent = stats.pendingPayments || '0';
 
       container.innerHTML = `
-        <div class="space-y-8">
+        <div class="space-y-6">
           
-          <!-- Live Status Row -->
           <div class="admin-card rounded-3xl p-6 border border-emerald-500/30 bg-gradient-to-r from-emerald-950/20 to-admin-card">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div class="flex items-center gap-3">
                 <span class="w-3.5 h-3.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 <div>
                   <h3 class="text-sm font-bold text-white">LIVE WEBSITE STATUS</h3>
-                  <p class="text-xs text-slate-400">Real-time anonymous session heartbeat monitor</p>
+                  <p class="text-xs text-slate-400">Real-time visitor presence</p>
                 </div>
               </div>
-              <div class="flex gap-4 font-mono text-xs">
+              <div class="flex flex-wrap gap-2 font-mono text-xs">
                 <div class="px-3 py-1.5 rounded-xl bg-surface-950 border border-admin-border"><span class="text-emerald-400 font-bold">${live.total_live_visitors}</span> Live Visitors</div>
                 <div class="px-3 py-1.5 rounded-xl bg-surface-950 border border-admin-border"><span class="text-teal-400 font-bold">${live.product_viewers}</span> Viewing Products</div>
-                <div class="px-3 py-1.5 rounded-xl bg-surface-950 border border-admin-border"><span class="text-amber-400 font-bold">${live.checkout_users}</span> In Checkout</div>
+                <div class="px-3 py-1.5 rounded-xl bg-surface-950 border border-admin-border"><span class="text-amber-400 font-bold">${live.checkout_users}</span> At Checkout</div>
               </div>
             </div>
           </div>
 
-          <!-- Real Metric KPI Cards -->
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="admin-card rounded-2xl p-5"><span class="text-[10px] text-slate-500 font-mono uppercase">Total Revenue</span><div class="text-2xl font-black text-emerald-400 font-mono">₹${stats.totalRevenue}</div></div>
             <div class="admin-card rounded-2xl p-5"><span class="text-[10px] text-slate-500 font-mono uppercase">Pending Payments</span><div class="text-2xl font-black text-amber-400 font-mono">${stats.pendingPayments}</div></div>
@@ -987,9 +995,8 @@
             <div class="admin-card rounded-2xl p-5"><span class="text-[10px] text-slate-500 font-mono uppercase">Today's Orders</span><div class="text-2xl font-black text-white font-mono">${stats.todayOrders}</div></div>
           </div>
 
-          <!-- Live Activity Log -->
           <div class="admin-card rounded-3xl p-6 space-y-4">
-            <h3 class="text-xs font-bold uppercase text-slate-400 font-mono">Real-Time Activity Feed</h3>
+            <h3 class="text-xs font-bold uppercase text-slate-400 font-mono">Live Activity Stream</h3>
             <div class="space-y-2 max-h-60 overflow-y-auto custom-scroll">
               ${(live.recent_activity || []).map(a => `
                 <div class="p-3 rounded-xl bg-surface-950/80 border border-admin-border text-xs flex justify-between items-center">
@@ -1004,9 +1011,6 @@
       `;
     }
 
-    // =========================================================================
-    // ADMIN TRANSACTIONS QUEUE & PAYMENT PROOF VERIFICATION
-    // =========================================================================
     async function renderAdminTransactions(container) {
       container.innerHTML = '<div class="text-center py-12 text-slate-500 font-mono">Loading transaction queue...</div>';
       const res = await fetch('/api/admin/transactions', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
@@ -1014,11 +1018,9 @@
 
       container.innerHTML = `
         <div class="space-y-6">
-          <div class="flex justify-between items-center">
-            <div>
-              <h2 class="text-lg font-black text-white">Manual Payment Verifications</h2>
-              <p class="text-xs text-slate-400">Review payment screenshots and unlock customer credentials</p>
-            </div>
+          <div>
+            <h2 class="text-lg font-black text-white">Manual Payment Verifications</h2>
+            <p class="text-xs text-slate-400">Verify screenshots to unlock customer digital keys</p>
           </div>
 
           <div class="admin-card rounded-3xl p-6">
@@ -1031,7 +1033,7 @@
                     <th class="pb-3">Amount</th>
                     <th class="pb-3">Method</th>
                     <th class="pb-3">Status</th>
-                    <th class="pb-3">Proof Screenshot</th>
+                    <th class="pb-3">Proof</th>
                     <th class="pb-3 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -1039,7 +1041,7 @@
                   ${txns.map(t => `
                     <tr>
                       <td class="py-3.5 font-bold text-white">${t.txn_id}</td>
-                      <td class="py-3.5 text-slate-300">${t.customer_name} (${t.customer_email})</td>
+                      <td class="py-3.5 text-slate-300">${t.customer_name}</td>
                       <td class="py-3.5 text-emerald-400 font-bold">₹${t.amount}</td>
                       <td class="py-3.5 text-slate-400">${t.payment_method}</td>
                       <td class="py-3.5">
@@ -1052,7 +1054,7 @@
                       <td class="py-3.5">
                         ${t.proof_screenshot ? `
                           <button onclick="viewPaymentProofModal('${t.proof_screenshot}', '${t.txn_id}')" class="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-[11px]">
-                            🔍 View Proof
+                            🔍 View
                           </button>
                         ` : '<span class="text-slate-500">No proof</span>'}
                       </td>
@@ -1088,7 +1090,7 @@
     }
 
     async function confirmTransaction(id) {
-      if (!confirm('Confirm this payment and unlock digital goods for the customer?')) return;
+      if (!confirm('Confirm payment and unlock credentials for customer?')) return;
       try {
         const res = await fetch(`/api/admin/transactions/${id}/confirm`, {
           method: 'POST',
@@ -1102,7 +1104,7 @@
     }
 
     async function rejectTransaction(id) {
-      const reason = prompt('Enter rejection reason (e.g. Invalid screenshot, amount mismatch):', 'Payment screenshot invalid.');
+      const reason = prompt('Enter rejection reason:', 'Payment screenshot invalid.');
       if (reason === null) return;
 
       try {
@@ -1121,9 +1123,6 @@
       } catch (err) { showToast(err.message, 'error'); }
     }
 
-    // =========================================================================
-    // ADMIN PAYMENT SETTINGS (UPI & CRYPTO)
-    // =========================================================================
     async function renderAdminPaymentSettings(container) {
       container.innerHTML = '<div class="text-center py-12 text-slate-500 font-mono">Loading payment configurations...</div>';
       const res = await fetch('/api/admin/payment-settings', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
@@ -1133,33 +1132,30 @@
         <div class="max-w-3xl space-y-6">
           <div>
             <h2 class="text-lg font-black text-white">Payment Gateway Settings</h2>
-            <p class="text-xs text-slate-400">Configure UPI and Cryptocurrency details shown at customer checkout</p>
+            <p class="text-xs text-slate-400">Configure UPI and Crypto details displayed to customers</p>
           </div>
 
           <form onsubmit="saveAdminPaymentSettings(event)" class="space-y-6 text-xs">
-            
-            <!-- UPI Settings -->
             <div class="admin-card rounded-3xl p-6 space-y-4">
               <h3 class="font-bold uppercase text-emerald-400 font-mono">1. UPI Configuration</h3>
               <div class="space-y-3">
                 <input type="text" id="admUpiId" required value="${s.upi_id || ''}" placeholder="UPI ID (e.g. merchant@okaxis)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
-                <input type="text" id="admUpiName" required value="${s.upi_name || ''}" placeholder="Account / Payee Name" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
-                <input type="text" id="admUpiQr" required value="${s.upi_qr_url || ''}" placeholder="QR Code Image URL" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
-                <textarea id="admUpiInst" rows="3" placeholder="Payment Instructions" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">${s.upi_instructions || ''}</textarea>
+                <input type="text" id="admUpiName" required value="${s.upi_name || ''}" placeholder="Payee Name" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
+                <input type="text" id="admUpiQr" required value="${s.upi_qr_url || ''}" placeholder="QR Code URL" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
+                <textarea id="admUpiInst" rows="3" placeholder="Instructions" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">${s.upi_instructions || ''}</textarea>
               </div>
             </div>
 
-            <!-- Crypto Settings -->
             <div class="admin-card rounded-3xl p-6 space-y-4">
               <h3 class="font-bold uppercase text-teal-400 font-mono">2. Crypto Configuration</h3>
               <div class="space-y-3">
                 <div class="grid grid-cols-2 gap-3">
-                  <input type="text" id="admCryptoCurr" required value="${s.crypto_currency || 'USDT'}" placeholder="Currency (USDT, BTC)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
-                  <input type="text" id="admCryptoNet" required value="${s.crypto_network || 'TRC20'}" placeholder="Network (TRC20, ERC20)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
+                  <input type="text" id="admCryptoCurr" required value="${s.crypto_currency || 'USDT'}" placeholder="Currency" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
+                  <input type="text" id="admCryptoNet" required value="${s.crypto_network || 'TRC20'}" placeholder="Network" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
                 </div>
                 <input type="text" id="admCryptoWallet" required value="${s.crypto_wallet_address || ''}" placeholder="Wallet Address" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
-                <input type="text" id="admCryptoQr" required value="${s.crypto_qr_url || ''}" placeholder="Crypto QR Code Image URL" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
-                <textarea id="admCryptoInst" rows="3" placeholder="Crypto Transfer Instructions" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">${s.crypto_instructions || ''}</textarea>
+                <input type="text" id="admCryptoQr" required value="${s.crypto_qr_url || ''}" placeholder="Crypto QR Code URL" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
+                <textarea id="admCryptoInst" rows="3" placeholder="Instructions" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">${s.crypto_instructions || ''}</textarea>
               </div>
             </div>
 
@@ -1199,9 +1195,6 @@
       } catch (err) { showToast(err.message, 'error'); }
     }
 
-    // =========================================================================
-    // ADMIN PRODUCTS STUDIO
-    // =========================================================================
     async function renderAdminProductsStudio(container) {
       const res = await fetch('/api/admin/products', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
       const products = await res.json();
@@ -1256,7 +1249,7 @@
               <option value="STANDARD_LINK">Standard Link</option>
             </select>
           </div>
-          <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black uppercase">Create & Publish</button>
+          <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black uppercase">Create Product</button>
         </form>
       `;
     }
@@ -1337,7 +1330,7 @@
     }
 
     async function deleteAdminProduct(id) {
-      if (!confirm('Permanently delete product?')) return;
+      if (!confirm('Delete product?')) return;
       try {
         await fetch(`/api/admin/products/${id}`, {
           method: 'DELETE',
@@ -1356,7 +1349,6 @@
       navigate('home');
     }
 
-    // Bootstrap
     document.addEventListener('DOMContentLoaded', () => {
       navigate('home');
     });
