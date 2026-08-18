@@ -12,21 +12,54 @@ app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-const uploadDir = path.join(__dirname, 'secure_storage');
+// Ensure upload & storage directories exist
+const uploadDir = path.join(__dirname, 'public', 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
+// Multer Storage Configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
+    cb(null, uniqueSuffix + '-' + file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_'));
   }
 });
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 15 * 1024 * 1024 } // 15MB
+});
 
 const JWT_SECRET = process.env.JWT_SECRET || 'nexus_digital_super_secret_jwt_2026_key';
+
+// ----------------------------------------------------
+// LIVE REAL-TIME PRESENCE & ACTIVITY TRACKER (IN-MEMORY)
+// ----------------------------------------------------
+const activeSessions = new Map(); // sessionId -> { page, timestamp }
+const activityFeed = []; // Array of recent live events
+
+function recordActivity(type, text, meta = {}) {
+  const item = {
+    id: Date.now() + '-' + Math.random(),
+    type,
+    text,
+    meta,
+    created_at: new Date()
+  };
+  activityFeed.unshift(item);
+  if (activityFeed.length > 50) activityFeed.pop();
+}
+
+// Clean inactive sessions older than 35 seconds
+setInterval(() => {
+  const now = Date.now();
+  for (const [sessionId, data] of activeSessions.entries()) {
+    if (now - data.timestamp > 35000) {
+      activeSessions.delete(sessionId);
+    }
+  }
+}, 10000);
 
 // ----------------------------------------------------
 // MONGOOSE SCHEMAS & MODELS
@@ -43,15 +76,7 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   mobile: { type: String, default: '' },
   password_hash: { type: String, required: true },
-  wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
   created_at: { type: Date, default: Date.now }
-});
-
-const CategorySchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true },
-  description: { type: String, default: '' },
-  icon: { type: String, default: '📂' },
-  status: { type: String, enum: ['active', 'inactive'], default: 'active' }
 });
 
 const InventoryItemSchema = new mongoose.Schema({
@@ -68,7 +93,6 @@ const InventoryItemSchema = new mongoose.Schema({
   license_key: { type: String, default: '' },
   custom_text: { type: String, default: '' },
   file_reference: { type: String, default: '' },
-  file_name: { type: String, default: '' },
   status: { type: String, enum: ['Available', 'Reserved', 'Sold', 'Disabled'], default: 'Available' },
   assigned_order_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', default: null },
   created_at: { type: Date, default: Date.now }
@@ -78,7 +102,7 @@ const ProductSchema = new mongoose.Schema({
   name: { type: String, required: true },
   short_description: { type: String, default: '' },
   description: { type: String, default: '' },
-  category: { type: String, required: true },
+  category: { type: String, default: 'Digital Goods' },
   tags: [String],
   sku: { type: String, required: true, unique: true },
   original_price: { type: Number, required: true },
@@ -92,20 +116,10 @@ const ProductSchema = new mongoose.Schema({
   },
   features: [{ type: String }],
   whats_included: [{ type: String }],
-  specifications: [{
-    label: { type: String },
-    value: { type: String }
-  }],
-  faqs: [{
-    question: { type: String },
-    answer: { type: String }
-  }],
+  specifications: [{ label: String, value: String }],
+  faqs: [{ question: String, answer: String }],
   status: { type: String, enum: ['active', 'draft', 'archived', 'disabled'], default: 'active' },
-  featured: { type: Boolean, default: false },
-  deal: { type: Boolean, default: false },
-  max_downloads: { type: Number, default: 5 },
   created_at: { type: Date, default: Date.now },
-  updated_at: { type: Date, default: Date.now },
   sales_count: { type: Number, default: 0 }
 });
 
@@ -117,11 +131,31 @@ const CouponSchema = new mongoose.Schema({
   max_discount: { type: Number, default: 0 },
   usage_limit: { type: Number, default: 100 },
   used_count: { type: Number, default: 0 },
-  status: { type: String, enum: ['active', 'inactive'], default: 'active' },
-  expires_at: { type: Date, default: null }
+  status: { type: String, enum: ['active', 'inactive'], default: 'active' }
+});
+
+const TransactionSchema = new mongoose.Schema({
+  txn_id: { type: String, required: true, unique: true },
+  order_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true },
+  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  customer_name: String,
+  customer_email: String,
+  customer_mobile: String,
+  amount: { type: Number, required: true },
+  payment_method: { type: String, enum: ['UPI', 'CRYPTO'], required: true },
+  proof_screenshot: { type: String, default: '' },
+  status: { 
+    type: String, 
+    enum: ['PENDING_PAYMENT', 'PROCESSING', 'CONFIRMED', 'REJECTED', 'REFUNDED'], 
+    default: 'PENDING_PAYMENT' 
+  },
+  rejection_reason: { type: String, default: '' },
+  verified_at: { type: Date, default: null },
+  created_at: { type: Date, default: Date.now }
 });
 
 const OrderSchema = new mongoose.Schema({
+  order_number: { type: String, required: true, unique: true },
   user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   customer_name: String,
   customer_email: String,
@@ -131,36 +165,46 @@ const OrderSchema = new mongoose.Schema({
     name: String,
     price: Number,
     delivery_type: String,
-    delivered_data: { type: mongoose.Schema.Types.Mixed }
+    // Sensitive delivery data: only attached or revealed upon transaction confirmation
+    delivered_data: { type: mongoose.Schema.Types.Mixed, default: null }
   }],
   subtotal: { type: Number, required: true },
   discount_amount: { type: Number, default: 0 },
   coupon_code: { type: String, default: '' },
   total_amount: { type: Number, required: true },
-  payment_status: { type: String, enum: ['Pending', 'Paid', 'Failed', 'Refunded'], default: 'Paid' },
-  delivery_status: { type: String, enum: ['Pending', 'Delivered', 'Failed'], default: 'Delivered' },
+  payment_method: { type: String, enum: ['UPI', 'CRYPTO'], default: 'UPI' },
+  payment_status: { type: String, enum: ['Pending', 'Processing', 'Paid', 'Failed', 'Refunded'], default: 'Pending' },
+  delivery_status: { type: String, enum: ['Pending', 'Processing', 'Delivered', 'Failed'], default: 'Pending' },
+  transaction_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Transaction', default: null },
   created_at: { type: Date, default: Date.now }
 });
 
-const SettingsSchema = new mongoose.Schema({
-  store_name: { type: String, default: 'NEXUS DIGITAL' },
-  tagline: { type: String, default: 'Premium Verified Digital Assets & Software' },
-  currency: { type: String, default: '₹' },
-  contact_email: { type: String, default: 'support@nexusdigital.io' },
-  banner_text: { type: String, default: '🎉 Summer Sale: Use code SAVE20 for 20% OFF all digital software!' }
+const PaymentSettingsSchema = new mongoose.Schema({
+  upi_enabled: { type: Boolean, default: true },
+  upi_id: { type: String, default: 'merchant@okaxis' },
+  upi_name: { type: String, default: 'Nexus Digital Pay' },
+  upi_qr_url: { type: String, default: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=merchant@okaxis&pn=NexusDigital' },
+  upi_instructions: { type: String, default: '1. Scan QR code or copy UPI ID.\n2. Pay the exact order amount.\n3. Take a screenshot of the completed payment.\n4. Upload the screenshot below to submit proof.' },
+
+  crypto_enabled: { type: Boolean, default: true },
+  crypto_currency: { type: String, default: 'USDT' },
+  crypto_network: { type: String, default: 'TRC20' },
+  crypto_wallet_address: { type: String, default: 'TXYz9876543210AbCdEfGhIjKlMnOpQrStU' },
+  crypto_qr_url: { type: String, default: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=TXYz9876543210AbCdEfGhIjKlMnOpQrStU' },
+  crypto_instructions: { type: String, default: '1. Send exact amount in USDT (TRC20 network).\n2. Note transaction hash & take transfer screenshot.\n3. Upload payment proof for instant admin verification.' }
 });
 
 const Admin = mongoose.model('Admin', AdminSchema);
 const User = mongoose.model('User', UserSchema);
-const Category = mongoose.model('Category', CategorySchema);
 const Product = mongoose.model('Product', ProductSchema);
 const InventoryItem = mongoose.model('InventoryItem', InventoryItemSchema);
 const Coupon = mongoose.model('Coupon', CouponSchema);
+const Transaction = mongoose.model('Transaction', TransactionSchema);
 const Order = mongoose.model('Order', OrderSchema);
-const Settings = mongoose.model('Settings', SettingsSchema);
+const PaymentSettings = mongoose.model('PaymentSettings', PaymentSettingsSchema);
 
 // ----------------------------------------------------
-// DATABASE SEEDING
+// DATABASE INITIAL SEEDING
 // ----------------------------------------------------
 async function initializeSystem() {
   try {
@@ -169,22 +213,13 @@ async function initializeSystem() {
       const salt = await bcrypt.genSalt(10);
       const hash = await bcrypt.hash('5669', salt);
       await Admin.create({ username: 'Aryan', password_hash: hash });
-      console.log('✓ Initialized Admin User: Aryan');
+      console.log('✓ Initialized SuperAdmin: Aryan / 5669');
     }
 
-    const existingSettings = await Settings.findOne();
-    if (!existingSettings) await Settings.create({});
-
-    const catCount = await Category.countDocuments();
-    if (catCount === 0) {
-      await Category.insertMany([
-        { name: 'Software', description: 'Productivity & developer utilities', icon: '💻' },
-        { name: 'Accounts', description: 'Verified streaming & premium service accounts', icon: '🔐' },
-        { name: 'License Keys', description: 'Official OS & software license activations', icon: '🔑' },
-        { name: 'E-books', description: 'Programming, UI design & tech manuals', icon: '📚' },
-        { name: 'Courses', description: 'Full-stack development video packs', icon: '🎓' },
-        { name: 'Templates', description: 'Production UI kits and site templates', icon: '🎨' }
-      ]);
+    const existingPaymentSettings = await PaymentSettings.findOne();
+    if (!existingPaymentSettings) {
+      await PaymentSettings.create({});
+      console.log('✓ Initialized Payment Settings (UPI & Crypto)');
     }
 
     const existingCoupon = await Coupon.findOne({ code: 'SAVE20' });
@@ -199,13 +234,12 @@ async function initializeSystem() {
       });
     }
 
-    // Seed/Update rich mock items with detailed specifications
     const pCount = await Product.countDocuments();
     if (pCount === 0) {
       const netflix = await Product.create({
         name: 'Netflix 4K UHD 1-Month Private Profile',
         short_description: 'Dedicated PIN-protected UHD profile on genuine account.',
-        description: 'Enjoy Ultra HD 4K streaming across all your devices including Smart TVs, Smartphones, PCs, and Tablets. Private PIN lock ensures your watch history and recommendations stay untouched.',
+        description: 'Enjoy Ultra HD 4K streaming across all your devices including Smart TVs, Phones, PCs, and Tablets. Private PIN lock ensures your profile stays private.',
         category: 'Accounts',
         tags: ['streaming', 'netflix', 'uhd', 'account', '4k'],
         sku: 'NFLX-4K-01',
@@ -223,15 +257,13 @@ async function initializeSystem() {
           { label: 'Quality', value: '4K HDR / Dolby Vision' },
           { label: 'Duration', value: '30 Days' },
           { label: 'Screen Limit', value: '1 Screen (Private Profile)' },
-          { label: 'Delivery', value: 'Instant Automation' }
+          { label: 'Delivery', value: 'Instant Manual Approval' }
         ],
         faqs: [
-          { question: 'Can I change the PIN?', answer: 'Yes, you can configure your profile PIN right after login.' },
-          { question: 'What happens if my subscription stops?', answer: 'We offer a 30-day instant warranty with automated credential replacement.' }
-        ],
-        featured: true,
-        deal: true
+          { question: 'When do I get my credentials?', answer: 'Immediately after the admin confirms your payment screenshot.' }
+        ]
       });
+
       await InventoryItem.create([
         { product_id: netflix._id, delivery_type: 'EMAIL_PASSWORD', email: 'vip_stream01@nexus.io', password: 'VaultStream#2026', status: 'Available' },
         { product_id: netflix._id, delivery_type: 'EMAIL_PASSWORD', email: 'vip_stream02@nexus.io', password: 'StreamBeast!889', status: 'Available' }
@@ -240,7 +272,7 @@ async function initializeSystem() {
       const winKey = await Product.create({
         name: 'Windows 11 Pro Genuine OEM Key',
         short_description: 'Lifetime activation for 1 PC with global Microsoft updates.',
-        description: 'Official OEM activation key for Microsoft Windows 11 Professional 64-bit/32-bit. Unlocks BitLocker encryption, Remote Desktop, Hyper-V, and full enterprise security suite.',
+        description: 'Official OEM activation key for Microsoft Windows 11 Professional 64-bit/32-bit. Unlocks BitLocker encryption, Remote Desktop, and full enterprise security suite.',
         category: 'License Keys',
         tags: ['windows', 'microsoft', 'os', 'key', 'license'],
         sku: 'WIN-11-PRO',
@@ -253,19 +285,17 @@ async function initializeSystem() {
         ],
         delivery_type: 'LICENSE_KEY',
         features: ['Lifetime Permanent Activation', 'Online Direct Microsoft Activation', 'Global Multilingual Support', 'Full Security & Windows Updates'],
-        whats_included: ['1x 25-Digit Alpha-Numeric License Key', 'Step-by-step Official Activation Guide'],
+        whats_included: ['1x 25-Digit License Key', 'Step-by-step Official Activation Guide'],
         specifications: [
           { label: 'Edition', value: 'Windows 11 Professional' },
           { label: 'Architecture', value: '32/64 Bit Supported' },
-          { label: 'Validity', value: 'Lifetime / Permanent' },
-          { label: 'Devices', value: '1 PC' }
+          { label: 'Validity', value: 'Lifetime / Permanent' }
         ],
         faqs: [
-          { question: 'Is this a genuine license?', answer: 'Yes, all keys authenticate directly through Microsoft activation servers.' }
-        ],
-        featured: true,
-        deal: true
+          { question: 'Is this genuine?', answer: 'Yes, keys activate directly with Microsoft validation servers.' }
+        ]
       });
+
       await InventoryItem.create([
         { product_id: winKey._id, delivery_type: 'LICENSE_KEY', license_key: 'W269N-WFGWX-YVC9B-4J6C9-T83GX', status: 'Available' },
         { product_id: winKey._id, delivery_type: 'LICENSE_KEY', license_key: 'MH37W-N47XK-V7XM9-C7227-GCQG9', status: 'Available' }
@@ -277,7 +307,7 @@ async function initializeSystem() {
 }
 
 // ----------------------------------------------------
-// AUTH MIDDLEWARES
+// AUTHENTICATION MIDDLEWARES
 // ----------------------------------------------------
 function authCustomer(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -289,7 +319,7 @@ function authCustomer(req, res, next) {
     req.user = decoded;
     next();
   } catch (err) {
-    return res.status(401).json({ error: 'Invalid customer session' });
+    return res.status(401).json({ error: 'Invalid or expired customer session' });
   }
 }
 
@@ -308,14 +338,30 @@ function authAdmin(req, res, next) {
 }
 
 // ----------------------------------------------------
-// STOREFRONT & CATALOG APIS
+// PRESENCE & HEARTBEAT API
+// ----------------------------------------------------
+app.post('/api/presence/heartbeat', (req, res) => {
+  const { sessionId, page, action } = req.body;
+  if (sessionId) {
+    activeSessions.set(sessionId, {
+      page: page || 'home',
+      timestamp: Date.now()
+    });
+  }
+  if (action) {
+    recordActivity('visitor_action', action);
+  }
+  res.json({ status: 'ok' });
+});
+
+// ----------------------------------------------------
+// PUBLIC STORE APIS
 // ----------------------------------------------------
 
-app.get('/api/store/info', async (req, res) => {
+app.get('/api/payment-methods', async (req, res) => {
   try {
-    const settings = await Settings.findOne() || {};
-    const categories = await Category.find({ status: 'active' });
-    res.json({ settings, categories });
+    const settings = await PaymentSettings.findOne() || {};
+    res.json(settings);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -323,66 +369,37 @@ app.get('/api/store/info', async (req, res) => {
 
 app.get('/api/products', async (req, res) => {
   try {
-    const { category, search, deal, featured, sort } = req.query;
+    const { search, sort } = req.query;
     let query = { status: 'active' };
 
-    if (category && category !== 'All') query.category = category;
-    if (deal === 'true') query.deal = true;
-    if (featured === 'true') query.featured = true;
     if (search) {
       const regex = new RegExp(search, 'i');
-      query.$or = [
-        { name: regex },
-        { description: regex },
-        { short_description: regex },
-        { tags: regex },
-        { sku: regex }
-      ];
+      query.$or = [{ name: regex }, { description: regex }, { sku: regex }];
     }
 
     let sortOption = { created_at: -1 };
     if (sort === 'price_asc') sortOption = { sale_price: 1 };
     if (sort === 'price_desc') sortOption = { sale_price: -1 };
-    if (sort === 'best_selling') sortOption = { sales_count: -1 };
 
     const products = await Product.find(query).sort(sortOption);
-
-    const productsWithStock = await Promise.all(products.map(async (p) => {
+    const withStock = await Promise.all(products.map(async (p) => {
       const stock = await InventoryItem.countDocuments({ product_id: p._id, status: 'Available' });
-      return {
-        ...p.toObject(),
-        in_stock: stock > 0,
-        stock_count: stock
-      };
+      return { ...p.toObject(), in_stock: stock > 0, stock_count: stock };
     }));
 
-    res.json(productsWithStock);
+    res.json(withStock);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Single Product with Real-time Stock & Related Items
 app.get('/api/products/:id', async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ error: 'Product not found' });
-
     const stock = await InventoryItem.countDocuments({ product_id: product._id, status: 'Available' });
-    
-    // Fetch real related products
-    const related = await Product.find({
-      _id: { $ne: product._id },
-      category: product.category,
-      status: 'active'
-    }).limit(4);
-
-    res.json({
-      ...product.toObject(),
-      in_stock: stock > 0,
-      stock_count: stock,
-      related
-    });
+    const related = await Product.find({ _id: { $ne: product._id }, status: 'active' }).limit(4);
+    res.json({ ...product.toObject(), in_stock: stock > 0, stock_count: stock, related });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -394,26 +411,17 @@ app.post('/api/cart/validate-coupon', async (req, res) => {
     if (!code) return res.status(400).json({ error: 'Coupon code required' });
 
     const coupon = await Coupon.findOne({ code: code.toUpperCase().trim(), status: 'active' });
-    if (!coupon) return res.status(404).json({ error: 'Invalid or inactive coupon code' });
-
-    if (coupon.usage_limit && coupon.used_count >= coupon.usage_limit) {
-      return res.status(400).json({ error: 'This coupon has reached its maximum limit' });
-    }
+    if (!coupon) return res.status(404).json({ error: 'Invalid coupon' });
 
     if (subtotal < coupon.min_purchase) {
-      return res.status(400).json({ error: `Minimum order amount of ₹${coupon.min_purchase} required` });
+      return res.status(400).json({ error: `Minimum purchase of ₹${coupon.min_purchase} required` });
     }
 
-    let discount = 0;
-    if (coupon.discount_type === 'percentage') {
-      discount = (subtotal * coupon.discount_value) / 100;
-      if (coupon.max_discount > 0 && discount > coupon.max_discount) {
-        discount = coupon.max_discount;
-      }
-    } else {
-      discount = coupon.discount_value;
-    }
-
+    let discount = coupon.discount_type === 'percentage' 
+      ? (subtotal * coupon.discount_value) / 100 
+      : coupon.discount_value;
+    
+    if (coupon.max_discount > 0 && discount > coupon.max_discount) discount = coupon.max_discount;
     discount = Math.min(discount, subtotal);
 
     res.json({
@@ -428,7 +436,7 @@ app.post('/api/cart/validate-coupon', async (req, res) => {
 });
 
 // ----------------------------------------------------
-// CUSTOMER & ORDER APIS
+// CUSTOMER AUTH & TRANSACTIONS
 // ----------------------------------------------------
 
 app.post('/api/auth/customer/register', async (req, res) => {
@@ -437,12 +445,14 @@ app.post('/api/auth/customer/register', async (req, res) => {
     if (!name || !email || !password) return res.status(400).json({ error: 'All fields required' });
 
     const existing = await User.findOne({ email: email.toLowerCase().trim() });
-    if (existing) return res.status(400).json({ error: 'Email already registered' });
+    if (existing) return res.status(400).json({ error: 'Email already exists' });
 
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(password, salt);
-
     const user = await User.create({ name, email: email.toLowerCase().trim(), mobile: mobile || '', password_hash });
+
+    recordActivity('customer_registered', `New customer registered: ${user.name}`);
+
     const token = jwt.sign({ id: user._id, role: 'customer', email: user.email }, JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ token, user: { id: user._id, name: user.name, email: user.email, mobile: user.mobile } });
   } catch (err) {
@@ -454,10 +464,10 @@ app.post('/api/auth/customer/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email: email.toLowerCase().trim() });
-    if (!user) return res.status(400).json({ error: 'Invalid email or password' });
+    if (!user) return res.status(400).json({ error: 'Invalid credentials' });
 
     const match = await bcrypt.compare(password, user.password_hash);
-    if (!match) return res.status(400).json({ error: 'Invalid email or password' });
+    if (!match) return res.status(400).json({ error: 'Invalid credentials' });
 
     const token = jwt.sign({ id: user._id, role: 'customer', email: user.email }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: { id: user._id, name: user.name, email: user.email, mobile: user.mobile } });
@@ -466,114 +476,143 @@ app.post('/api/auth/customer/login', async (req, res) => {
   }
 });
 
-app.get('/api/customer/orders', authCustomer, async (req, res) => {
+// 1. Initiate Order & Create Transaction
+app.post('/api/checkout/initiate-order', authCustomer, async (req, res) => {
   try {
-    const orders = await Order.find({ user_id: req.user.id }).sort({ created_at: -1 });
-    res.json(orders);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/checkout/process', authCustomer, async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  try {
-    const { items, coupon_code } = req.body;
-    if (!items || !items.length) throw new Error('Shopping cart is empty');
+    const { items, payment_method, coupon_code } = req.body;
+    if (!items || !items.length) return res.status(400).json({ error: 'Cart is empty' });
 
     const user = await User.findById(req.user.id);
-    let calculatedSubtotal = 0;
+    let subtotal = 0;
     const orderItems = [];
 
-    for (const cartItem of items) {
-      const product = await Product.findById(cartItem.product_id).session(session);
-      if (!product || product.status !== 'active') throw new Error(`Product "${cartItem.name}" is no longer available`);
-
-      calculatedSubtotal += product.sale_price;
-
-      const inventory = await InventoryItem.findOneAndUpdate(
-        { product_id: product._id, status: 'Available' },
-        { status: 'Sold' },
-        { new: true, session }
-      );
-
-      if (!inventory) throw new Error(`Product "${product.name}" is currently OUT OF STOCK.`);
-
-      product.sales_count += 1;
-      await product.save({ session });
-
-      let deliveryPayload = {};
-      if (inventory.delivery_type === 'EMAIL_PASSWORD') {
-        deliveryPayload = { email: inventory.email, password: inventory.password };
-      } else if (inventory.delivery_type === 'MOBILE_PASSWORD') {
-        deliveryPayload = { mobile: inventory.mobile, password: inventory.password };
-      } else if (inventory.delivery_type === 'STANDARD_LINK') {
-        deliveryPayload = { url: inventory.delivery_url };
-      } else if (inventory.delivery_type === 'LICENSE_KEY') {
-        deliveryPayload = { license_key: inventory.license_key };
-      } else if (inventory.delivery_type === 'CUSTOM_TEXT') {
-        deliveryPayload = { custom_text: inventory.custom_text };
-      } else if (inventory.delivery_type === 'DOWNLOADABLE_FILE') {
-        const fileToken = jwt.sign({ file: inventory.file_reference, filename: inventory.file_name }, JWT_SECRET, { expiresIn: '72h' });
-        deliveryPayload = { file_name: inventory.file_name, download_url: `/api/download/${fileToken}` };
-      }
-
+    for (const item of items) {
+      const p = await Product.findById(item.product_id);
+      if (!p || p.status !== 'active') throw new Error(`Product "${item.name}" is no longer available`);
+      subtotal += p.sale_price;
       orderItems.push({
-        product_id: product._id,
-        name: product.name,
-        price: product.sale_price,
-        delivery_type: inventory.delivery_type,
-        delivered_data: deliveryPayload
+        product_id: p._id,
+        name: p.name,
+        price: p.sale_price,
+        delivery_type: p.delivery_type,
+        delivered_data: null // Sensitive credentials remain NULL until confirmed
       });
     }
 
     let discountAmount = 0;
     if (coupon_code) {
-      const coupon = await Coupon.findOne({ code: coupon_code.toUpperCase().trim(), status: 'active' }).session(session);
-      if (coupon && calculatedSubtotal >= coupon.min_purchase) {
-        if (coupon.discount_type === 'percentage') {
-          discountAmount = (calculatedSubtotal * coupon.discount_value) / 100;
-          if (coupon.max_discount > 0 && discountAmount > coupon.max_discount) discountAmount = coupon.max_discount;
-        } else {
-          discountAmount = coupon.discount_value;
-        }
-        coupon.used_count += 1;
-        await coupon.save({ session });
+      const coupon = await Coupon.findOne({ code: coupon_code.toUpperCase().trim(), status: 'active' });
+      if (coupon && subtotal >= coupon.min_purchase) {
+        discountAmount = coupon.discount_type === 'percentage' 
+          ? (subtotal * coupon.discount_value) / 100 
+          : coupon.discount_value;
+        if (coupon.max_discount > 0 && discountAmount > coupon.max_discount) discountAmount = coupon.max_discount;
       }
     }
 
-    const finalAmount = Math.max(0, Math.round(calculatedSubtotal - discountAmount));
+    const totalAmount = Math.max(0, Math.round(subtotal - discountAmount));
+    const orderNumber = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
+    const txnId = 'TXN-' + Math.floor(100000 + Math.random() * 900000);
 
-    const order = new Order({
+    const order = await Order.create({
+      order_number: orderNumber,
       user_id: user._id,
       customer_name: user.name,
       customer_email: user.email,
       customer_mobile: user.mobile,
       items: orderItems,
-      subtotal: calculatedSubtotal,
+      subtotal,
       discount_amount: Math.round(discountAmount),
       coupon_code: coupon_code || '',
-      total_amount: finalAmount,
-      payment_status: 'Paid',
-      delivery_status: 'Delivered'
+      total_amount: totalAmount,
+      payment_method,
+      payment_status: 'Pending',
+      delivery_status: 'Pending'
     });
 
-    await order.save({ session });
-    await session.commitTransaction();
-    session.endSession();
+    const transaction = await Transaction.create({
+      txn_id: txnId,
+      order_id: order._id,
+      user_id: user._id,
+      customer_name: user.name,
+      customer_email: user.email,
+      customer_mobile: user.mobile,
+      amount: totalAmount,
+      payment_method,
+      status: 'PENDING_PAYMENT'
+    });
 
-    res.status(201).json({ success: true, order });
+    order.transaction_id = transaction._id;
+    await order.save();
+
+    recordActivity('order_initiated', `Customer ${user.name} started order #${orderNumber} for ₹${totalAmount} via ${payment_method}`);
+
+    res.status(201).json({
+      order,
+      transaction
+    });
+
   } catch (err) {
-    await session.abortTransaction();
-    session.endSession();
     res.status(400).json({ error: err.message });
   }
 });
 
+// 2. Upload Payment Proof Screenshot
+app.post('/api/checkout/upload-proof', authCustomer, upload.single('screenshot'), async (req, res) => {
+  try {
+    const { transaction_id } = req.body;
+    if (!req.file) return res.status(400).json({ error: 'Please upload an image file (JPG, PNG, WEBP)' });
+
+    const txn = await Transaction.findOne({ txn_id: transaction_id, user_id: req.user.id });
+    if (!txn) return res.status(404).json({ error: 'Transaction not found' });
+
+    const screenshotUrl = `/uploads/${req.file.filename}`;
+    txn.proof_screenshot = screenshotUrl;
+    txn.status = 'PROCESSING';
+    await txn.save();
+
+    await Order.findByIdAndUpdate(txn.order_id, {
+      payment_status: 'Processing',
+      delivery_status: 'Processing'
+    });
+
+    recordActivity('proof_uploaded', `Payment screenshot submitted for TXN: ${txn.txn_id} (₹${txn.amount})`);
+
+    res.json({
+      success: true,
+      message: 'Proof submitted. Payment is currently waiting for admin manual verification.',
+      transaction: txn
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3. Customer Purchased Items (Masked until Confirmed)
+app.get('/api/customer/orders', authCustomer, async (req, res) => {
+  try {
+    const orders = await Order.find({ user_id: req.user.id })
+      .populate('transaction_id')
+      .sort({ created_at: -1 });
+
+    // Ensure digital secrets are never exposed if payment is still Processing or Rejected
+    const sanitized = orders.map(order => {
+      const isPaid = order.payment_status === 'Paid';
+      const oObj = order.toObject();
+      if (!isPaid) {
+        oObj.items = oObj.items.map(it => ({ ...it, delivered_data: null }));
+      }
+      return oObj;
+    });
+
+    res.json(sanitized);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ----------------------------------------------------
-// ADMIN OPERATIONS & PRODUCT STUDIO
+// DEDICATED ADMIN CONTROL CENTER APIS
 // ----------------------------------------------------
 
 app.post('/api/admin/login', async (req, res) => {
@@ -588,6 +627,8 @@ app.post('/api/admin/login', async (req, res) => {
     admin.last_login = new Date();
     await admin.save();
 
+    recordActivity('admin_login', `Admin user "${admin.username}" authenticated to Control Center`);
+
     const token = jwt.sign({ id: admin._id, username: admin.username, role: 'admin' }, JWT_SECRET, { expiresIn: '12h' });
     res.json({ token, username: admin.username });
   } catch (err) {
@@ -595,37 +636,180 @@ app.post('/api/admin/login', async (req, res) => {
   }
 });
 
+// Admin Live Presence & Activity Feed
+app.get('/api/admin/live-status', authAdmin, (req, res) => {
+  const visitors = Array.from(activeSessions.values());
+  const productViewers = visitors.filter(v => v.page === 'product-details').length;
+  const checkoutUsers = visitors.filter(v => v.page === 'checkout').length;
+  const cartUsers = visitors.filter(v => v.page === 'cart').length;
+
+  res.json({
+    total_live_visitors: visitors.length,
+    product_viewers: productViewers,
+    checkout_users: checkoutUsers,
+    cart_users: cartUsers,
+    recent_activity: activityFeed.slice(0, 15)
+  });
+});
+
+// Admin Core Dashboard Statistics
 app.get('/api/admin/stats', authAdmin, async (req, res) => {
   try {
-    const totalOrders = await Order.countDocuments();
     const totalRevenueAgg = await Order.aggregate([
       { $match: { payment_status: 'Paid' } },
       { $group: { _id: null, total: { $sum: '$total_amount' } } }
     ]);
     const totalRevenue = totalRevenueAgg[0]?.total || 0;
+
+    const totalTransactions = await Transaction.countDocuments();
+    const pendingPayments = await Transaction.countDocuments({ status: 'PROCESSING' });
+    const confirmedPayments = await Transaction.countDocuments({ status: 'CONFIRMED' });
     const totalProducts = await Product.countDocuments();
     const totalCustomers = await User.countDocuments();
 
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayOrders = await Order.countDocuments({ created_at: { $gte: todayStart } });
 
-    const dailyRevenue = await Order.aggregate([
-      { $match: { payment_status: 'Paid', created_at: { $gte: sevenDaysAgo } } },
-      {
-        $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$created_at" } },
-          revenue: { $sum: "$total_amount" }
-        }
-      },
-      { $sort: { _id: 1 } }
-    ]);
-
-    res.json({ totalRevenue, totalOrders, totalProducts, totalCustomers, dailyRevenue });
+    res.json({
+      totalRevenue,
+      totalTransactions,
+      pendingPayments,
+      confirmedPayments,
+      totalProducts,
+      totalCustomers,
+      todayOrders
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+// Admin Transactions Queue
+app.get('/api/admin/transactions', authAdmin, async (req, res) => {
+  try {
+    const { status } = req.query;
+    let filter = {};
+    if (status && status !== 'ALL') filter.status = status;
+
+    const txns = await Transaction.find(filter).sort({ created_at: -1 });
+    res.json(txns);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin Confirm Payment -> Unlocks Inventory & Credentials
+app.post('/api/admin/transactions/:id/confirm', authAdmin, async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const txn = await Transaction.findById(req.params.id).session(session);
+    if (!txn) throw new Error('Transaction not found');
+    if (txn.status === 'CONFIRMED') throw new Error('Transaction already confirmed');
+
+    const order = await Order.findById(txn.order_id).session(session);
+    if (!order) throw new Error('Associated order not found');
+
+    // Deliver inventory credentials to each item
+    for (let i = 0; i < order.items.length; i++) {
+      const item = order.items[i];
+      const inventory = await InventoryItem.findOneAndUpdate(
+        { product_id: item.product_id, status: 'Available' },
+        { status: 'Sold', assigned_order_id: order._id },
+        { new: true, session }
+      );
+
+      let payload = {};
+      if (inventory) {
+        if (inventory.delivery_type === 'EMAIL_PASSWORD') {
+          payload = { email: inventory.email, password: inventory.password };
+        } else if (inventory.delivery_type === 'LICENSE_KEY') {
+          payload = { license_key: inventory.license_key };
+        } else if (inventory.delivery_type === 'STANDARD_LINK') {
+          payload = { url: inventory.delivery_url };
+        } else {
+          payload = { custom_text: inventory.custom_text };
+        }
+      } else {
+        payload = { custom_text: 'Admin confirmed payment. Contact support for direct credential delivery.' };
+      }
+
+      order.items[i].delivered_data = payload;
+      await Product.findByIdAndUpdate(item.product_id, { $inc: { sales_count: 1 } }).session(session);
+    }
+
+    txn.status = 'CONFIRMED';
+    txn.verified_at = new Date();
+    await txn.save({ session });
+
+    order.payment_status = 'Paid';
+    order.delivery_status = 'Delivered';
+    await order.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    recordActivity('payment_confirmed', `Admin confirmed payment for TXN: ${txn.txn_id} (₹${txn.amount})`);
+
+    res.json({ success: true, message: 'Payment confirmed and digital goods unlocked for customer.' });
+
+  } catch (err) {
+    await session.abortTransaction();
+    session.endSession();
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Admin Reject Payment
+app.post('/api/admin/transactions/:id/reject', authAdmin, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const txn = await Transaction.findById(req.params.id);
+    if (!txn) return res.status(404).json({ error: 'Transaction not found' });
+
+    txn.status = 'REJECTED';
+    txn.rejection_reason = reason || 'Payment screenshot invalid or amount mismatch.';
+    txn.verified_at = new Date();
+    await txn.save();
+
+    await Order.findByIdAndUpdate(txn.order_id, {
+      payment_status: 'Failed',
+      delivery_status: 'Failed'
+    });
+
+    recordActivity('payment_rejected', `Admin rejected payment for TXN: ${txn.txn_id} (Reason: ${txn.rejection_reason})`);
+
+    res.json({ success: true, message: 'Transaction marked as rejected.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin Payment Settings Management
+app.get('/api/admin/payment-settings', authAdmin, async (req, res) => {
+  try {
+    const settings = await PaymentSettings.findOne() || {};
+    res.json(settings);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/payment-settings', authAdmin, async (req, res) => {
+  try {
+    let settings = await PaymentSettings.findOne();
+    if (!settings) settings = new PaymentSettings(req.body);
+    else Object.assign(settings, req.body);
+    await settings.save();
+    recordActivity('settings_updated', 'Payment settings updated by Admin');
+    res.json(settings);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Admin Products CRUD & Inventory
 app.get('/api/admin/products', authAdmin, async (req, res) => {
   try {
     const products = await Product.find().sort({ created_at: -1 });
@@ -641,135 +825,55 @@ app.get('/api/admin/products', authAdmin, async (req, res) => {
 
 app.post('/api/admin/products', authAdmin, async (req, res) => {
   try {
-    const {
-      name, short_description, description, category, tags, sku,
-      original_price, sale_price, images, delivery_type,
-      features, whats_included, specifications, faqs, featured, deal, status
-    } = req.body;
-
+    const { name, short_description, description, original_price, sale_price, delivery_type, images, sku } = req.body;
     const orig = Number(original_price) || Number(sale_price) || 0;
     const sale = Number(sale_price) || 0;
-    const discount = orig > 0 ? Math.round(((orig - sale) / orig) * 100) : 0;
+    const disc = orig > 0 ? Math.round(((orig - sale) / orig) * 100) : 0;
 
     const product = await Product.create({
       name,
       short_description,
       description,
-      category,
-      tags: Array.isArray(tags) ? tags : (tags ? tags.split(',').map(t => t.trim()) : []),
       sku: sku || 'SKU-' + Date.now(),
       original_price: orig,
       sale_price: sale,
-      discount_percentage: discount,
-      images: images && images.length ? images : ['https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800'],
-      delivery_type,
-      features: Array.isArray(features) ? features : [],
-      whats_included: Array.isArray(whats_included) ? whats_included : [],
-      specifications: Array.isArray(specifications) ? specifications : [],
-      faqs: Array.isArray(faqs) ? faqs : [],
-      status: status || 'active',
-      featured: !!featured,
-      deal: !!deal
+      discount_percentage: disc,
+      images: images || ['https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800'],
+      delivery_type
     });
-
     res.status(201).json(product);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// Update Product
 app.put('/api/admin/products/:id', authAdmin, async (req, res) => {
   try {
-    const {
-      name, short_description, description, category, tags, sku,
-      original_price, sale_price, images, delivery_type,
-      features, whats_included, specifications, faqs, featured, deal, status
-    } = req.body;
-
+    const { name, short_description, description, original_price, sale_price, delivery_type, images, sku, status } = req.body;
     const orig = Number(original_price) || Number(sale_price) || 0;
     const sale = Number(sale_price) || 0;
-    const discount = orig > 0 ? Math.round(((orig - sale) / orig) * 100) : 0;
+    const disc = orig > 0 ? Math.round(((orig - sale) / orig) * 100) : 0;
 
-    const updated = await Product.findByIdAndUpdate(
-      req.params.id,
-      {
-        name,
-        short_description,
-        description,
-        category,
-        tags: Array.isArray(tags) ? tags : (tags ? tags.split(',').map(t => t.trim()) : []),
-        sku,
-        original_price: orig,
-        sale_price: sale,
-        discount_percentage: discount,
-        images,
-        delivery_type,
-        features,
-        whats_included,
-        specifications,
-        faqs,
-        featured: !!featured,
-        deal: !!deal,
-        status: status || 'active',
-        updated_at: new Date()
-      },
-      { new: true }
-    );
-
-    res.json(updated);
+    const p = await Product.findByIdAndUpdate(req.params.id, {
+      name, short_description, description, original_price: orig, sale_price: sale,
+      discount_percentage: disc, delivery_type, images, sku, status
+    }, { new: true });
+    res.json(p);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// Duplicate Product Endpoint
-app.post('/api/admin/products/:id/duplicate', authAdmin, async (req, res) => {
-  try {
-    const original = await Product.findById(req.params.id);
-    if (!original) return res.status(404).json({ error: 'Original product not found' });
-
-    const cloneData = original.toObject();
-    delete cloneData._id;
-    delete cloneData.created_at;
-    delete cloneData.updated_at;
-
-    cloneData.name = `${original.name} (Copy)`;
-    cloneData.sku = `${original.sku}-COPY-${Math.floor(Math.random() * 1000)}`;
-    cloneData.status = 'draft';
-    cloneData.sales_count = 0;
-
-    const newProduct = await Product.create(cloneData);
-    res.status(201).json(newProduct);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Toggle Status (Enable/Disable)
-app.patch('/api/admin/products/:id/toggle-status', authAdmin, async (req, res) => {
-  try {
-    const p = await Product.findById(req.params.id);
-    p.status = p.status === 'active' ? 'disabled' : 'active';
-    await p.save();
-    res.json(p);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Delete Product
 app.delete('/api/admin/products/:id', authAdmin, async (req, res) => {
   try {
     await Product.findByIdAndDelete(req.params.id);
     await InventoryItem.deleteMany({ product_id: req.params.id });
-    res.json({ success: true, message: 'Deleted' });
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Inventory stock attachment
 app.post('/api/admin/inventory/:productId', authAdmin, async (req, res) => {
   try {
     const item = await InventoryItem.create({
@@ -788,12 +892,12 @@ app.get('*', (req, res) => {
 });
 
 // ----------------------------------------------------
-// DATABASE LAUNCH
+// START SERVER
 // ----------------------------------------------------
 const MONGODB_URI = process.env.MONGODB_URI;
 mongoose.connect(MONGODB_URI)
   .then(async () => {
-    console.log('✓ Successfully connected to MongoDB Atlas Cloud Database');
+    console.log('✓ Successfully connected to MongoDB Atlas');
     await initializeSystem();
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => console.log(`✓ NEXUS Digital Engine running on port ${PORT}`));

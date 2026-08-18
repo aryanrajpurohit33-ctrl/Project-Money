@@ -7,20 +7,28 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <script>
     tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
-          fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          },
           colors: {
             brand: { 500: '#10b981', 600: '#059669' },
-            surface: { 800: '#111827', 900: '#0b0f19', 950: '#030712' }
+            surface: { 800: '#111827', 900: '#0b0f19', 950: '#030712' },
+            admin: {
+              sidebar: '#090d16',
+              bg: '#05070d',
+              card: '#0f1422',
+              border: '#1c2438'
+            }
           }
         }
       }
@@ -30,12 +38,14 @@
   <style>
     * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
     body { background-color: #030712; color: #f3f4f6; overflow-x: hidden; }
+    
     .glass {
       background: rgba(17, 24, 39, 0.75);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border: 1px solid rgba(255, 255, 255, 0.08);
     }
+    
     .glass-card {
       background: linear-gradient(135deg, rgba(31, 41, 55, 0.45) 0%, rgba(17, 24, 39, 0.6) 100%);
       backdrop-filter: blur(12px);
@@ -47,6 +57,12 @@
       transform: translateY(-4px);
       box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7);
     }
+
+    .admin-card {
+      background-color: #0f1422;
+      border: 1px solid #1c2438;
+    }
+
     .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
     .custom-scroll::-webkit-scrollbar-track { background: transparent; }
     .custom-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 999px; }
@@ -55,73 +71,22 @@
 <body class="min-h-screen flex flex-col antialiased">
 
   <div id="toastHub" class="fixed top-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
-  <div id="drawerOverlay" onclick="toggleSidebar(false)" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden transition-opacity"></div>
+  <div id="drawerOverlay" onclick="toggleCustomerSidebar(false)" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden transition-opacity"></div>
 
-  <div class="flex flex-1 min-h-screen relative">
-    
-    <!-- Sidebar -->
-    <aside id="mainSidebar" class="fixed lg:static top-0 bottom-0 left-0 w-64 bg-surface-900 border-r border-white/5 z-50 flex flex-col justify-between transition-transform duration-300 -translate-x-full lg:translate-x-0">
-      <div>
-        <div class="p-6 border-b border-white/5 flex items-center justify-between">
-          <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('home')">
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center font-black text-gray-950 shadow-lg shadow-emerald-500/20">N</div>
-            <div>
-              <span class="font-extrabold text-sm tracking-wider text-white block">NEXUS</span>
-              <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">DIGITAL STORE</span>
-            </div>
-          </div>
-          <button onclick="toggleSidebar(false)" class="lg:hidden text-slate-400 hover:text-white p-1">✕</button>
-        </div>
-
-        <nav class="p-4 space-y-1.5 text-xs font-semibold">
-          <button onclick="navigate('home')" id="nav-home" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-all"><span>🏠</span> <span>Home</span></button>
-          <button onclick="navigate('products')" id="nav-products" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-all"><span>🛍</span> <span>All Products</span></button>
-          <button onclick="navigate('cart')" id="nav-cart" class="nav-btn w-full flex items-center justify-between px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-all">
-            <div class="flex items-center gap-3"><span>🛒</span> <span>My Cart</span></div>
-            <span id="cartCountBadge" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-gray-950">0</span>
-          </button>
-          <button onclick="navigate('orders')" id="nav-orders" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-all"><span>📦</span> <span>Purchased Goods</span></button>
-          <button onclick="navigate('account')" id="nav-account" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-all"><span>👤</span> <span id="navAccountLabel">My Account</span></button>
-        </nav>
-      </div>
-
-      <div class="p-4 border-t border-white/5 space-y-2">
-        <button onclick="navigate('admin')" id="nav-admin" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-slate-400 bg-white/[0.03] hover:bg-emerald-500/10 hover:text-emerald-400 border border-white/5 transition-all">
-          <span>🔐</span> <span>Admin Console</span>
-        </button>
-      </div>
-    </aside>
-
-    <!-- Main Content App Viewport -->
-    <div class="flex-1 flex flex-col min-w-0 bg-surface-950">
-      <header class="sticky top-0 z-30 glass border-b border-white/5 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
-        <div class="flex items-center gap-3">
-          <button onclick="toggleSidebar(true)" class="lg:hidden p-2 rounded-xl bg-white/5 text-slate-300 hover:text-white">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-          </button>
-          <div class="relative w-48 sm:w-80">
-            <input type="text" id="globalSearchInput" oninput="handleGlobalSearch(this.value)" placeholder="Search products, accounts, keys..." class="w-full pl-9 pr-4 py-2 rounded-xl bg-surface-900 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500">
-            <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-          </div>
-        </div>
-        <div class="flex items-center gap-3">
-          <button onclick="navigate('cart')" class="relative p-2.5 rounded-xl bg-surface-900 border border-white/5 hover:border-emerald-500/40 text-slate-300">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
-            <span id="topCartCount" class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 text-gray-950 text-[10px] font-black flex items-center justify-center">0</span>
-          </button>
-        </div>
-      </header>
-
-      <main id="appRoot" class="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-8"></main>
-    </div>
+  <!-- ROOT CONTAINER (Renders Storefront View OR Standalone Admin Center) -->
+  <div id="mainViewport" class="flex flex-1 min-h-screen">
+    <!-- Injected dynamically -->
   </div>
 
-  <div id="productModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
-    <div class="glass max-w-2xl w-full rounded-3xl p-6 relative max-h-[90vh] overflow-y-auto custom-scroll" id="productModalContent"></div>
+  <!-- Global Modal for Inspection & Admin Modals -->
+  <div id="globalModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="glass max-w-2xl w-full rounded-3xl p-6 relative max-h-[90vh] overflow-y-auto custom-scroll" id="globalModalContent"></div>
   </div>
 
   <script>
+    // State Store
     const state = {
+      sessionId: 'sess_' + Math.random().toString(36).substring(2, 12),
       user: JSON.parse(localStorage.getItem('nexus_user') || 'null'),
       token: localStorage.getItem('nexus_token') || '',
       adminToken: localStorage.getItem('nexus_admin_token') || '',
@@ -129,7 +94,8 @@
       cart: JSON.parse(localStorage.getItem('nexus_cart') || '[]'),
       appliedCoupon: null,
       currentView: 'home',
-      currentProduct: null
+      adminSection: 'dashboard',
+      paymentSettings: null
     };
 
     function showToast(message, type = 'success') {
@@ -146,89 +112,158 @@
       }, 3200);
     }
 
-    function toggleSidebar(open) {
-      const sidebar = document.getElementById('mainSidebar');
-      const overlay = document.getElementById('drawerOverlay');
-      if (open) {
-        sidebar.classList.remove('-translate-x-full');
-        overlay.classList.remove('hidden');
-      } else {
-        sidebar.classList.add('-translate-x-full');
-        overlay.classList.add('hidden');
-      }
+    // Presence Heartbeat Ping (Real-time live visitor tracking)
+    function sendHeartbeat(action = '') {
+      fetch('/api/presence/heartbeat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: state.sessionId,
+          page: state.currentView,
+          action
+        })
+      }).catch(() => {});
     }
+    setInterval(sendHeartbeat, 15000);
 
-    function updateCartBadges() {
-      const count = state.cart.length;
-      document.getElementById('cartCountBadge').textContent = count;
-      document.getElementById('topCartCount').textContent = count;
-      localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
-    }
-
+    // Navigation Dispatcher
     function navigate(view, params = {}) {
       state.currentView = view;
-      toggleSidebar(false);
+      sendHeartbeat();
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
-      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('bg-emerald-500/10', 'text-emerald-400'));
-      const active = document.getElementById(`nav-${view}`);
-      if (active) active.classList.add('bg-emerald-500/10', 'text-emerald-400');
+      const viewport = document.getElementById('mainViewport');
 
-      const root = document.getElementById('appRoot');
-      switch(view) {
-        case 'home': renderHomeView(root); break;
-        case 'products': renderProductsView(root, params); break;
-        case 'product-details': renderProductDetailsPage(root, params.id); break;
-        case 'cart': renderCartView(root); break;
-        case 'checkout': renderCheckoutView(root); break;
-        case 'orders': renderOrdersView(root); break;
-        case 'account': renderAccountView(root); break;
-        case 'admin':
-          if (state.adminToken) renderAdminDashboard(root);
-          else renderAdminLoginView(root);
-          break;
-        case 'admin-edit-product':
-          renderAdminEditProductPage(root, params.id);
-          break;
+      if (view === 'admin-center') {
+        if (!state.adminToken) renderAdminLogin(viewport);
+        else renderAdminSaaSLayout(viewport);
+        return;
       }
+
+      // Otherwise render Customer Storefront Layout
+      renderStorefrontLayout(viewport, view, params);
     }
 
-    async function renderHomeView(root) {
-      root.innerHTML = '<div class="text-center py-20 text-slate-500 font-bold animate-pulse">Loading digital marketplace...</div>';
-      try {
-        const prodRes = await fetch('/api/products');
-        const allProducts = await prodRes.json();
-
-        root.innerHTML = `
-          <div class="relative rounded-3xl overflow-hidden glass p-8 sm:p-14 border border-emerald-500/20 bg-gradient-to-r from-emerald-950/40 via-surface-900 to-surface-950">
-            <div class="max-w-2xl space-y-4">
-              <span class="px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-black uppercase inline-block">⚡ Instant Automated Delivery</span>
-              <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">Unlock Premium <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">Digital Goods</span></h1>
-              <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">Genuine license keys, accounts, software source codes, and development assets. Unlocked immediately upon purchase.</p>
-              <div class="pt-2">
-                <button onclick="navigate('products')" class="px-7 py-3.5 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Browse Catalog</button>
+    // =========================================================================
+    // CUSTOMER STOREFRONT LAYOUT & VIEWS
+    // =========================================================================
+    function renderStorefrontLayout(viewport, view, params) {
+      viewport.innerHTML = `
+        <div class="flex flex-1 min-h-screen relative w-full bg-surface-950">
+          
+          <!-- Customer Sidebar -->
+          <aside id="customerSidebar" class="fixed lg:static top-0 bottom-0 left-0 w-64 bg-surface-900 border-r border-white/5 z-50 flex flex-col justify-between transition-transform duration-300 -translate-x-full lg:translate-x-0">
+            <div>
+              <div class="p-6 border-b border-white/5 flex items-center justify-between">
+                <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('home')">
+                  <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center font-black text-gray-950 shadow-lg shadow-emerald-500/20">N</div>
+                  <div>
+                    <span class="font-extrabold text-sm tracking-wider text-white block">NEXUS</span>
+                    <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">DIGITAL STORE</span>
+                  </div>
+                </div>
+                <button onclick="toggleCustomerSidebar(false)" class="lg:hidden text-slate-400 p-1">✕</button>
               </div>
+
+              <nav class="p-4 space-y-1.5 text-xs font-semibold">
+                <button onclick="navigate('home')" id="cnav-home" class="cnav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all"><span>🏠</span> <span>Home</span></button>
+                <button onclick="navigate('products')" id="cnav-products" class="cnav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all"><span>🛍</span> <span>All Products</span></button>
+                <button onclick="navigate('cart')" id="cnav-cart" class="cnav-btn w-full flex items-center justify-between px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">
+                  <div class="flex items-center gap-3"><span>🛒</span> <span>My Cart</span></div>
+                  <span class="cart-count-badge px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-gray-950">${state.cart.length}</span>
+                </button>
+                <button onclick="navigate('orders')" id="cnav-orders" class="cnav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all"><span>📦</span> <span>Purchased Items</span></button>
+                <button onclick="navigate('account')" id="cnav-account" class="cnav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all"><span>👤</span> <span>${state.user ? state.user.name : 'My Account'}</span></button>
+              </nav>
             </div>
+
+            <div class="p-4 border-t border-white/5">
+              <button onclick="navigate('admin-center')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-slate-400 bg-white/[0.03] hover:bg-emerald-500/10 hover:text-emerald-400 border border-white/5 transition-all">
+                <span>🔐</span> <span>Admin Panel</span>
+              </button>
+            </div>
+          </aside>
+
+          <!-- Store Content Canvas -->
+          <div class="flex-1 flex flex-col min-w-0">
+            <header class="sticky top-0 z-30 glass border-b border-white/5 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
+              <div class="flex items-center gap-3">
+                <button onclick="toggleCustomerSidebar(true)" class="lg:hidden p-2 rounded-xl bg-white/5 text-slate-300">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <div class="relative w-48 sm:w-80">
+                  <input type="text" oninput="handleStoreSearch(this.value)" placeholder="Search products..." class="w-full pl-9 pr-4 py-2 rounded-xl bg-surface-900 border border-white/10 text-xs text-white placeholder-slate-500 focus:border-emerald-500 outline-none">
+                  <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <button onclick="navigate('cart')" class="relative p-2.5 rounded-xl bg-surface-900 border border-white/5 text-slate-300">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                  <span class="cart-count-badge absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 text-gray-950 text-[10px] font-black flex items-center justify-center">${state.cart.length}</span>
+                </button>
+              </div>
+            </header>
+
+            <main id="storeContent" class="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-8">
+              <!-- Content view rendered below -->
+            </main>
           </div>
 
-          <section class="space-y-4">
-            <h2 class="text-lg font-black text-white">All Digital Products</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              ${allProducts.map(p => renderProductCardHTML(p)).join('')}
-            </div>
-          </section>
-        `;
-      } catch (err) {
-        root.innerHTML = `<div class="glass p-8 text-center text-rose-400 text-xs">${err.message}</div>`;
+        </div>
+      `;
+
+      const storeContent = document.getElementById('storeContent');
+      switch(view) {
+        case 'home': renderStoreHome(storeContent); break;
+        case 'products': renderStoreProducts(storeContent, params); break;
+        case 'product-details': renderStoreProductDetails(storeContent, params.id); break;
+        case 'cart': renderStoreCart(storeContent); break;
+        case 'checkout': renderStoreCheckout(storeContent); break;
+        case 'orders': renderStoreOrders(storeContent); break;
+        case 'account': renderStoreAccount(storeContent); break;
       }
     }
 
-    function renderProductCardHTML(p) {
+    function toggleCustomerSidebar(open) {
+      const sidebar = document.getElementById('customerSidebar');
+      const overlay = document.getElementById('drawerOverlay');
+      if (sidebar) {
+        if (open) { sidebar.classList.remove('-translate-x-full'); overlay.classList.remove('hidden'); }
+        else { sidebar.classList.add('-translate-x-full'); overlay.classList.add('hidden'); }
+      }
+    }
+
+    async function renderStoreHome(container) {
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold animate-pulse">Loading verified digital goods...</div>';
+      const res = await fetch('/api/products');
+      const products = await res.json();
+
+      container.innerHTML = `
+        <div class="relative rounded-3xl overflow-hidden glass p-8 sm:p-14 border border-emerald-500/20 bg-gradient-to-r from-emerald-950/40 via-surface-900 to-surface-950">
+          <div class="max-w-2xl space-y-4">
+            <span class="px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-black uppercase inline-block">⚡ Verified Instant Fulfillment</span>
+            <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">Premium <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">Digital Goods</span> Marketplace</h1>
+            <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">Official license keys, software source code, and accounts. Pay with UPI or Crypto with fast verified unlock.</p>
+            <div class="pt-2">
+              <button onclick="navigate('products')" class="px-7 py-3.5 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95">Browse All Products</button>
+            </div>
+          </div>
+        </div>
+
+        <section class="space-y-4">
+          <h2 class="text-lg font-black text-white">All Digital Products</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            ${products.map(p => renderStoreProductCardHTML(p)).join('')}
+          </div>
+        </section>
+      `;
+    }
+
+    function renderStoreProductCardHTML(p) {
       return `
         <div class="glass-card rounded-3xl overflow-hidden flex flex-col justify-between border border-white/5 relative group cursor-pointer" onclick="navigate('product-details', { id: '${p._id}' })">
           ${p.discount_percentage > 0 ? `<span class="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full bg-rose-500 text-white font-black text-[10px] uppercase">${p.discount_percentage}% OFF</span>` : ''}
           <span class="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-full bg-surface-950/80 border border-white/10 text-emerald-400 font-bold text-[9px] uppercase">${p.delivery_type.replace('_', ' ')}</span>
-          
           <div>
             <div class="h-44 w-full overflow-hidden bg-surface-900">
               <img src="${p.images[0] || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
@@ -238,13 +273,10 @@
               <p class="text-xs text-slate-400 line-clamp-2">${p.short_description || p.description}</p>
             </div>
           </div>
-
           <div class="px-5 pb-5 pt-2 flex items-center justify-between border-t border-white/5" onclick="event.stopPropagation()">
             <div>
-              <div class="flex items-center gap-2">
-                <span class="text-base font-black text-white">₹${p.sale_price}</span>
-                ${p.original_price > p.sale_price ? `<span class="text-xs text-slate-500 line-through">₹${p.original_price}</span>` : ''}
-              </div>
+              <span class="text-base font-black text-white">₹${p.sale_price}</span>
+              ${p.original_price > p.sale_price ? `<span class="text-xs text-slate-500 line-through ml-1">₹${p.original_price}</span>` : ''}
               <span class="text-[10px] ${p.in_stock ? 'text-emerald-400' : 'text-rose-400'} font-bold block">${p.in_stock ? '● In Stock' : '✕ Out of Stock'}</span>
             </div>
             <button onclick="addToCart('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${p.sale_price}, '${p.images[0]}', '${p.delivery_type}')" ${!p.in_stock ? 'disabled' : ''} class="px-4 py-2.5 rounded-xl ${p.in_stock ? 'bg-emerald-500 text-gray-950' : 'bg-gray-800 text-gray-500 cursor-not-allowed'} font-black text-xs uppercase">Add</button>
@@ -253,553 +285,99 @@
       `;
     }
 
-    async function renderProductDetailsPage(root, productId) {
-      root.innerHTML = '<div class="text-center py-20 text-slate-500 font-bold animate-pulse">Loading verified digital asset...</div>';
-      try {
-        const res = await fetch(`/api/products/${productId}`);
-        const p = await res.json();
-        if (!res.ok) throw new Error(p.error);
-
-        state.currentProduct = p;
-        const mainImage = p.images && p.images.length ? p.images[0] : 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800';
-
-        root.innerHTML = `
-          <div class="space-y-12">
-            <div class="flex items-center justify-between text-xs text-slate-400">
-              <button onclick="navigate('products')" class="flex items-center gap-2 hover:text-white">
-                <span>←</span> <span>Back to Products</span>
-              </button>
-              <div class="flex items-center gap-2">
-                <span class="font-mono text-slate-500">SKU: ${p.sku}</span>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              <div class="lg:col-span-7 space-y-4">
-                <div class="h-72 sm:h-96 w-full rounded-3xl overflow-hidden glass border border-white/10 relative">
-                  <img id="mainDetailImage" src="${mainImage}" class="w-full h-full object-cover">
-                  ${p.discount_percentage > 0 ? `
-                    <span class="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-rose-500 text-white font-black text-xs uppercase shadow-xl">
-                      ${p.discount_percentage}% OFF
-                    </span>
-                  ` : ''}
-                </div>
-
-                ${p.images && p.images.length > 1 ? `
-                  <div class="flex gap-3 overflow-x-auto pb-2">
-                    ${p.images.map((img) => `
-                      <img onclick="document.getElementById('mainDetailImage').src = '${img}'" src="${img}" class="w-20 h-20 rounded-2xl object-cover glass cursor-pointer border border-white/10 hover:border-emerald-400 transition-all">
-                    `).join('')}
-                  </div>
-                ` : ''}
-              </div>
-
-              <div class="lg:col-span-5 space-y-6">
-                <div class="space-y-2">
-                  <span class="px-3 py-1 rounded-full bg-surface-900 border border-white/10 text-emerald-400 font-bold text-[10px] uppercase tracking-wider inline-block">
-                    ${p.delivery_type.replace('_', ' ')}
-                  </span>
-                  <h1 class="text-2xl sm:text-3xl font-black text-white leading-snug">${p.name}</h1>
-                  <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">${p.short_description || ''}</p>
-                </div>
-
-                <div class="p-5 rounded-3xl glass border border-white/5 space-y-2">
-                  <div class="flex items-center gap-3">
-                    <span class="text-3xl font-black text-white">₹${p.sale_price}</span>
-                    ${p.original_price > p.sale_price ? `<span class="text-sm text-slate-500 line-through">₹${p.original_price}</span>` : ''}
-                  </div>
-                  <div class="flex items-center justify-between text-xs pt-1">
-                    <span class="${p.in_stock ? 'text-emerald-400' : 'text-rose-400'} font-bold">
-                      ${p.in_stock ? `● ${p.stock_count} licenses ready for instant delivery` : '✕ Currently Out of Stock'}
-                    </span>
-                  </div>
-                </div>
-
-                <div class="space-y-3">
-                  <button onclick="buyNow('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${p.sale_price}, '${mainImage}', '${p.delivery_type}')" ${!p.in_stock ? 'disabled' : ''} class="w-full py-4 rounded-2xl ${p.in_stock ? 'bg-emerald-500 hover:bg-emerald-400 text-gray-950' : 'bg-gray-800 text-gray-500'} font-black text-xs uppercase tracking-wider shadow-xl shadow-emerald-500/20 active:scale-95 transition-all">
-                    ${p.in_stock ? '⚡ Buy Now & Unlock Instantly' : 'Out of Stock'}
-                  </button>
-                  <button onclick="addToCart('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${p.sale_price}, '${mainImage}', '${p.delivery_type}')" ${!p.in_stock ? 'disabled' : ''} class="w-full py-4 rounded-2xl glass hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider active:scale-95 transition-all">
-                    Add To Cart
-                  </button>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3 text-[11px] text-slate-400 pt-2">
-                  <div class="flex items-center gap-2"><span>🛡️</span> <span>Verified Product</span></div>
-                  <div class="flex items-center gap-2"><span>⚡</span> <span>Instant Cloud Access</span></div>
-                </div>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              <div class="lg:col-span-8 space-y-8">
-                <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
-                  <h3 class="text-sm font-black text-white uppercase tracking-wider">Product Overview</h3>
-                  <div class="text-xs text-slate-300 leading-relaxed whitespace-pre-line">${p.description}</div>
-                </div>
-
-                ${p.features && p.features.length ? `
-                  <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
-                    <h3 class="text-sm font-black text-white uppercase tracking-wider">Key Features</h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      ${p.features.map(f => `
-                        <div class="flex items-center gap-3 p-3 rounded-2xl bg-surface-950 text-xs text-slate-300">
-                          <span class="text-emerald-400 font-black">✓</span> <span>${f}</span>
-                        </div>
-                      `).join('')}
-                    </div>
-                  </div>
-                ` : ''}
-
-                ${p.whats_included && p.whats_included.length ? `
-                  <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
-                    <h3 class="text-sm font-black text-white uppercase tracking-wider">What's Included</h3>
-                    <div class="space-y-2">
-                      ${p.whats_included.map(item => `
-                        <div class="p-3 rounded-2xl bg-surface-950 text-xs text-slate-300 flex items-center gap-3">
-                          <span class="text-emerald-400">📦</span> <span>${item}</span>
-                        </div>
-                      `).join('')}
-                    </div>
-                  </div>
-                ` : ''}
-              </div>
-
-              <div class="lg:col-span-4 space-y-6">
-                ${p.specifications && p.specifications.length ? `
-                  <div class="glass rounded-3xl p-6 space-y-4">
-                    <h3 class="text-sm font-black text-white uppercase tracking-wider">Product Specifications</h3>
-                    <div class="overflow-x-auto">
-                      <table class="w-full text-left text-xs">
-                        <tbody class="divide-y divide-white/5">
-                          ${p.specifications.map(s => `
-                            <tr>
-                              <td class="py-2.5 text-slate-400 font-medium">${s.label}</td>
-                              <td class="py-2.5 text-white font-bold text-right">${s.value}</td>
-                            </tr>
-                          `).join('')}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ` : ''}
-
-                ${p.faqs && p.faqs.length ? `
-                  <div class="glass rounded-3xl p-6 space-y-4">
-                    <h3 class="text-sm font-black text-white uppercase tracking-wider">Frequently Asked Questions</h3>
-                    <div class="space-y-3 text-xs">
-                      ${p.faqs.map(faq => `
-                        <div class="p-3 rounded-2xl bg-surface-950 space-y-1">
-                          <h4 class="font-bold text-white">${faq.question}</h4>
-                          <p class="text-slate-400 leading-relaxed">${faq.answer}</p>
-                        </div>
-                      `).join('')}
-                    </div>
-                  </div>
-                ` : ''}
-              </div>
-            </div>
-          </div>
-        `;
-      } catch (err) {
-        root.innerHTML = `<div class="glass p-8 text-center text-rose-400 text-xs">${err.message}</div>`;
-      }
-    }
-
-    function buyNow(id, name, price, image, delivery_type) {
-      addToCart(id, name, price, image, delivery_type);
-      navigate('checkout');
-    }
-
-    async function renderProductsView(root, filters = {}) {
+    async function renderStoreProducts(container, filters = {}) {
       let queryUrl = '/api/products?';
       if (filters.search) queryUrl += `search=${encodeURIComponent(filters.search)}&`;
 
       const res = await fetch(queryUrl);
       const products = await res.json();
 
-      root.innerHTML = `
+      container.innerHTML = `
         <div class="space-y-6">
           <div class="flex items-center justify-between">
             <div>
               <h1 class="text-xl font-black text-white">${filters.title || 'All Digital Products'}</h1>
-              <p class="text-xs text-slate-400">${products.length} products available</p>
+              <p class="text-xs text-slate-400">${products.length} products found</p>
             </div>
           </div>
-          ${products.length === 0 ? `<div class="glass rounded-3xl p-16 text-center text-xs text-slate-400">No products found.</div>` : `
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              ${products.map(p => renderProductCardHTML(p)).join('')}
-            </div>
-          `}
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            ${products.map(p => renderStoreProductCardHTML(p)).join('')}
+          </div>
         </div>
       `;
     }
 
-    async function renderAdminDashboard(root) {
-      root.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold animate-pulse">Loading live studio...</div>';
-
-      try {
-        const [statsRes, prodsRes] = await Promise.all([
-          fetch('/api/admin/stats', { headers: { 'Authorization': `Bearer ${state.adminToken}` } }),
-          fetch('/api/admin/products', { headers: { 'Authorization': `Bearer ${state.adminToken}` } })
-        ]);
-        const stats = await statsRes.json();
-        const products = await prodsRes.json();
-
-        root.innerHTML = `
-          <div class="space-y-8">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h1 class="text-xl font-black text-white">Product Studio & Store Manager</h1>
-                <p class="text-xs text-slate-400">Catalog control, live duplication, pricing & inventory</p>
-              </div>
-              <div class="flex gap-2">
-                <button onclick="navigate('admin-edit-product', { id: 'new' })" class="px-5 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20">
-                  + Create New Product
-                </button>
-                <button onclick="adminLogout()" class="px-4 py-2.5 rounded-xl bg-white/5 text-slate-300 text-xs font-bold">Logout</button>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div class="glass rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase font-bold">Total Sales</span><div class="text-2xl font-black text-emerald-400">₹${stats.totalRevenue}</div></div>
-              <div class="glass rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase font-bold">Orders Delivered</span><div class="text-2xl font-black text-white">${stats.totalOrders}</div></div>
-              <div class="glass rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase font-bold">Active Products</span><div class="text-2xl font-black text-white">${stats.totalProducts}</div></div>
-              <div class="glass rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase font-bold">Customers</span><div class="text-2xl font-black text-white">${stats.totalCustomers}</div></div>
-            </div>
-
-            <div class="glass rounded-3xl p-6 space-y-4">
-              <h3 class="text-xs font-bold uppercase text-slate-400">Product Inventory & Actions</h3>
-              <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs">
-                  <thead>
-                    <tr class="border-b border-white/5 text-slate-500">
-                      <th class="pb-3">Product</th>
-                      <th class="pb-3">Price</th>
-                      <th class="pb-3">Delivery Type</th>
-                      <th class="pb-3">Status</th>
-                      <th class="pb-3">Stock</th>
-                      <th class="pb-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-white/5">
-                    ${products.map(p => `
-                      <tr>
-                        <td class="py-3.5">
-                          <div class="flex items-center gap-3">
-                            <img src="${p.images[0] || ''}" class="w-10 h-10 rounded-xl object-cover bg-surface-950">
-                            <div>
-                              <span class="font-bold text-white block">${p.name}</span>
-                              <span class="text-[10px] font-mono text-slate-500">${p.sku}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td class="py-3.5 font-mono">₹${p.sale_price}</td>
-                        <td class="py-3.5 font-mono text-emerald-400 text-[10px]">${p.delivery_type}</td>
-                        <td class="py-3.5">
-                          <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${p.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}">
-                            ${p.status.toUpperCase()}
-                          </span>
-                        </td>
-                        <td class="py-3.5 font-bold ${p.stock_count > 0 ? 'text-emerald-400' : 'text-rose-400'}">${p.stock_count} units</td>
-                        <td class="py-3.5 text-right space-x-2">
-                          <button onclick="navigate('product-details', { id: '${p._id}' })" class="text-slate-400 hover:text-white font-bold">👁 View</button>
-                          <button onclick="navigate('admin-edit-product', { id: '${p._id}' })" class="text-emerald-400 font-bold">✏ Edit</button>
-                          <button onclick="duplicateProduct('${p._id}')" class="text-blue-400 font-bold">📋 Duplicate</button>
-                          <button onclick="renderAddInventoryModal('${p._id}', '${p.name.replace(/'/g, "\\'")}', '${p.delivery_type}')" class="text-teal-400 font-bold">+ Stock</button>
-                          <button onclick="deleteProduct('${p._id}')" class="text-rose-400 font-bold">🗑 Delete</button>
-                        </td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        `;
-      } catch (err) {
-        root.innerHTML = `<div class="glass p-8 text-center text-rose-400 text-xs">${err.message}</div>`;
-      }
-    }
-
-    async function renderAdminEditProductPage(root, productId) {
-      const isNew = productId === 'new';
-      let p = {
-        name: '',
-        short_description: '',
-        description: '',
-        category: 'Digital Goods',
-        tags: [],
-        sku: 'SKU-' + Date.now(),
-        original_price: 999,
-        sale_price: 499,
-        discount_percentage: 50,
-        images: ['https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800'],
-        delivery_type: 'STANDARD_LINK',
-        features: ['Instant Delivery', 'Verified Quality'],
-        whats_included: ['Digital License Key', 'Setup Guide'],
-        specifications: [{ label: 'Format', value: 'Cloud Digital' }],
-        faqs: [{ question: 'How is it delivered?', answer: 'Delivered automatically upon checkout.' }],
-        status: 'active'
-      };
-
-      if (!isNew) {
-        const res = await fetch(`/api/products/${productId}`);
-        p = await res.json();
-      }
-
-      root.innerHTML = `
-        <div class="max-w-4xl mx-auto space-y-8 pb-12">
-          <div class="flex items-center justify-between">
-            <div>
-              <h1 class="text-xl font-black text-white">${isNew ? 'Create New Digital Product' : `Editing: ${p.name}`}</h1>
-              <p class="text-xs text-slate-400">All changes update customer viewports in real-time</p>
-            </div>
-            <button onclick="navigate('admin')" class="px-4 py-2 rounded-xl bg-white/5 text-slate-300 text-xs font-bold">Cancel</button>
-          </div>
-
-          <form onsubmit="saveProductChanges(event, '${productId}')" class="space-y-6 text-xs">
-            <div class="glass rounded-3xl p-6 space-y-4">
-              <h3 class="font-bold uppercase tracking-wider text-slate-400">1. Basic Information</h3>
-              <div class="space-y-3">
-                <input type="text" id="edName" required value="${p.name || ''}" placeholder="Product Title" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white font-bold">
-                <input type="text" id="edShortDesc" required value="${p.short_description || ''}" placeholder="Short Tagline Description" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-                <textarea id="edDesc" rows="4" placeholder="Full Detailed Description" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">${p.description || ''}</textarea>
-              </div>
-
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label class="text-[10px] uppercase font-bold text-slate-500 block mb-1">SKU</label>
-                  <input type="text" id="edSku" value="${p.sku || ''}" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white font-mono">
-                </div>
-                <div>
-                  <label class="text-[10px] uppercase font-bold text-slate-500 block mb-1">Status</label>
-                  <select id="edStatus" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-                    <option value="active" ${p.status === 'active' ? 'selected' : ''}>Active</option>
-                    <option value="draft" ${p.status === 'draft' ? 'selected' : ''}>Draft</option>
-                    <option value="disabled" ${p.status === 'disabled' ? 'selected' : ''}>Disabled</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div class="glass rounded-3xl p-6 space-y-4">
-              <h3 class="font-bold uppercase tracking-wider text-slate-400">2. Pricing & Delivery Method</h3>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label class="text-[10px] uppercase font-bold text-slate-500 block mb-1">Original Price (₹)</label>
-                  <input type="number" id="edOrigPrice" oninput="calculateDiscountPreview()" value="${p.original_price || 0}" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-                </div>
-                <div>
-                  <label class="text-[10px] uppercase font-bold text-slate-500 block mb-1">Sale Price (₹)</label>
-                  <input type="number" id="edSalePrice" oninput="calculateDiscountPreview()" value="${p.sale_price || 0}" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-                </div>
-                <div>
-                  <label class="text-[10px] uppercase font-bold text-slate-500 block mb-1">Calculated Discount</label>
-                  <div id="edDiscountBadge" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-emerald-400 font-black flex items-center">
-                    ${p.discount_percentage || 0}% OFF
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label class="text-[10px] uppercase font-bold text-slate-500 block mb-1">Delivery Method</label>
-                <select id="edDeliveryType" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white font-mono text-emerald-400">
-                  <option value="EMAIL_PASSWORD" ${p.delivery_type === 'EMAIL_PASSWORD' ? 'selected' : ''}>EMAIL + PASSWORD</option>
-                  <option value="LICENSE_KEY" ${p.delivery_type === 'LICENSE_KEY' ? 'selected' : ''}>LICENSE KEY</option>
-                  <option value="STANDARD_LINK" ${p.delivery_type === 'STANDARD_LINK' ? 'selected' : ''}>STANDARD LINK</option>
-                  <option value="DOWNLOADABLE_FILE" ${p.delivery_type === 'DOWNLOADABLE_FILE' ? 'selected' : ''}>DOWNLOADABLE FILE</option>
-                  <option value="CUSTOM_TEXT" ${p.delivery_type === 'CUSTOM_TEXT' ? 'selected' : ''}>CUSTOM TEXT</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="glass rounded-3xl p-6 space-y-4">
-              <h3 class="font-bold uppercase tracking-wider text-slate-400">3. Product Images (Comma separated URLs)</h3>
-              <textarea id="edImages" rows="2" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white font-mono text-[11px]">${(p.images || []).join(', ')}</textarea>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div class="glass rounded-3xl p-6 space-y-3">
-                <h3 class="font-bold uppercase tracking-wider text-slate-400">4. Features (One per line)</h3>
-                <textarea id="edFeatures" rows="4" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">${(p.features || []).join('\n')}</textarea>
-              </div>
-              <div class="glass rounded-3xl p-6 space-y-3">
-                <h3 class="font-bold uppercase tracking-wider text-slate-400">5. What's Included (One per line)</h3>
-                <textarea id="edIncluded" rows="4" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">${(p.whats_included || []).join('\n')}</textarea>
-              </div>
-            </div>
-
-            <div class="flex gap-4 pt-4">
-              <button type="submit" class="flex-1 py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black uppercase tracking-wider shadow-xl shadow-emerald-500/20 active:scale-95">
-                Save & Update Database
-              </button>
-            </div>
-          </form>
-        </div>
-      `;
-    }
-
-    function calculateDiscountPreview() {
-      const orig = Number(document.getElementById('edOrigPrice').value) || 0;
-      const sale = Number(document.getElementById('edSalePrice').value) || 0;
-      const disc = orig > 0 ? Math.round(((orig - sale) / orig) * 100) : 0;
-      document.getElementById('edDiscountBadge').textContent = `${disc}% OFF`;
-    }
-
-    async function saveProductChanges(e, productId) {
-      e.preventDefault();
-      const isNew = productId === 'new';
-
-      const payload = {
-        name: document.getElementById('edName').value,
-        short_description: document.getElementById('edShortDesc').value,
-        description: document.getElementById('edDesc').value,
-        category: 'Digital Goods',
-        sku: document.getElementById('edSku').value,
-        status: document.getElementById('edStatus').value,
-        original_price: Number(document.getElementById('edOrigPrice').value),
-        sale_price: Number(document.getElementById('edSalePrice').value),
-        delivery_type: document.getElementById('edDeliveryType').value,
-        images: document.getElementById('edImages').value.split(',').map(s => s.trim()).filter(Boolean),
-        features: document.getElementById('edFeatures').value.split('\n').map(s => s.trim()).filter(Boolean),
-        whats_included: document.getElementById('edIncluded').value.split('\n').map(s => s.trim()).filter(Boolean)
-      };
-
-      try {
-        const url = isNew ? '/api/admin/products' : `/api/admin/products/${productId}`;
-        const method = isNew ? 'POST' : 'PUT';
-
-        const res = await fetch(url, {
-          method,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${state.adminToken}`
-          },
-          body: JSON.stringify(payload)
-        });
-        const saved = await res.json();
-        if (!res.ok) throw new Error(saved.error);
-
-        showToast('Product successfully saved!');
-        navigate('product-details', { id: saved._id });
-      } catch (err) {
-        showToast(err.message, 'error');
-      }
-    }
-
-    async function duplicateProduct(id) {
-      try {
-        const res = await fetch(`/api/admin/products/${id}/duplicate`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${state.adminToken}` }
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        showToast('Product cloned as Draft!');
-        renderAdminDashboard(document.getElementById('appRoot'));
-      } catch (err) {
-        showToast(err.message, 'error');
-      }
-    }
-
-    async function deleteProduct(id) {
-      if (!confirm('Permanently delete this product and associated inventory?')) return;
-      try {
-        await fetch(`/api/admin/products/${id}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${state.adminToken}` }
-        });
-        showToast('Product deleted');
-        renderAdminDashboard(document.getElementById('appRoot'));
-      } catch (err) {
-        showToast(err.message, 'error');
-      }
-    }
-
-    function renderAddInventoryModal(productId, productName, deliveryType) {
-      const modal = document.getElementById('productModal');
-      const container = document.getElementById('productModalContent');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-
-      let fields = '';
-      if (deliveryType === 'EMAIL_PASSWORD') {
-        fields = `
-          <input type="email" id="invEmail" required placeholder="Account Email" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-          <input type="text" id="invPassword" required placeholder="Account Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-        `;
-      } else if (deliveryType === 'LICENSE_KEY') {
-        fields = `
-          <input type="text" id="invKey" required placeholder="Activation License Key" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-        `;
-      } else {
-        fields = `
-          <input type="url" id="invUrl" required placeholder="Product Access URL" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-        `;
-      }
+    async function renderStoreProductDetails(container, productId) {
+      container.innerHTML = '<div class="text-center py-20 text-slate-500 font-bold animate-pulse">Loading product details...</div>';
+      const res = await fetch(`/api/products/${productId}`);
+      const p = await res.json();
+      const mainImage = p.images && p.images.length ? p.images[0] : 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800';
 
       container.innerHTML = `
-        <button onclick="document.getElementById('productModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400">✕</button>
-        <h2 class="text-base font-black text-white mb-2">Add Stock: ${productName}</h2>
-        <p class="text-xs text-emerald-400 mb-4 font-mono">${deliveryType}</p>
-        <form onsubmit="submitInventoryStock(event, '${productId}', '${deliveryType}')" class="space-y-3 text-xs">
-          ${fields}
-          <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black uppercase">Save Stock Unit</button>
-        </form>
+        <div class="space-y-10">
+          <button onclick="navigate('products')" class="text-xs text-slate-400 hover:text-white flex items-center gap-1">← Back to Catalog</button>
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div class="lg:col-span-7 space-y-4">
+              <div class="h-72 sm:h-96 rounded-3xl overflow-hidden glass border border-white/10 relative">
+                <img id="storeMainImg" src="${mainImage}" class="w-full h-full object-cover">
+              </div>
+              ${p.images && p.images.length > 1 ? `
+                <div class="flex gap-3">
+                  ${p.images.map(img => `<img onclick="document.getElementById('storeMainImg').src='${img}'" src="${img}" class="w-20 h-20 rounded-2xl object-cover glass cursor-pointer border border-white/10 hover:border-emerald-400">`).join('')}
+                </div>
+              ` : ''}
+            </div>
+            <div class="lg:col-span-5 space-y-6">
+              <div>
+                <span class="px-3 py-1 rounded-full bg-surface-900 border border-white/10 text-emerald-400 font-bold text-[10px] uppercase">${p.delivery_type.replace('_', ' ')}</span>
+                <h1 class="text-2xl sm:text-3xl font-black text-white mt-2">${p.name}</h1>
+                <p class="text-xs text-slate-400 mt-1">${p.short_description || ''}</p>
+              </div>
+              <div class="p-5 rounded-3xl glass border border-white/5">
+                <div class="text-3xl font-black text-white">₹${p.sale_price}</div>
+                <span class="text-xs ${p.in_stock ? 'text-emerald-400' : 'text-rose-400'} font-bold">${p.in_stock ? `● In Stock (${p.stock_count} units)` : '✕ Out of Stock'}</span>
+              </div>
+              <div class="space-y-3">
+                <button onclick="buyNowStore('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${p.sale_price}, '${mainImage}', '${p.delivery_type}')" ${!p.in_stock ? 'disabled' : ''} class="w-full py-4 rounded-2xl ${p.in_stock ? 'bg-emerald-500 text-gray-950 font-black' : 'bg-gray-800 text-gray-500'} text-xs uppercase tracking-wider">Buy Now (UPI / Crypto)</button>
+                <button onclick="addToCart('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${p.sale_price}, '${mainImage}', '${p.delivery_type}')" ${!p.in_stock ? 'disabled' : ''} class="w-full py-4 rounded-2xl glass text-white font-bold text-xs uppercase">Add to Cart</button>
+              </div>
+            </div>
+          </div>
+          <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
+            <h3 class="text-sm font-black text-white uppercase">Product Description</h3>
+            <p class="text-xs text-slate-300 leading-relaxed whitespace-pre-line">${p.description}</p>
+          </div>
+        </div>
       `;
     }
 
-    async function submitInventoryStock(e, productId, deliveryType) {
-      e.preventDefault();
-      const payload = { delivery_type: deliveryType };
-      if (deliveryType === 'EMAIL_PASSWORD') {
-        payload.email = document.getElementById('invEmail').value;
-        payload.password = document.getElementById('invPassword').value;
-      } else if (deliveryType === 'LICENSE_KEY') {
-        payload.license_key = document.getElementById('invKey').value;
-      } else {
-        payload.delivery_url = document.getElementById('invUrl').value;
-      }
-
-      try {
-        const res = await fetch(`/api/admin/inventory/${productId}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${state.adminToken}`
-          },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) throw new Error((await res.json()).error);
-        showToast('Stock attached successfully!');
-        document.getElementById('productModal').classList.add('hidden');
-        renderAdminDashboard(document.getElementById('appRoot'));
-      } catch (err) {
-        showToast(err.message, 'error');
-      }
+    function buyNowStore(id, name, price, image, delivery_type) {
+      addToCart(id, name, price, image, delivery_type);
+      navigate('checkout');
     }
 
     function addToCart(product_id, name, price, image, delivery_type) {
       const exists = state.cart.find(i => i.product_id === product_id);
       if (exists) return showToast('Item already in your cart', 'error');
       state.cart.push({ product_id, name, price, image, delivery_type });
-      updateCartBadges();
+      localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
+      document.querySelectorAll('.cart-count-badge').forEach(b => b.textContent = state.cart.length);
       showToast(`Added "${name}" to cart`);
     }
 
     function removeFromCart(idx) {
       state.cart.splice(idx, 1);
-      updateCartBadges();
-      renderCartView(document.getElementById('appRoot'));
+      localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
+      document.querySelectorAll('.cart-count-badge').forEach(b => b.textContent = state.cart.length);
+      renderStoreCart(document.getElementById('storeContent'));
     }
 
-    function renderCartView(root) {
+    function renderStoreCart(container) {
       const subtotal = state.cart.reduce((a, b) => a + b.price, 0);
-      root.innerHTML = `
+      container.innerHTML = `
         <div class="max-w-3xl mx-auto space-y-6">
           <h1 class="text-xl font-black text-white">Shopping Cart</h1>
-          ${state.cart.length === 0 ? `<div class="glass rounded-3xl p-12 text-center text-xs text-slate-400">Your cart is empty.</div>` : `
+          ${state.cart.length === 0 ? `<div class="glass rounded-3xl p-12 text-center text-xs text-slate-400">Cart is empty.</div>` : `
             <div class="space-y-3">
               ${state.cart.map((item, idx) => `
                 <div class="glass rounded-2xl p-4 flex items-center justify-between">
@@ -826,32 +404,107 @@
       `;
     }
 
-    function renderCheckoutView(root) {
-      if (!state.token) return renderCustomerAuthModal(root, 'checkout');
+    // =========================================================================
+    // CHECKOUT & MANUAL PAYMENT STATE MACHINE
+    // =========================================================================
+    async function renderStoreCheckout(container) {
+      if (!state.token) return renderCustomerAuthPrompt(container, 'checkout');
       if (!state.cart.length) return navigate('cart');
+
+      const pRes = await fetch('/api/payment-methods');
+      state.paymentSettings = await pRes.json();
       const subtotal = state.cart.reduce((a, b) => a + b.price, 0);
 
-      root.innerHTML = `
-        <div class="max-w-4xl mx-auto space-y-6">
-          <h1 class="text-xl font-black text-white">Complete Checkout</h1>
-          <div class="glass rounded-3xl p-6 space-y-4">
-            <h3 class="text-xs font-bold uppercase text-slate-400">Customer: ${state.user.name} (${state.user.email})</h3>
-            <div class="flex gap-2">
-              <input type="text" id="couponInput" placeholder="Try SAVE20" class="flex-1 px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white uppercase">
-              <button onclick="applyCheckoutCoupon()" class="px-5 py-3 rounded-xl bg-white/10 text-white font-bold text-xs uppercase">Apply</button>
-            </div>
-            <div id="couponStatus" class="text-xs"></div>
-            <div class="border-t border-white/5 pt-3 flex justify-between text-base font-black text-white">
-              <span>Final Total</span> <span id="summaryFinalTotal" class="text-emerald-400">₹${subtotal}</span>
-            </div>
-            <button onclick="executeOrder()" id="payOrderBtn" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase">Confirm & Unlock Assets</button>
+      container.innerHTML = `
+        <div class="max-w-4xl mx-auto space-y-8">
+          <div>
+            <h1 class="text-2xl font-black text-white">Choose Payment Method</h1>
+            <p class="text-xs text-slate-400">Select how you want to pay and submit proof for admin verification</p>
           </div>
+
+          <div id="checkoutStep1" class="grid grid-cols-1 md:grid-cols-12 gap-8">
+            <!-- Left: Method Selector -->
+            <div class="md:col-span-7 space-y-4">
+              
+              <!-- UPI Option -->
+              <div onclick="selectPaymentMethod('UPI')" id="methodCardUPI" class="glass rounded-3xl p-6 cursor-pointer border-2 border-emerald-500/80 space-y-2">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <span class="text-2xl">💳</span>
+                    <div>
+                      <h3 class="text-sm font-bold text-white">Instant UPI Pay</h3>
+                      <p class="text-[10px] text-slate-400">Google Pay, PhonePe, Paytm & Any UPI App</p>
+                    </div>
+                  </div>
+                  <span id="radioUPI" class="w-4 h-4 rounded-full border-2 border-emerald-400 bg-emerald-400"></span>
+                </div>
+              </div>
+
+              <!-- Crypto Option -->
+              <div onclick="selectPaymentMethod('CRYPTO')" id="methodCardCrypto" class="glass rounded-3xl p-6 cursor-pointer border border-white/5 space-y-2">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <span class="text-2xl">₿</span>
+                    <div>
+                      <h3 class="text-sm font-bold text-white">Crypto Currency</h3>
+                      <p class="text-[10px] text-slate-400">${state.paymentSettings.crypto_currency} (${state.paymentSettings.crypto_network})</p>
+                    </div>
+                  </div>
+                  <span id="radioCrypto" class="w-4 h-4 rounded-full border-2 border-slate-600"></span>
+                </div>
+              </div>
+
+              <!-- Coupon Bar -->
+              <div class="glass rounded-2xl p-4 flex gap-2">
+                <input type="text" id="storeCouponInput" placeholder="Discount Code (e.g. SAVE20)" class="flex-1 px-4 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-xs text-white uppercase">
+                <button onclick="applyStoreCoupon()" class="px-5 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs">Apply</button>
+              </div>
+              <div id="storeCouponMsg" class="text-xs"></div>
+            </div>
+
+            <!-- Right: Dynamic Payment Detail & Order Confirmation -->
+            <div class="md:col-span-5 space-y-4">
+              <div class="glass rounded-3xl p-6 space-y-4">
+                <h3 class="text-xs font-bold uppercase text-slate-400">Order Total</h3>
+                <div class="flex justify-between text-base font-black text-white">
+                  <span>Payable Amount:</span>
+                  <span id="chkFinalAmount" class="text-emerald-400 font-mono">₹${subtotal}</span>
+                </div>
+
+                <button onclick="startPaymentFlow()" id="startPayBtn" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider">
+                  Proceed to Payment Details →
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: Payment Details & Screenshot Upload Form (Hidden Initially) -->
+          <div id="checkoutStep2" class="hidden space-y-6">
+            <!-- Dynamic QR Code & Address Renderer -->
+          </div>
+
         </div>
       `;
     }
 
-    async function applyCheckoutCoupon() {
-      const code = document.getElementById('couponInput').value.trim();
+    let selectedMethod = 'UPI';
+    function selectPaymentMethod(m) {
+      selectedMethod = m;
+      if (m === 'UPI') {
+        document.getElementById('methodCardUPI').className = 'glass rounded-3xl p-6 cursor-pointer border-2 border-emerald-500/80 space-y-2';
+        document.getElementById('methodCardCrypto').className = 'glass rounded-3xl p-6 cursor-pointer border border-white/5 space-y-2';
+        document.getElementById('radioUPI').className = 'w-4 h-4 rounded-full border-2 border-emerald-400 bg-emerald-400';
+        document.getElementById('radioCrypto').className = 'w-4 h-4 rounded-full border-2 border-slate-600';
+      } else {
+        document.getElementById('methodCardCrypto').className = 'glass rounded-3xl p-6 cursor-pointer border-2 border-emerald-500/80 space-y-2';
+        document.getElementById('methodCardUPI').className = 'glass rounded-3xl p-6 cursor-pointer border border-white/5 space-y-2';
+        document.getElementById('radioCrypto').className = 'w-4 h-4 rounded-full border-2 border-emerald-400 bg-emerald-400';
+        document.getElementById('radioUPI').className = 'w-4 h-4 rounded-full border-2 border-slate-600';
+      }
+    }
+
+    async function applyStoreCoupon() {
+      const code = document.getElementById('storeCouponInput').value.trim();
       const subtotal = state.cart.reduce((a, b) => a + b.price, 0);
       try {
         const res = await fetch('/api/cart/validate-coupon', {
@@ -862,96 +515,245 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
         state.appliedCoupon = data;
-        document.getElementById('couponStatus').innerHTML = `<span class="text-emerald-400 font-bold">✓ Coupon Applied! Discount: ₹${data.discount_amount}</span>`;
-        document.getElementById('summaryFinalTotal').textContent = `₹${data.final_total}`;
+        document.getElementById('storeCouponMsg').innerHTML = `<span class="text-emerald-400 font-bold">✓ Applied! Total: ₹${data.final_total}</span>`;
+        document.getElementById('chkFinalAmount').textContent = `₹${data.final_total}`;
       } catch (err) {
-        document.getElementById('couponStatus').innerHTML = `<span class="text-rose-400 font-bold">✕ ${err.message}</span>`;
+        document.getElementById('storeCouponMsg').innerHTML = `<span class="text-rose-400 font-bold">✕ ${err.message}</span>`;
       }
     }
 
-    async function executeOrder() {
-      const btn = document.getElementById('payOrderBtn');
+    async function startPaymentFlow() {
+      const btn = document.getElementById('startPayBtn');
       btn.disabled = true;
-      btn.textContent = 'Processing transaction...';
+      btn.textContent = 'Generating Transaction...';
+
       try {
-        const res = await fetch('/api/checkout/process', {
+        const res = await fetch('/api/checkout/initiate-order', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}` },
-          body: JSON.stringify({ items: state.cart, coupon_code: state.appliedCoupon ? state.appliedCoupon.code : '' })
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.token}`
+          },
+          body: JSON.stringify({
+            items: state.cart,
+            payment_method: selectedMethod,
+            coupon_code: state.appliedCoupon ? state.appliedCoupon.code : ''
+          })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        state.cart = [];
-        state.appliedCoupon = null;
-        updateCartBadges();
-        showToast('Purchase completed!');
-        navigate('orders');
+
+        // Show Step 2: Payment instructions + screenshot upload
+        document.getElementById('checkoutStep1').classList.add('hidden');
+        const step2 = document.getElementById('checkoutStep2');
+        step2.classList.remove('hidden');
+
+        const ps = state.paymentSettings;
+        const txn = data.transaction;
+
+        let detailsHTML = '';
+        if (selectedMethod === 'UPI') {
+          detailsHTML = `
+            <div class="text-center space-y-4">
+              <img src="${ps.upi_qr_url}" class="w-56 h-56 mx-auto rounded-2xl glass p-2 bg-white">
+              <div class="space-y-1">
+                <span class="text-[10px] text-slate-500 uppercase font-bold">UPI ID</span>
+                <div class="font-mono text-emerald-400 text-sm font-bold">${ps.upi_id}</div>
+                <button onclick="navigator.clipboard.writeText('${ps.upi_id}'); showToast('UPI ID copied!')" class="text-xs text-slate-400 hover:text-white underline">Copy UPI ID</button>
+              </div>
+              <div class="text-xs text-slate-400 max-w-sm mx-auto whitespace-pre-line text-left bg-surface-950 p-4 rounded-2xl">${ps.upi_instructions}</div>
+            </div>
+          `;
+        } else {
+          detailsHTML = `
+            <div class="text-center space-y-4">
+              <img src="${ps.crypto_qr_url}" class="w-56 h-56 mx-auto rounded-2xl glass p-2 bg-white">
+              <div class="space-y-1">
+                <span class="text-[10px] text-slate-500 uppercase font-bold">Deposit Wallet (${ps.crypto_currency} - ${ps.crypto_network})</span>
+                <div class="font-mono text-emerald-400 text-xs font-bold break-all">${ps.crypto_wallet_address}</div>
+                <button onclick="navigator.clipboard.writeText('${ps.crypto_wallet_address}'); showToast('Wallet address copied!')" class="text-xs text-slate-400 hover:text-white underline">Copy Wallet Address</button>
+              </div>
+              <div class="text-xs text-slate-400 max-w-sm mx-auto whitespace-pre-line text-left bg-surface-950 p-4 rounded-2xl">${ps.crypto_instructions}</div>
+            </div>
+          `;
+        }
+
+        step2.innerHTML = `
+          <div class="glass rounded-3xl p-6 sm:p-10 space-y-6 max-w-2xl mx-auto">
+            <div class="flex justify-between items-center border-b border-white/5 pb-4">
+              <div>
+                <span class="text-[10px] font-mono text-slate-500">TRANSACTION ID</span>
+                <h3 class="text-base font-black text-white font-mono">${txn.txn_id}</h3>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-slate-500">PAYABLE</span>
+                <div class="text-lg font-black text-emerald-400 font-mono">₹${txn.amount}</div>
+              </div>
+            </div>
+
+            ${detailsHTML}
+
+            <!-- Proof Upload Form -->
+            <form onsubmit="submitPaymentProof(event, '${txn.txn_id}')" class="space-y-4 pt-4 border-t border-white/5">
+              <label class="text-xs font-bold text-white block">Upload Payment Screenshot / Transfer Proof (JPG, PNG, WEBP)</label>
+              <input type="file" id="proofFileInput" accept="image/png, image/jpeg, image/webp" required class="w-full text-xs text-slate-400 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20">
+              
+              <button type="submit" id="submitProofBtn" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider">
+                Submit Payment Proof for Admin Verification
+              </button>
+            </form>
+          </div>
+        `;
       } catch (err) {
         btn.disabled = false;
-        btn.textContent = 'Confirm & Unlock Assets';
+        btn.textContent = 'Proceed to Payment Details →';
         showToast(err.message, 'error');
       }
     }
 
-    async function renderOrdersView(root) {
-      if (!state.token) return renderCustomerAuthModal(root, 'orders');
-      root.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold">Loading vault...</div>';
+    async function submitPaymentProof(e, txnId) {
+      e.preventDefault();
+      const fileInput = document.getElementById('proofFileInput');
+      if (!fileInput.files.length) return;
+
+      const btn = document.getElementById('submitProofBtn');
+      btn.disabled = true;
+      btn.textContent = 'Uploading Proof...';
+
+      const formData = new FormData();
+      formData.append('transaction_id', txnId);
+      formData.append('screenshot', fileInput.files[0]);
+
       try {
-        const res = await fetch('/api/customer/orders', { headers: { 'Authorization': `Bearer ${state.token}` } });
+        const res = await fetch('/api/checkout/upload-proof', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        state.cart = [];
+        state.appliedCoupon = null;
+        localStorage.removeItem('nexus_cart');
+        document.querySelectorAll('.cart-count-badge').forEach(b => b.textContent = '0');
+
+        showToast('Payment proof submitted. Waiting for admin verification!');
+        navigate('orders');
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'Submit Payment Proof for Admin Verification';
+        showToast(err.message, 'error');
+      }
+    }
+
+    // Customer Orders / Purchased Items with Manual Lock Shield
+    async function renderStoreOrders(container) {
+      if (!state.token) return renderCustomerAuthPrompt(container, 'orders');
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold">Loading your items...</div>';
+
+      try {
+        const res = await fetch('/api/customer/orders', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
         const orders = await res.json();
-        root.innerHTML = `
+
+        container.innerHTML = `
           <div class="max-w-4xl mx-auto space-y-6">
-            <h1 class="text-xl font-black text-white">Purchased Digital Goods</h1>
-            ${orders.length === 0 ? `<div class="glass rounded-3xl p-12 text-center text-xs text-slate-400">No orders yet.</div>` : `
+            <div>
+              <h1 class="text-xl font-black text-white">Purchased Digital Goods</h1>
+              <p class="text-xs text-slate-400">Digital credentials appear below as soon as payment is confirmed by Admin.</p>
+            </div>
+
+            ${orders.length === 0 ? `<div class="glass rounded-3xl p-12 text-center text-xs text-slate-400">No orders found.</div>` : `
               <div class="space-y-4">
-                ${orders.map(o => `
-                  <div class="glass rounded-3xl p-6 space-y-3">
-                    <div class="flex justify-between text-xs text-slate-400"><span>Order #${o._id.slice(-6).toUpperCase()}</span> <span class="text-emerald-400 font-bold">PAID ₹${o.total_amount}</span></div>
-                    <div class="space-y-2">
-                      ${o.items.map(item => `
-                        <div class="p-4 rounded-2xl bg-surface-950 border border-white/5 space-y-2">
-                          <h4 class="text-xs font-bold text-white">${item.name}</h4>
-                          ${renderDeliveryPayloadHTML(item)}
+                ${orders.map(o => {
+                  const isPaid = o.payment_status === 'Paid';
+                  return `
+                    <div class="glass rounded-3xl p-6 space-y-4 border border-white/5">
+                      <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs pb-3 border-b border-white/5 gap-2">
+                        <div>
+                          <span class="font-mono text-slate-400 font-bold">${o.order_number}</span>
+                          <span class="text-[10px] text-slate-500 block">${new Date(o.created_at).toLocaleString()}</span>
                         </div>
-                      `).join('')}
+                        <div class="flex items-center gap-2">
+                          <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase ${isPaid ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}">
+                            ${isPaid ? '🟢 PAYMENT CONFIRMED' : '🟡 PAYMENT PROCESSING'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div class="space-y-3">
+                        ${o.items.map(item => `
+                          <div class="p-4 rounded-2xl bg-surface-950 border border-white/5 space-y-2">
+                            <div class="flex justify-between items-center">
+                              <h4 class="text-xs font-bold text-white">${item.name}</h4>
+                              <span class="text-[9px] font-mono uppercase text-slate-500">${item.delivery_type.replace('_', ' ')}</span>
+                            </div>
+
+                            ${isPaid ? renderCustomerUnlockedItemHTML(item) : `
+                              <div class="p-3 rounded-xl bg-surface-900 border border-amber-500/20 text-xs text-amber-400 flex items-center gap-2">
+                                <span>🔒</span>
+                                <span>Credentials locked. Your payment proof is currently under review by our admin.</span>
+                              </div>
+                            `}
+                          </div>
+                        `).join('')}
+                      </div>
                     </div>
-                  </div>
-                `).join('')}
+                  `;
+                }).join('')}
               </div>
             `}
           </div>
         `;
       } catch (err) {
-        root.innerHTML = `<div class="glass p-8 text-center text-rose-400 text-xs">${err.message}</div>`;
+        container.innerHTML = `<div class="glass p-8 text-center text-rose-400 text-xs">${err.message}</div>`;
       }
     }
 
-    function renderDeliveryPayloadHTML(item) {
+    function renderCustomerUnlockedItemHTML(item) {
       const d = item.delivered_data || {};
       if (item.delivery_type === 'EMAIL_PASSWORD') {
-        return `<div class="p-3 rounded-xl bg-surface-900 text-xs font-mono text-white flex justify-between"><span>Email: ${d.email} | Pass: ${d.password}</span> <button onclick="navigator.clipboard.writeText('${d.email} : ${d.password}'); showToast('Copied!')" class="text-emerald-400">Copy</button></div>`;
+        return `
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1">
+            <div class="p-3 rounded-xl bg-surface-900 flex justify-between">
+              <span class="font-mono text-white select-all">Email: ${d.email}</span>
+              <button onclick="navigator.clipboard.writeText('${d.email}'); showToast('Copied!')" class="text-emerald-400">Copy</button>
+            </div>
+            <div class="p-3 rounded-xl bg-surface-900 flex justify-between">
+              <span class="font-mono text-white select-all">Password: ${d.password}</span>
+              <button onclick="navigator.clipboard.writeText('${d.password}'); showToast('Copied!')" class="text-emerald-400">Copy</button>
+            </div>
+          </div>
+        `;
       } else if (item.delivery_type === 'LICENSE_KEY') {
-        return `<div class="p-3 rounded-xl bg-surface-900 text-xs font-mono text-emerald-400 flex justify-between"><span>Key: ${d.license_key}</span> <button onclick="navigator.clipboard.writeText('${d.license_key}'); showToast('Key copied!')" class="text-emerald-400 font-bold">Copy Key</button></div>`;
+        return `
+          <div class="p-3 rounded-xl bg-surface-900 text-xs font-mono text-emerald-400 flex justify-between">
+            <span class="select-all font-bold">Key: ${d.license_key}</span>
+            <button onclick="navigator.clipboard.writeText('${d.license_key}'); showToast('Key copied!')" class="text-emerald-400">Copy Key</button>
+          </div>
+        `;
       } else if (item.delivery_type === 'STANDARD_LINK') {
         return `<a href="${d.url}" target="_blank" class="inline-block px-4 py-2 rounded-xl bg-emerald-500 text-gray-950 font-bold text-xs">Open Product URL ↗</a>`;
       }
-      return `<div class="text-xs text-slate-300">${d.custom_text || ''}</div>`;
+      return `<div class="text-xs text-slate-300">${d.custom_text || 'Item fulfilled.'}</div>`;
     }
 
-    function renderCustomerAuthModal(root, returnView = 'home') {
-      root.innerHTML = `
+    function renderCustomerAuthPrompt(container, returnView) {
+      container.innerHTML = `
         <div class="max-w-md mx-auto glass rounded-3xl p-8 space-y-4">
-          <h2 class="text-lg font-black text-white text-center">Customer Account</h2>
+          <h2 class="text-lg font-black text-white text-center">Customer Login / Signup</h2>
           <form onsubmit="handleCustomerLogin(event, '${returnView}')" class="space-y-3">
-            <input type="email" id="loginEmail" required placeholder="Email" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
-            <input type="password" id="loginPass" required placeholder="Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
+            <input type="email" id="cLogEmail" required placeholder="Email" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
+            <input type="password" id="cLogPass" required placeholder="Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
             <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase">Sign In</button>
           </form>
           <hr class="border-white/5">
           <form onsubmit="handleCustomerRegister(event, '${returnView}')" class="space-y-3">
-            <input type="text" id="regName" required placeholder="Full Name" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
-            <input type="email" id="regEmail" required placeholder="Email" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
-            <input type="password" id="regPass" required placeholder="Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
+            <input type="text" id="cRegName" required placeholder="Full Name" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
+            <input type="email" id="cRegEmail" required placeholder="Email" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
+            <input type="password" id="cRegPass" required placeholder="Create Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
             <button type="submit" class="w-full py-3.5 rounded-xl bg-white/10 text-white font-black text-xs uppercase">Create Account</button>
           </form>
         </div>
@@ -964,7 +766,7 @@
         const res = await fetch('/api/auth/customer/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: document.getElementById('loginEmail').value, password: document.getElementById('loginPass').value })
+          body: JSON.stringify({ email: document.getElementById('cLogEmail').value, password: document.getElementById('cLogPass').value })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
@@ -972,8 +774,7 @@
         state.user = data.user;
         localStorage.setItem('nexus_token', data.token);
         localStorage.setItem('nexus_user', JSON.stringify(data.user));
-        document.getElementById('navAccountLabel').textContent = data.user.name;
-        showToast('Logged in!');
+        showToast(`Welcome back, ${data.user.name}!`);
         navigate(returnView);
       } catch (err) { showToast(err.message, 'error'); }
     }
@@ -984,7 +785,7 @@
         const res = await fetch('/api/auth/customer/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: document.getElementById('regName').value, email: document.getElementById('regEmail').value, password: document.getElementById('regPass').value })
+          body: JSON.stringify({ name: document.getElementById('cRegName').value, email: document.getElementById('cRegEmail').value, password: document.getElementById('cRegPass').value })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
@@ -992,15 +793,14 @@
         state.user = data.user;
         localStorage.setItem('nexus_token', data.token);
         localStorage.setItem('nexus_user', JSON.stringify(data.user));
-        document.getElementById('navAccountLabel').textContent = data.user.name;
-        showToast('Account registered!');
+        showToast('Registered!');
         navigate(returnView);
       } catch (err) { showToast(err.message, 'error'); }
     }
 
-    function renderAccountView(root) {
-      if (!state.token) return renderCustomerAuthModal(root, 'account');
-      root.innerHTML = `
+    function renderStoreAccount(container) {
+      if (!state.token) return renderCustomerAuthPrompt(container, 'account');
+      container.innerHTML = `
         <div class="max-w-2xl mx-auto glass rounded-3xl p-8 space-y-4">
           <div class="flex justify-between items-center">
             <h1 class="text-xl font-black text-white">${state.user.name}</h1>
@@ -1016,43 +816,539 @@
       state.user = null;
       localStorage.removeItem('nexus_token');
       localStorage.removeItem('nexus_user');
-      document.getElementById('navAccountLabel').textContent = 'My Account';
       navigate('home');
     }
 
-    function renderAdminLoginView(root) {
-      root.innerHTML = `
-        <div class="max-w-sm mx-auto glass rounded-3xl p-8 space-y-4 border border-emerald-500/20">
-          <h2 class="text-lg font-black text-white text-center">Admin Console</h2>
-          <form onsubmit="handleAdminLogin(event)" class="space-y-3">
-            <input type="text" id="adminUserInput" placeholder="Username (Aryan)" required class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
-            <input type="password" id="adminPassInput" placeholder="Password (5669)" required class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
-            <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase">Authenticate</button>
-          </form>
+    function handleStoreSearch(val) {
+      if (!val.trim()) return renderStoreProducts(document.getElementById('storeContent'));
+      renderStoreProducts(document.getElementById('storeContent'), { search: val, title: `Search results for "${val}"` });
+    }
+
+    // =========================================================================
+    // DEDICATED SEPARATE SAAS ADMIN CONTROL CENTER
+    // =========================================================================
+
+    function renderAdminLogin(viewport) {
+      viewport.innerHTML = `
+        <div class="min-h-screen w-full bg-admin-bg flex items-center justify-center p-4">
+          <div class="admin-card max-w-md w-full rounded-3xl p-8 space-y-6 shadow-2xl border border-admin-border">
+            <div class="text-center space-y-1">
+              <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-xl mx-auto mb-2">⚡</div>
+              <h2 class="text-xl font-black text-white tracking-wider">NEXUS CONTROL CENTER</h2>
+              <p class="text-xs text-slate-400">Restricted Administration Gateway</p>
+            </div>
+            <form onsubmit="handleAdminAuth(event)" class="space-y-4">
+              <input type="text" id="admUser" required placeholder="Admin Username (Aryan)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-xs text-white outline-none focus:border-emerald-500 font-mono">
+              <input type="password" id="admPass" required placeholder="Password (5669)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-xs text-white outline-none focus:border-emerald-500 font-mono">
+              <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider">Authorize Session</button>
+            </form>
+            <div class="text-center">
+              <button onclick="navigate('home')" class="text-xs text-slate-500 hover:text-slate-300">← Back to Customer Store</button>
+            </div>
+          </div>
         </div>
       `;
     }
 
-    async function handleAdminLogin(e) {
+    async function handleAdminAuth(e) {
       e.preventDefault();
       try {
         const res = await fetch('/api/admin/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: document.getElementById('adminUserInput').value, password: document.getElementById('adminPassInput').value })
+          body: JSON.stringify({
+            username: document.getElementById('admUser').value,
+            password: document.getElementById('admPass').value
+          })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
+
         state.adminToken = data.token;
         state.adminUsername = data.username;
         localStorage.setItem('nexus_admin_token', data.token);
         localStorage.setItem('nexus_admin_user', data.username);
-        showToast('Admin Authenticated');
-        renderAdminDashboard(document.getElementById('appRoot'));
+        showToast('Admin Session Authorized');
+        navigate('admin-center');
       } catch (err) { showToast(err.message, 'error'); }
     }
 
-    function adminLogout() {
+    function renderAdminSaaSLayout(viewport) {
+      viewport.innerHTML = `
+        <div class="flex flex-1 min-h-screen w-full bg-admin-bg font-sans text-slate-200">
+          
+          <!-- Distinct SaaS Admin Sidebar -->
+          <aside class="w-64 bg-admin-sidebar border-r border-admin-border flex flex-col justify-between">
+            <div>
+              <div class="p-6 border-b border-admin-border flex items-center justify-between">
+                <div>
+                  <span class="text-xs font-black text-emerald-400 uppercase tracking-widest block font-mono">NEXUS SAAS v2.6</span>
+                  <span class="text-sm font-bold text-white">Admin Control</span>
+                </div>
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+              </div>
+
+              <nav class="p-4 space-y-1 text-xs font-bold">
+                <button onclick="switchAdminSection('dashboard')" id="adnav-dashboard" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">📊 <span>Overview Dashboard</span></button>
+                <button onclick="switchAdminSection('transactions')" id="adnav-transactions" class="w-full flex items-center justify-between px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">
+                  <div class="flex items-center gap-3">💳 <span>Transactions Queue</span></div>
+                  <span id="pendingTxnCountBadge" class="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-400 font-mono">0</span>
+                </button>
+                <button onclick="switchAdminSection('products')" id="adnav-products" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🛍 <span>Product Studio</span></button>
+                <button onclick="switchAdminSection('payment-settings')" id="adnav-payment-settings" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">💰 <span>Payment Gateway (UPI/Crypto)</span></button>
+              </nav>
+            </div>
+
+            <div class="p-4 border-t border-admin-border space-y-2">
+              <button onclick="navigate('home')" class="w-full py-2.5 rounded-xl bg-white/5 text-slate-400 hover:text-white text-xs font-bold">👁 View Customer Store</button>
+              <button onclick="adminSignOut()" class="w-full py-2.5 rounded-xl bg-rose-500/10 text-rose-400 text-xs font-bold">🚪 End Admin Session</button>
+            </div>
+          </aside>
+
+          <!-- Main Admin Canvas -->
+          <div class="flex-1 flex flex-col min-w-0">
+            <header class="h-16 border-b border-admin-border bg-admin-sidebar/50 px-8 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="text-xs text-slate-400 font-mono">Authenticated: ${state.adminUsername}</span>
+              </div>
+              <div class="flex items-center gap-4 text-xs">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  <span class="font-bold text-white">Live Engine Ready</span>
+                </div>
+              </div>
+            </header>
+
+            <main id="adminMainContent" class="flex-1 p-8 space-y-8 max-w-7xl w-full mx-auto">
+              <!-- Render Section -->
+            </main>
+          </div>
+
+        </div>
+      `;
+
+      switchAdminSection(state.adminSection || 'dashboard');
+    }
+
+    function switchAdminSection(sec) {
+      state.adminSection = sec;
+      const content = document.getElementById('adminMainContent');
+      if (!content) return;
+
+      document.querySelectorAll('[id^="adnav-"]').forEach(b => b.classList.remove('bg-emerald-500/10', 'text-emerald-400'));
+      const active = document.getElementById(`adnav-${sec}`);
+      if (active) active.classList.add('bg-emerald-500/10', 'text-emerald-400');
+
+      switch(sec) {
+        case 'dashboard': renderAdminOverview(content); break;
+        case 'transactions': renderAdminTransactions(content); break;
+        case 'products': renderAdminProductsStudio(content); break;
+        case 'payment-settings': renderAdminPaymentSettings(content); break;
+      }
+    }
+
+    async function renderAdminOverview(container) {
+      container.innerHTML = '<div class="text-center py-12 text-slate-500 font-mono">Refreshing live status & metrics...</div>';
+      const [statsRes, liveRes] = await Promise.all([
+        fetch('/api/admin/stats', { headers: { 'Authorization': `Bearer ${state.adminToken}` } }),
+        fetch('/api/admin/live-status', { headers: { 'Authorization': `Bearer ${state.adminToken}` } })
+      ]);
+      const stats = await statsRes.json();
+      const live = await liveRes.json();
+
+      document.getElementById('pendingTxnCountBadge').textContent = stats.pendingPayments || '0';
+
+      container.innerHTML = `
+        <div class="space-y-8">
+          
+          <!-- Live Status Row -->
+          <div class="admin-card rounded-3xl p-6 border border-emerald-500/30 bg-gradient-to-r from-emerald-950/20 to-admin-card">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div class="flex items-center gap-3">
+                <span class="w-3.5 h-3.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <div>
+                  <h3 class="text-sm font-bold text-white">LIVE WEBSITE STATUS</h3>
+                  <p class="text-xs text-slate-400">Real-time anonymous session heartbeat monitor</p>
+                </div>
+              </div>
+              <div class="flex gap-4 font-mono text-xs">
+                <div class="px-3 py-1.5 rounded-xl bg-surface-950 border border-admin-border"><span class="text-emerald-400 font-bold">${live.total_live_visitors}</span> Live Visitors</div>
+                <div class="px-3 py-1.5 rounded-xl bg-surface-950 border border-admin-border"><span class="text-teal-400 font-bold">${live.product_viewers}</span> Viewing Products</div>
+                <div class="px-3 py-1.5 rounded-xl bg-surface-950 border border-admin-border"><span class="text-amber-400 font-bold">${live.checkout_users}</span> In Checkout</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Real Metric KPI Cards -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="admin-card rounded-2xl p-5"><span class="text-[10px] text-slate-500 font-mono uppercase">Total Revenue</span><div class="text-2xl font-black text-emerald-400 font-mono">₹${stats.totalRevenue}</div></div>
+            <div class="admin-card rounded-2xl p-5"><span class="text-[10px] text-slate-500 font-mono uppercase">Pending Payments</span><div class="text-2xl font-black text-amber-400 font-mono">${stats.pendingPayments}</div></div>
+            <div class="admin-card rounded-2xl p-5"><span class="text-[10px] text-slate-500 font-mono uppercase">Confirmed Payments</span><div class="text-2xl font-black text-white font-mono">${stats.confirmedPayments}</div></div>
+            <div class="admin-card rounded-2xl p-5"><span class="text-[10px] text-slate-500 font-mono uppercase">Today's Orders</span><div class="text-2xl font-black text-white font-mono">${stats.todayOrders}</div></div>
+          </div>
+
+          <!-- Live Activity Log -->
+          <div class="admin-card rounded-3xl p-6 space-y-4">
+            <h3 class="text-xs font-bold uppercase text-slate-400 font-mono">Real-Time Activity Feed</h3>
+            <div class="space-y-2 max-h-60 overflow-y-auto custom-scroll">
+              ${(live.recent_activity || []).map(a => `
+                <div class="p-3 rounded-xl bg-surface-950/80 border border-admin-border text-xs flex justify-between items-center">
+                  <span class="text-slate-300">${a.text}</span>
+                  <span class="font-mono text-[10px] text-slate-500">${new Date(a.created_at).toLocaleTimeString()}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // ADMIN TRANSACTIONS QUEUE & PAYMENT PROOF VERIFICATION
+    // =========================================================================
+    async function renderAdminTransactions(container) {
+      container.innerHTML = '<div class="text-center py-12 text-slate-500 font-mono">Loading transaction queue...</div>';
+      const res = await fetch('/api/admin/transactions', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+      const txns = await res.json();
+
+      container.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex justify-between items-center">
+            <div>
+              <h2 class="text-lg font-black text-white">Manual Payment Verifications</h2>
+              <p class="text-xs text-slate-400">Review payment screenshots and unlock customer credentials</p>
+            </div>
+          </div>
+
+          <div class="admin-card rounded-3xl p-6">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead>
+                  <tr class="border-b border-admin-border text-slate-500 font-mono">
+                    <th class="pb-3">TXN ID</th>
+                    <th class="pb-3">Customer</th>
+                    <th class="pb-3">Amount</th>
+                    <th class="pb-3">Method</th>
+                    <th class="pb-3">Status</th>
+                    <th class="pb-3">Proof Screenshot</th>
+                    <th class="pb-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-admin-border font-mono">
+                  ${txns.map(t => `
+                    <tr>
+                      <td class="py-3.5 font-bold text-white">${t.txn_id}</td>
+                      <td class="py-3.5 text-slate-300">${t.customer_name} (${t.customer_email})</td>
+                      <td class="py-3.5 text-emerald-400 font-bold">₹${t.amount}</td>
+                      <td class="py-3.5 text-slate-400">${t.payment_method}</td>
+                      <td class="py-3.5">
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                          t.status === 'CONFIRMED' ? 'bg-emerald-500/10 text-emerald-400' :
+                          t.status === 'PROCESSING' ? 'bg-amber-500/10 text-amber-400' :
+                          t.status === 'REJECTED' ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-500/10 text-slate-400'
+                        }">${t.status}</span>
+                      </td>
+                      <td class="py-3.5">
+                        ${t.proof_screenshot ? `
+                          <button onclick="viewPaymentProofModal('${t.proof_screenshot}', '${t.txn_id}')" class="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-[11px]">
+                            🔍 View Proof
+                          </button>
+                        ` : '<span class="text-slate-500">No proof</span>'}
+                      </td>
+                      <td class="py-3.5 text-right space-x-2">
+                        ${t.status === 'PROCESSING' ? `
+                          <button onclick="confirmTransaction('${t._id}')" class="px-3 py-1 rounded-lg bg-emerald-500 text-gray-950 font-black">Confirm</button>
+                          <button onclick="rejectTransaction('${t._id}')" class="px-3 py-1 rounded-lg bg-rose-500/20 text-rose-400 font-bold">Reject</button>
+                        ` : '<span class="text-slate-600">Settled</span>'}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function viewPaymentProofModal(imgUrl, txnId) {
+      const modal = document.getElementById('globalModal');
+      const content = document.getElementById('globalModalContent');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      content.innerHTML = `
+        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400">✕</button>
+        <h3 class="text-base font-bold text-white mb-2">Payment Proof Screenshot (${txnId})</h3>
+        <div class="rounded-2xl overflow-hidden glass max-h-[70vh] flex items-center justify-center bg-black">
+          <img src="${imgUrl}" class="max-h-[68vh] object-contain">
+        </div>
+      `;
+    }
+
+    async function confirmTransaction(id) {
+      if (!confirm('Confirm this payment and unlock digital goods for the customer?')) return;
+      try {
+        const res = await fetch(`/api/admin/transactions/${id}/confirm`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.adminToken}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        showToast('Payment confirmed! Digital items unlocked.');
+        renderAdminTransactions(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function rejectTransaction(id) {
+      const reason = prompt('Enter rejection reason (e.g. Invalid screenshot, amount mismatch):', 'Payment screenshot invalid.');
+      if (reason === null) return;
+
+      try {
+        const res = await fetch(`/api/admin/transactions/${id}/reject`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.adminToken}`
+          },
+          body: JSON.stringify({ reason })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        showToast('Transaction rejected');
+        renderAdminTransactions(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    // =========================================================================
+    // ADMIN PAYMENT SETTINGS (UPI & CRYPTO)
+    // =========================================================================
+    async function renderAdminPaymentSettings(container) {
+      container.innerHTML = '<div class="text-center py-12 text-slate-500 font-mono">Loading payment configurations...</div>';
+      const res = await fetch('/api/admin/payment-settings', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+      const s = await res.json();
+
+      container.innerHTML = `
+        <div class="max-w-3xl space-y-6">
+          <div>
+            <h2 class="text-lg font-black text-white">Payment Gateway Settings</h2>
+            <p class="text-xs text-slate-400">Configure UPI and Cryptocurrency details shown at customer checkout</p>
+          </div>
+
+          <form onsubmit="saveAdminPaymentSettings(event)" class="space-y-6 text-xs">
+            
+            <!-- UPI Settings -->
+            <div class="admin-card rounded-3xl p-6 space-y-4">
+              <h3 class="font-bold uppercase text-emerald-400 font-mono">1. UPI Configuration</h3>
+              <div class="space-y-3">
+                <input type="text" id="admUpiId" required value="${s.upi_id || ''}" placeholder="UPI ID (e.g. merchant@okaxis)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
+                <input type="text" id="admUpiName" required value="${s.upi_name || ''}" placeholder="Account / Payee Name" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
+                <input type="text" id="admUpiQr" required value="${s.upi_qr_url || ''}" placeholder="QR Code Image URL" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
+                <textarea id="admUpiInst" rows="3" placeholder="Payment Instructions" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">${s.upi_instructions || ''}</textarea>
+              </div>
+            </div>
+
+            <!-- Crypto Settings -->
+            <div class="admin-card rounded-3xl p-6 space-y-4">
+              <h3 class="font-bold uppercase text-teal-400 font-mono">2. Crypto Configuration</h3>
+              <div class="space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                  <input type="text" id="admCryptoCurr" required value="${s.crypto_currency || 'USDT'}" placeholder="Currency (USDT, BTC)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
+                  <input type="text" id="admCryptoNet" required value="${s.crypto_network || 'TRC20'}" placeholder="Network (TRC20, ERC20)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
+                </div>
+                <input type="text" id="admCryptoWallet" required value="${s.crypto_wallet_address || ''}" placeholder="Wallet Address" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
+                <input type="text" id="admCryptoQr" required value="${s.crypto_qr_url || ''}" placeholder="Crypto QR Code Image URL" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
+                <textarea id="admCryptoInst" rows="3" placeholder="Crypto Transfer Instructions" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">${s.crypto_instructions || ''}</textarea>
+              </div>
+            </div>
+
+            <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase tracking-wider">
+              Save Payment Settings
+            </button>
+          </form>
+        </div>
+      `;
+    }
+
+    async function saveAdminPaymentSettings(e) {
+      e.preventDefault();
+      const payload = {
+        upi_id: document.getElementById('admUpiId').value,
+        upi_name: document.getElementById('admUpiName').value,
+        upi_qr_url: document.getElementById('admUpiQr').value,
+        upi_instructions: document.getElementById('admUpiInst').value,
+        crypto_currency: document.getElementById('admCryptoCurr').value,
+        crypto_network: document.getElementById('admCryptoNet').value,
+        crypto_wallet_address: document.getElementById('admCryptoWallet').value,
+        crypto_qr_url: document.getElementById('admCryptoQr').value,
+        crypto_instructions: document.getElementById('admCryptoInst').value
+      };
+
+      try {
+        const res = await fetch('/api/admin/payment-settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.adminToken}`
+          },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error((await res.json()).error);
+        showToast('Payment settings saved!');
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    // =========================================================================
+    // ADMIN PRODUCTS STUDIO
+    // =========================================================================
+    async function renderAdminProductsStudio(container) {
+      const res = await fetch('/api/admin/products', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+      const products = await res.json();
+
+      container.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex justify-between items-center">
+            <h2 class="text-lg font-black text-white">Product Studio</h2>
+            <button onclick="openProductFormModal('new')" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase">+ Add Product</button>
+          </div>
+
+          <div class="admin-card rounded-3xl p-6">
+            <table class="w-full text-left text-xs font-mono">
+              <thead><tr class="border-b border-admin-border text-slate-500"><th class="pb-2">Product</th><th class="pb-2">Price</th><th class="pb-2">Stock</th><th class="pb-2 text-right">Actions</th></tr></thead>
+              <tbody class="divide-y divide-admin-border">
+                ${products.map(p => `
+                  <tr>
+                    <td class="py-3 text-white font-bold">${p.name}</td>
+                    <td class="py-3">₹${p.sale_price}</td>
+                    <td class="py-3 ${p.stock_count > 0 ? 'text-emerald-400' : 'text-rose-400'}">${p.stock_count} units</td>
+                    <td class="py-3 text-right space-x-2">
+                      <button onclick="openProductInventoryModal('${p._id}', '${p.name.replace(/'/g, "\\'")}', '${p.delivery_type}')" class="text-teal-400">+ Stock</button>
+                      <button onclick="deleteAdminProduct('${p._id}')" class="text-rose-400">Delete</button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function openProductFormModal(id) {
+      const modal = document.getElementById('globalModal');
+      const content = document.getElementById('globalModalContent');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      content.innerHTML = `
+        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400">✕</button>
+        <h3 class="text-base font-black text-white mb-4">Add Digital Product</h3>
+        <form onsubmit="submitAdminProduct(event)" class="space-y-3 text-xs">
+          <input type="text" id="npTitle" required placeholder="Product Title" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
+          <input type="text" id="npShort" required placeholder="Short Tagline" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
+          <textarea id="npFull" rows="3" placeholder="Full Description" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white"></textarea>
+          <div class="grid grid-cols-2 gap-3">
+            <input type="number" id="npPrice" required placeholder="Sale Price (₹)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
+            <select id="npDeliv" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
+              <option value="EMAIL_PASSWORD">Email + Password</option>
+              <option value="LICENSE_KEY">License Key</option>
+              <option value="STANDARD_LINK">Standard Link</option>
+            </select>
+          </div>
+          <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black uppercase">Create & Publish</button>
+        </form>
+      `;
+    }
+
+    async function submitAdminProduct(e) {
+      e.preventDefault();
+      try {
+        const res = await fetch('/api/admin/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
+          body: JSON.stringify({
+            name: document.getElementById('npTitle').value,
+            short_description: document.getElementById('npShort').value,
+            description: document.getElementById('npFull').value,
+            sale_price: Number(document.getElementById('npPrice').value),
+            original_price: Number(document.getElementById('npPrice').value) * 1.5,
+            delivery_type: document.getElementById('npDeliv').value
+          })
+        });
+        if (!res.ok) throw new Error((await res.json()).error);
+        showToast('Product added!');
+        document.getElementById('globalModal').classList.add('hidden');
+        renderAdminProductsStudio(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    function openProductInventoryModal(productId, productName, deliveryType) {
+      const modal = document.getElementById('globalModal');
+      const content = document.getElementById('globalModalContent');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      let fields = '';
+      if (deliveryType === 'EMAIL_PASSWORD') {
+        fields = `
+          <input type="email" id="invEm" required placeholder="Account Email" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
+          <input type="text" id="invPw" required placeholder="Account Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
+        `;
+      } else if (deliveryType === 'LICENSE_KEY') {
+        fields = `<input type="text" id="invLk" required placeholder="License Key" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white font-mono">`;
+      } else {
+        fields = `<input type="url" id="invUrl" required placeholder="Product URL" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">`;
+      }
+
+      content.innerHTML = `
+        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400">✕</button>
+        <h3 class="text-base font-bold text-white mb-2">Attach Stock: ${productName}</h3>
+        <form onsubmit="submitInventoryStock(event, '${productId}', '${deliveryType}')" class="space-y-3 text-xs">
+          ${fields}
+          <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black uppercase">Attach Unit</button>
+        </form>
+      `;
+    }
+
+    async function submitInventoryStock(e, productId, deliveryType) {
+      e.preventDefault();
+      const payload = { delivery_type: deliveryType };
+      if (deliveryType === 'EMAIL_PASSWORD') {
+        payload.email = document.getElementById('invEm').value;
+        payload.password = document.getElementById('invPw').value;
+      } else if (deliveryType === 'LICENSE_KEY') {
+        payload.license_key = document.getElementById('invLk').value;
+      } else {
+        payload.delivery_url = document.getElementById('invUrl').value;
+      }
+
+      try {
+        const res = await fetch(`/api/admin/inventory/${productId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error((await res.json()).error);
+        showToast('Stock unit attached!');
+        document.getElementById('globalModal').classList.add('hidden');
+        renderAdminProductsStudio(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function deleteAdminProduct(id) {
+      if (!confirm('Permanently delete product?')) return;
+      try {
+        await fetch(`/api/admin/products/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.adminToken}` }
+        });
+        showToast('Product deleted');
+        renderAdminProductsStudio(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    function adminSignOut() {
       state.adminToken = '';
       state.adminUsername = '';
       localStorage.removeItem('nexus_admin_token');
@@ -1060,14 +1356,8 @@
       navigate('home');
     }
 
-    function handleGlobalSearch(val) {
-      if (!val.trim()) return renderProductsView(document.getElementById('appRoot'));
-      navigate('products', { search: val, title: `Search results for "${val}"` });
-    }
-
+    // Bootstrap
     document.addEventListener('DOMContentLoaded', () => {
-      updateCartBadges();
-      if (state.user) document.getElementById('navAccountLabel').textContent = state.user.name;
       navigate('home');
     });
   </script>
