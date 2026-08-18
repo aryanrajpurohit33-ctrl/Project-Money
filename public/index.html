@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Lofi Room</title>
+  <title>Monster Energy — Unleash The Beast</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,600;0,800;1,900&display=swap" rel="stylesheet">
   
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -29,167 +29,413 @@
       box-sizing: border-box;
     }
     html, body {
-      height: 100%;
-      height: 100dvh;
-      overflow: hidden;
-      margin: 0;
-      padding: 0;
-      background-color: #060913;
+      min-height: 100vh;
+      background-color: #030508;
       color: #f8fafc;
       font-family: 'Plus Jakarta Sans', sans-serif;
+      overflow-x: hidden;
+      transition: background-color 0.6s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    /* Fullscreen High-Quality Animated Background */
-    .bg-gif {
+    /* Ambient Dynamic Aura */
+    .flavor-glow {
       position: fixed;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: 0;
-      filter: brightness(0.85) contrast(1.05);
+      border-radius: 50%;
+      filter: blur(120px);
       pointer-events: none;
+      z-index: 0;
+      transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    /* Glass Bottom Audio Dock */
-    .glass-dock {
-      background: rgba(8, 14, 26, 0.65);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.75), inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
+    /* Monster Can 3D Container */
+    .can-stage {
+      perspective: 1200px;
+    }
+    .can-3d-wrapper {
+      transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.6s ease;
+      transform-style: preserve-3d;
+      will-change: transform;
+    }
+    .can-switching {
+      transform: scale(0.7) rotateY(180deg) translateY(40px) !important;
+      opacity: 0;
+      filter: blur(8px);
+    }
+    .can-enter {
+      animation: canPop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    @keyframes canPop {
+      0% { transform: scale(0.7) rotateY(-180deg) translateY(-40px); opacity: 0; filter: blur(8px); }
+      100% { transform: scale(1) rotateY(0deg) translateY(0); opacity: 1; filter: blur(0); }
     }
 
-    /* Equalizer Bar Animation */
-    .eq-bar {
-      width: 3px;
-      border-radius: 99px;
-      background: #34d399;
-      animation: bounceEQ 1.2s ease-in-out infinite alternate;
+    /* Dynamic Giant Typography in Background */
+    .bg-giant-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: clamp(4rem, 16vw, 12rem);
+      font-weight: 900;
+      font-style: italic;
+      line-height: 0.8;
+      letter-spacing: -0.05em;
+      opacity: 0.04;
+      pointer-events: none;
+      z-index: 0;
+      white-space: nowrap;
+      user-select: none;
+      transition: all 0.5s ease;
     }
-    .eq-paused {
-      animation-play-state: paused !important;
-      height: 4px !important;
-    }
-    .bar-1 { height: 14px; animation-delay: 0.1s; }
-    .bar-2 { height: 22px; animation-delay: 0.3s; }
-    .bar-3 { height: 10px; animation-delay: 0.2s; }
-    .bar-4 { height: 18px; animation-delay: 0.4s; }
 
-    @keyframes bounceEQ {
-      0% { height: 4px; }
-      50% { height: 22px; }
-      100% { height: 8px; }
+    /* Glass Panels */
+    .glass-card {
+      background: rgba(10, 15, 26, 0.6);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.7);
+    }
+
+    /* Floating Flavor Particles */
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+      animation: floatUp 4s infinite linear;
+    }
+    @keyframes floatUp {
+      0% { transform: translateY(0) scale(0.5); opacity: 0; }
+      50% { opacity: 0.8; }
+      100% { transform: translateY(-120px) scale(1.2); opacity: 0; }
+    }
+
+    /* Claw Logo SVG Glow */
+    .claw-glow {
+      filter: drop-shadow(0 0 16px var(--theme-color));
+      transition: filter 0.5s ease;
     }
   </style>
 </head>
-<body class="h-[100dvh] w-full flex flex-col justify-between p-6 relative select-none">
+<body class="relative flex flex-col justify-between p-4 sm:p-8 select-none" id="appBody">
 
-  <!-- Verified High-Res Rainy Cozy Lofi Room GIF -->
-  <img 
-    class="bg-gif" 
-    src="https://media.giphy.com/media/26n6WywJyh39n1pBu/giphy.gif" 
-    alt="Cozy Rainy Lofi Room"
-  />
+  <!-- Dynamic Ambient Glows -->
+  <div id="orbTop" class="flavor-glow top-[-10%] left-[10%] w-[450px] h-[450px] bg-[#10b981]/25"></div>
+  <div id="orbBottom" class="flavor-glow bottom-[-10%] right-[10%] w-[400px] h-[400px] bg-[#10b981]/15"></div>
 
-  <!-- Subtle Film Vignette Overlay -->
-  <div class="fixed inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 pointer-events-none z-[1]"></div>
+  <!-- Giant Background Flavor Wordmark -->
+  <div id="bgGiantWord" class="bg-giant-text text-white">ORIGINAL</div>
 
-  <!-- Top Status Bar -->
-  <header class="relative z-10 flex items-center justify-between w-full max-w-4xl mx-auto">
-    <div class="flex items-center gap-2.5">
-      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-      <span class="text-xs uppercase tracking-widest font-semibold text-white/80">Lofi Radio</span>
+  <!-- ========================================== -->
+  <!-- TOP NAVIGATION / BRAND -->
+  <!-- ========================================== -->
+  <header class="relative z-10 flex items-center justify-between w-full max-w-6xl mx-auto">
+    <div class="flex items-center gap-3">
+      <!-- Monster Claw Logo Icon -->
+      <svg class="w-8 h-8 claw-glow transition-all" id="clawLogo" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M18.8 2.3c-.4.2-1.1.9-1.5 1.5-.7 1.1-2 4.4-2.8 7.3-.6 2-.9 2.5-1.3 2.1-.3-.3-.5-1.5-.8-3.7-.4-3.2-.8-4.7-1.4-5.3-.8-.8-1.5-.6-2 .7-.6 1.4-.9 4.3-1 8.5 0 2.2-.2 2.7-.8 2.1-.5-.5-.7-1.9-.9-4.8-.2-3.8-.5-5.2-1.4-5.9-.6-.4-1.2-.2-1.6.5-.4.8-.4 2.8 0 7.8.6 6.8 1.1 8.9 2.3 9.4.8.3 1.3 0 1.9-1.2.6-1.2 1.3-4.5 1.6-7.5.3-2.6.5-3.1.9-2.2.4.9.8 3.5 1.3 8.3.4 3.7.8 4.7 1.7 4.9.9.2 1.5-.4 2.3-2.3 1.2-3 2.8-9.8 3.2-13.6.4-3 .3-3.7-.4-4.2-.5-.3-1-.1-1.6.4z"/>
+      </svg>
+      <div>
+        <span class="text-sm font-black tracking-widest text-white block leading-none">MONSTER</span>
+        <span class="text-[9px] font-bold tracking-widest uppercase text-slate-500">ENERGY</span>
+      </div>
     </div>
-    <div id="liveClock" class="text-xs font-mono font-medium text-white/70">--:--:--</div>
+
+    <!-- Energy Badge -->
+    <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-semibold">
+      <span class="w-2 h-2 rounded-full animate-ping" id="badgeDot" style="background-color: #10b981;"></span>
+      <span id="editionTag" class="text-slate-300">500ml • 160mg Caffeine</span>
+    </div>
   </header>
 
-  <!-- Empty Center Space (Text Removed) -->
-  <div></div>
-
-  <!-- Bottom Floating Audio Dock -->
-  <footer class="relative z-10 w-full max-w-sm mx-auto mb-2">
-    <div class="glass-dock rounded-2xl p-4 flex items-center justify-between">
+  <!-- ========================================== -->
+  <!-- MAIN PRODUCT HERO SECTION -->
+  <!-- ========================================== -->
+  <main class="relative z-10 w-full max-w-6xl mx-auto my-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center py-6">
+    
+    <!-- LEFT: Flavor Meta & Information -->
+    <div class="lg:col-span-4 space-y-4 text-center lg:text-left order-2 lg:order-1">
       
-      <!-- Visualizer & Stream Status -->
-      <div class="flex items-center gap-3">
-        <div class="flex items-end gap-1 h-6 px-1">
-          <span class="eq-bar bar-1 eq-paused" id="eq1"></span>
-          <span class="eq-bar bar-2 eq-paused" id="eq2"></span>
-          <span class="eq-bar bar-3 eq-paused" id="eq3"></span>
-          <span class="eq-bar bar-4 eq-paused" id="eq4"></span>
-        </div>
+      <div class="space-y-1">
+        <span id="flavorSubhead" class="text-xs font-extrabold uppercase tracking-widest text-emerald-400">Green Energy Blend</span>
+        <h1 id="flavorTitle" class="text-4xl sm:text-6xl font-black italic tracking-tighter text-white uppercase transition-all duration-300">
+          ORIGINAL
+        </h1>
+      </div>
 
-        <div>
-          <div class="text-xs font-semibold text-white tracking-wide">Chill Lofi Radio</div>
-          <div class="text-[11px] text-slate-400" id="playStatus">Paused • Click play</div>
+      <p id="flavorDesc" class="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-md mx-auto lg:mx-0">
+        Tear into a can of the meanest energy drink on the planet. Smooth, refreshing blend with taurine, L-carnitine, and ginseng.
+      </p>
+
+      <!-- Key Nutrition Highlights -->
+      <div class="grid grid-cols-3 gap-2.5 pt-2">
+        <div class="glass-card rounded-2xl p-3 text-center">
+          <span class="text-[10px] uppercase font-bold text-slate-500 block">Caffeine</span>
+          <span id="statCaffeine" class="text-sm font-black text-white">160 mg</span>
+        </div>
+        <div class="glass-card rounded-2xl p-3 text-center">
+          <span class="text-[10px] uppercase font-bold text-slate-500 block">Calories</span>
+          <span id="statCalories" class="text-sm font-black text-white">210 kcal</span>
+        </div>
+        <div class="glass-card rounded-2xl p-3 text-center">
+          <span class="text-[10px] uppercase font-bold text-slate-500 block">Sugar</span>
+          <span id="statSugar" class="text-sm font-black text-white">54 g</span>
         </div>
       </div>
 
-      <!-- Play / Pause Controller -->
-      <button 
-        id="playBtn" 
-        onclick="toggleAudio()" 
-        class="w-10 h-10 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-gray-950 flex items-center justify-center transition-all shadow-lg shadow-emerald-500/25 focus:outline-none"
-        aria-label="Toggle Beats"
-      >
-        <svg id="playIcon" class="w-5 h-5 ml-0.5" viewBox="0 0 24 24" fill="currentColor">
-          <polygon points="5 3 19 12 5 21 5 3"/>
-        </svg>
-        <svg id="pauseIcon" class="w-5 h-5 hidden" viewBox="0 0 24 24" fill="currentColor">
-          <rect x="6" y="4" width="4" height="16"/>
-          <rect x="14" y="4" width="4" height="16"/>
-        </svg>
-      </button>
+      <!-- Action Button -->
+      <div class="pt-4 flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
+        <button id="orderBtn" class="px-8 py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider text-gray-950 shadow-xl transition-all duration-300 active:scale-95 flex items-center justify-center gap-2" style="background-color: #10b981; box-shadow: 0 10px 25px -5px rgba(16,185,129,0.5);">
+          <span>Unleash The Beast</span>
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
 
     </div>
+
+    <!-- CENTER: Animated 3D Can Showcase -->
+    <div class="lg:col-span-5 flex items-center justify-center relative order-1 lg:order-2 can-stage min-h-[380px] sm:min-h-[460px]">
+      
+      <!-- Particle Emitter Base -->
+      <div id="particleContainer" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
+
+      <!-- 3D Transformable Can -->
+      <div id="canWrapper" class="can-3d-wrapper relative flex items-center justify-center">
+        <!-- High-Res Can Render Asset -->
+        <img 
+          id="canImage" 
+          src="https://pngimg.com/d/monster_energy_PNG29.png" 
+          alt="Monster Energy Can"
+          class="w-[200px] sm:w-[260px] max-h-[420px] object-contain drop-shadow-[0_25px_35px_rgba(0,0,0,0.8)] transition-all duration-300 cursor-grab active:cursor-grabbing"
+        />
+      </div>
+
+    </div>
+
+    <!-- RIGHT: Interactive Flavor Switcher Selector -->
+    <div class="lg:col-span-3 space-y-3 order-3">
+      <span class="text-[11px] font-extrabold uppercase tracking-widest text-slate-500 block text-center lg:text-left">
+        Select Edition
+      </span>
+
+      <!-- Flavor Buttons -->
+      <div class="space-y-2.5">
+        
+        <!-- Flavor 1: Original (Emerald) -->
+        <button onclick="switchFlavor(0)" id="fBtn-0" class="flavor-selector w-full glass-card rounded-2xl p-3 flex items-center justify-between border-2 border-emerald-500 transition-all active:scale-95">
+          <div class="flex items-center gap-3">
+            <span class="w-3.5 h-3.5 rounded-full bg-[#10b981] shadow-[0_0_10px_#10b981]"></span>
+            <div class="text-left">
+              <div class="text-xs font-bold text-white">Original Green</div>
+              <div class="text-[10px] text-slate-400">Classic Energy Blend</div>
+            </div>
+          </div>
+          <span class="text-xs text-emerald-400 font-black">01</span>
+        </button>
+
+        <!-- Flavor 2: Mango Loco (Vibrant Orange/Cyan) -->
+        <button onclick="switchFlavor(1)" id="fBtn-1" class="flavor-selector w-full glass-card rounded-2xl p-3 flex items-center justify-between border border-white/5 transition-all active:scale-95">
+          <div class="flex items-center gap-3">
+            <span class="w-3.5 h-3.5 rounded-full bg-[#f97316] shadow-[0_0_10px_#f97316]"></span>
+            <div class="text-left">
+              <div class="text-xs font-bold text-white">Mango Loco</div>
+              <div class="text-[10px] text-slate-400">Juice Monster • Exotic</div>
+            </div>
+          </div>
+          <span class="text-xs text-slate-500 font-black">02</span>
+        </button>
+
+        <!-- Flavor 3: Ultra White (Zero Ultra) -->
+        <button onclick="switchFlavor(2)" id="fBtn-2" class="flavor-selector w-full glass-card rounded-2xl p-3 flex items-center justify-between border border-white/5 transition-all active:scale-95">
+          <div class="flex items-center gap-3">
+            <span class="w-3.5 h-3.5 rounded-full bg-[#38bdf8] shadow-[0_0_10px_#38bdf8]"></span>
+            <div class="text-left">
+              <div class="text-xs font-bold text-white">Zero Ultra</div>
+              <div class="text-[10px] text-slate-400">Zero Sugar • Citrus</div>
+            </div>
+          </div>
+          <span class="text-xs text-slate-500 font-black">03</span>
+        </button>
+
+        <!-- Flavor 4: Pipeline Punch (Hot Pink) -->
+        <button onclick="switchFlavor(3)" id="fBtn-3" class="flavor-selector w-full glass-card rounded-2xl p-3 flex items-center justify-between border border-white/5 transition-all active:scale-95">
+          <div class="flex items-center gap-3">
+            <span class="w-3.5 h-3.5 rounded-full bg-[#ec4899] shadow-[0_0_10px_#ec4899]"></span>
+            <div class="text-left">
+              <div class="text-xs font-bold text-white">Pipeline Punch</div>
+              <div class="text-[10px] text-slate-400">Passion Fruit • Guava</div>
+            </div>
+          </div>
+          <span class="text-xs text-slate-500 font-black">04</span>
+        </button>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- FOOTER -->
+  <!-- ========================================== -->
+  <footer class="relative z-10 flex flex-col sm:flex-row items-center justify-between w-full max-w-6xl mx-auto pt-6 border-t border-white/5 text-[11px] text-slate-500 gap-2">
+    <span>© 2026 Monster Energy Company. All rights reserved.</span>
+    <span class="font-mono text-slate-400">High Caffeine Content (32mg/100ml)</span>
   </footer>
 
-  <!-- 24/7 Chill Lofi Audio Stream -->
-  <audio id="chillAudio" preload="none" src="https://stream.zeno.fm/f3wvbbqmdg8uv"></audio>
-
+  <!-- ========================================== -->
+  <!-- FLAVOR ENGINE & 3D INTERACTION LOGIC -->
+  <!-- ========================================== -->
   <script>
-    const audio = document.getElementById('chillAudio');
-    const playIcon = document.getElementById('playIcon');
-    const pauseIcon = document.getElementById('pauseIcon');
-    const statusText = document.getElementById('playStatus');
-    const eqBars = [
-      document.getElementById('eq1'),
-      document.getElementById('eq2'),
-      document.getElementById('eq3'),
-      document.getElementById('eq4')
+    const FLAVORS = [
+      {
+        name: "ORIGINAL",
+        subhead: "Green Energy Blend",
+        desc: "Tear into a can of the meanest energy drink on the planet. Smooth, refreshing blend with taurine, L-carnitine, and ginseng.",
+        color: "#10b981",
+        glowTop: "rgba(16, 185, 129, 0.25)",
+        glowBottom: "rgba(16, 185, 129, 0.12)",
+        caffeine: "160 mg",
+        calories: "210 kcal",
+        sugar: "54 g",
+        canImg: "https://pngimg.com/d/monster_energy_PNG29.png"
+      },
+      {
+        name: "MANGO LOCO",
+        subhead: "Juice Monster Blend",
+        desc: "A heavenly blend of exotic juices that is sure to attract even the most stubborn spirit. Crazy good taste with that Monster magic.",
+        color: "#f97316",
+        glowTop: "rgba(249, 115, 22, 0.28)",
+        glowBottom: "rgba(6, 182, 212, 0.15)",
+        caffeine: "160 mg",
+        calories: "200 kcal",
+        sugar: "48 g",
+        canImg: "https://pngimg.com/d/monster_energy_PNG14.png"
+      },
+      {
+        name: "ZERO ULTRA",
+        subhead: "Zero Sugar • Full Flavor",
+        desc: "A little less sweet, lighter-tasting, zero calories, but with a full load of our Monster energy blend. Unleash the Ultra Beast!",
+        color: "#38bdf8",
+        glowTop: "rgba(56, 189, 248, 0.25)",
+        glowBottom: "rgba(255, 255, 255, 0.12)",
+        caffeine: "150 mg",
+        calories: "10 kcal",
+        sugar: "0 g",
+        canImg: "https://pngimg.com/d/monster_energy_PNG13.png"
+      },
+      {
+        name: "PIPELINE PUNCH",
+        subhead: "Hawaiian Wave Tribute",
+        desc: "The perfect blend of the best flavors Hawaii has to offer: passion fruit, orange & guava, fully Monsterized with our signature kick.",
+        color: "#ec4899",
+        glowTop: "rgba(236, 72, 153, 0.28)",
+        glowBottom: "rgba(244, 63, 94, 0.15)",
+        caffeine: "160 mg",
+        calories: "190 kcal",
+        sugar: "46 g",
+        canImg: "https://pngimg.com/d/monster_energy_PNG15.png"
+      }
     ];
 
-    function toggleAudio() {
-      if (audio.paused) {
-        audio.play().then(() => {
-          playIcon.classList.add('hidden');
-          pauseIcon.classList.remove('hidden');
-          statusText.textContent = "Live • Chill Stream";
-          eqBars.forEach(b => b.classList.remove('eq-paused'));
-        }).catch(() => {
-          statusText.textContent = "Tap play to start";
-        });
-      } else {
-        audio.pause();
-        playIcon.classList.remove('hidden');
-        pauseIcon.classList.add('hidden');
-        statusText.textContent = "Paused";
-        eqBars.forEach(b => b.classList.add('eq-paused'));
+    let currentIdx = 0;
+    let isTransitioning = false;
+
+    function switchFlavor(idx) {
+      if (isTransitioning || idx === currentIdx) return;
+      isTransitioning = true;
+      currentIdx = idx;
+
+      const f = FLAVORS[idx];
+      const can = document.getElementById('canWrapper');
+      const canImg = document.getElementById('canImage');
+
+      // 1. Trigger exit flip animation
+      can.classList.remove('can-enter');
+      can.classList.add('can-switching');
+
+      // 2. Update UI theme elements
+      document.documentElement.style.setProperty('--theme-color', f.color);
+      document.getElementById('clawLogo').style.color = f.color;
+      document.getElementById('clawLogo').style.filter = `drop-shadow(0 0 16px ${f.color})`;
+      document.getElementById('badgeDot').style.backgroundColor = f.color;
+      document.getElementById('orderBtn').style.backgroundColor = f.color;
+      document.getElementById('orderBtn').style.boxShadow = `0 10px 25px -5px ${f.color}80`;
+      document.getElementById('flavorSubhead').style.color = f.color;
+      document.getElementById('orbTop').style.backgroundColor = f.glowTop;
+      document.getElementById('orbBottom').style.backgroundColor = f.glowBottom;
+
+      // Update Button selection states
+      document.querySelectorAll('.flavor-selector').forEach((btn, bIdx) => {
+        if (bIdx === idx) {
+          btn.style.borderColor = f.color;
+          btn.querySelector('span:last-child').style.color = f.color;
+        } else {
+          btn.style.borderColor = 'rgba(255, 255, 255, 0.05)';
+          btn.querySelector('span:last-child').style.color = '#64748b';
+        }
+      });
+
+      // 3. Staggered text & asset swaps
+      setTimeout(() => {
+        canImg.src = f.canImg;
+        document.getElementById('bgGiantWord').textContent = f.name;
+        document.getElementById('flavorTitle').textContent = f.name;
+        document.getElementById('flavorSubhead').textContent = f.subhead;
+        document.getElementById('flavorDesc').textContent = f.desc;
+        document.getElementById('statCaffeine').textContent = f.caffeine;
+        document.getElementById('statCalories').textContent = f.calories;
+        document.getElementById('statSugar').textContent = f.sugar;
+
+        // Enter animation
+        can.classList.remove('can-switching');
+        can.classList.add('can-enter');
+        spawnParticles(f.color);
+        isTransitioning = false;
+      }, 300);
+    }
+
+    // Dynamic Micro Bubble / Particle Explosion on Switch
+    function spawnParticles(color) {
+      const container = document.getElementById('particleContainer');
+      container.innerHTML = '';
+      for (let i = 0; i < 18; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        const size = Math.random() * 6 + 4;
+        p.style.width = `${size}px`;
+        p.style.height = `${size}px`;
+        p.style.backgroundColor = color;
+        p.style.left = `${Math.random() * 80 + 10}%`;
+        p.style.bottom = `${Math.random() * 30}%`;
+        p.style.animationDuration = `${Math.random() * 2 + 1.5}s`;
+        p.style.boxShadow = `0 0 10px ${color}`;
+        container.appendChild(p);
       }
     }
 
-    function updateTime() {
-      const now = new Date();
-      document.getElementById('liveClock').textContent = now.toLocaleTimeString([], { 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        second: '2-digit' 
+    // 3D Parallax Tilt Effect on Mouse/Touch
+    const stage = document.querySelector('.can-stage');
+    const can = document.getElementById('canWrapper');
+
+    if (stage && can) {
+      window.addEventListener('mousemove', (e) => {
+        if (isTransitioning) return;
+        const { innerWidth, innerHeight } = window;
+        const x = (e.clientX / innerWidth - 0.5) * 30;
+        const y = (e.clientY / innerHeight - 0.5) * -30;
+        can.style.transform = `rotateY(${x}deg) rotateX(${y}deg) translateY(${y * 0.5}px)`;
+      });
+
+      window.addEventListener('mouseleave', () => {
+        if (isTransitioning) return;
+        can.style.transform = `rotateY(0deg) rotateX(0deg) translateY(0px)`;
       });
     }
 
-    setInterval(updateTime, 1000);
-    updateTime();
+    document.addEventListener('DOMContentLoaded', () => {
+      document.documentElement.style.setProperty('--theme-color', '#10b981');
+      spawnParticles('#10b981');
+    });
   </script>
 </body>
 </html>
