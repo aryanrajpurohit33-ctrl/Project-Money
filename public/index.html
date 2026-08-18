@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Monster Energy — Unleash The Beast</title>
+  <title>Monster Energy — 3D Can Experience</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,6 +27,7 @@
     * {
       -webkit-tap-highlight-color: transparent;
       box-sizing: border-box;
+      touch-action: pan-y;
     }
     html, body {
       min-height: 100vh;
@@ -37,7 +38,6 @@
       transition: background-color 0.6s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    /* Ambient Dynamic Aura */
     .flavor-glow {
       position: fixed;
       border-radius: 50%;
@@ -47,19 +47,27 @@
       transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    /* 3D Interactive Stage */
     .can-stage {
       perspective: 1200px;
+      user-select: none;
+      -webkit-user-select: none;
     }
+
     .can-3d-wrapper {
-      transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.6s ease;
       transform-style: preserve-3d;
       will-change: transform;
+      cursor: grab;
+      touch-action: none;
     }
+    .can-3d-wrapper:active {
+      cursor: grabbing;
+    }
+
     .can-switching {
       transform: scale(0.7) rotateY(180deg) translateY(40px) !important;
       opacity: 0;
       filter: blur(8px);
+      transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease, filter 0.4s ease !important;
     }
     .can-enter {
       animation: canPop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
@@ -69,7 +77,6 @@
       100% { transform: scale(1) rotateY(0deg) translateY(0); opacity: 1; filter: blur(0); }
     }
 
-    /* Giant Background Watermark */
     .bg-giant-text {
       position: absolute;
       top: 50%;
@@ -113,7 +120,6 @@
       transition: filter 0.5s ease;
     }
 
-    /* SVG Can Gradients & Lighting */
     .can-metal-sheen {
       filter: drop-shadow(0 30px 40px rgba(0, 0, 0, 0.9));
     }
@@ -121,14 +127,12 @@
 </head>
 <body class="relative flex flex-col justify-between p-4 sm:p-8 select-none" id="appBody">
 
-  <!-- Ambient Dynamic Glows -->
   <div id="orbTop" class="flavor-glow top-[-10%] left-[10%] w-[450px] h-[450px] bg-[#10b981]/25"></div>
   <div id="orbBottom" class="flavor-glow bottom-[-10%] right-[10%] w-[400px] h-[400px] bg-[#10b981]/15"></div>
 
-  <!-- Giant Background Title -->
   <div id="bgGiantWord" class="bg-giant-text text-white">ORIGINAL</div>
 
-  <!-- Header -->
+  <!-- Top Header -->
   <header class="relative z-10 flex items-center justify-between w-full max-w-6xl mx-auto">
     <div class="flex items-center gap-3">
       <svg class="w-8 h-8 claw-glow transition-all" id="clawLogo" viewBox="0 0 24 24" fill="currentColor">
@@ -146,7 +150,7 @@
     </div>
   </header>
 
-  <!-- Main Hero -->
+  <!-- Main Hero Layout -->
   <main class="relative z-10 w-full max-w-6xl mx-auto my-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center py-6">
     
     <!-- Left Meta Information -->
@@ -185,15 +189,19 @@
       </div>
     </div>
 
-    <!-- Center 3D Vector Monster Can (100% Reliable Render) -->
-    <div class="lg:col-span-5 flex items-center justify-center relative order-1 lg:order-2 can-stage min-h-[380px] sm:min-h-[460px]">
+    <!-- Center 3D Can (Interactive Touch & Drag) -->
+    <div class="lg:col-span-5 flex flex-col items-center justify-center relative order-1 lg:order-2 can-stage min-h-[420px] sm:min-h-[480px]">
       <div id="particleContainer" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
 
-      <div id="canWrapper" class="can-3d-wrapper relative flex items-center justify-center cursor-grab active:cursor-grabbing">
-        
+      <!-- Instruction Badge -->
+      <div class="mb-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] uppercase tracking-wider text-slate-400 flex items-center gap-1.5 shadow-md">
+        <svg class="w-3.5 h-3.5 text-emerald-400 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 11v6a5 5 0 0 0 10 0v-6"/><path d="M12 2v6"/><path d="M9 5l3-3 3 3"/></svg>
+        <span>Hold & drag to inspect in 3D</span>
+      </div>
+
+      <div id="canWrapper" class="can-3d-wrapper relative flex items-center justify-center">
         <svg class="w-[190px] sm:w-[250px] h-[390px] sm:h-[450px] can-metal-sheen" viewBox="0 0 200 420" fill="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            <!-- Metallic Can Rim Gradient -->
             <linearGradient id="metalRim" x1="0" y1="0" x2="200" y2="0" gradientUnits="userSpaceOnUse">
               <stop offset="0%" stop-color="#475569"/>
               <stop offset="25%" stop-color="#94a3b8"/>
@@ -202,7 +210,6 @@
               <stop offset="100%" stop-color="#1e293b"/>
             </linearGradient>
 
-            <!-- Dynamic Body Gradient (Morphed by JS) -->
             <linearGradient id="canBodyGrad" x1="0" y1="0" x2="200" y2="0" gradientUnits="userSpaceOnUse">
               <stop id="bodyStop1" offset="0%" stop-color="#05070a"/>
               <stop id="bodyStop2" offset="28%" stop-color="#151b24"/>
@@ -211,12 +218,9 @@
               <stop id="bodyStop5" offset="100%" stop-color="#05070a"/>
             </linearGradient>
 
-            <!-- Metal Reflection Sheen -->
             <linearGradient id="specularGlint" x1="0" y1="0" x2="200" y2="0" gradientUnits="userSpaceOnUse">
               <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
-              <stop offset="38%" stop-color="#ffffff" stop-opacity="0.04"/>
-              <stop offset="48%" stop-color="#ffffff" stop-opacity="0.25"/>
-              <stop offset="54%" stop-color="#ffffff" stop-opacity="0.06"/>
+              <stop id="glintCenter" offset="48%" stop-color="#ffffff" stop-opacity="0.28"/>
               <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
             </linearGradient>
           </defs>
@@ -231,25 +235,21 @@
 
           <!-- Main Cylinder Body -->
           <path d="M 20 55 Q 100 48 180 55 L 180 375 Q 100 385 20 375 Z" fill="url(#canBodyGrad)"/>
-          
-          <!-- Gloss Highlights Layer -->
           <path d="M 20 55 Q 100 48 180 55 L 180 375 Q 100 385 20 375 Z" fill="url(#specularGlint)"/>
 
-          <!-- Bottom Taper Base -->
+          <!-- Bottom Base -->
           <path d="M 20 375 Q 100 385 180 375 L 168 402 Q 100 412 32 402 Z" fill="url(#metalRim)"/>
           <path d="M 32 402 Q 100 412 168 402 L 160 410 Q 100 418 40 410 Z" fill="#0f172a"/>
 
-          <!-- Dynamic Monster Claw Graphic on Can -->
+          <!-- Dynamic Monster Logo -->
           <g id="canClawGraphic" transform="translate(48, 115) scale(4.4)" class="transition-all duration-300">
-            <!-- Glow Shadow -->
             <path id="svgClawGlow" d="M18.8 2.3c-.4.2-1.1.9-1.5 1.5-.7 1.1-2 4.4-2.8 7.3-.6 2-.9 2.5-1.3 2.1-.3-.3-.5-1.5-.8-3.7-.4-3.2-.8-4.7-1.4-5.3-.8-.8-1.5-.6-2 .7-.6 1.4-.9 4.3-1 8.5 0 2.2-.2 2.7-.8 2.1-.5-.5-.7-1.9-.9-4.8-.2-3.8-.5-5.2-1.4-5.9-.6-.4-1.2-.2-1.6.5-.4.8-.4 2.8 0 7.8.6 6.8 1.1 8.9 2.3 9.4.8.3 1.3 0 1.9-1.2.6-1.2 1.3-4.5 1.6-7.5.3-2.6.5-3.1.9-2.2.4.9.8 3.5 1.3 8.3.4 3.7.8 4.7 1.7 4.9.9.2 1.5-.4 2.3-2.3 1.2-3 2.8-9.8 3.2-13.6.4-3 .3-3.7-.4-4.2-.5-.3-1-.1-1.6.4z" fill="#10b981" filter="drop-shadow(0 0 6px #10b981)"/>
           </g>
 
-          <!-- Monster Brand Typography on Can -->
+          <!-- Label Elements -->
           <text id="canTextFlavor" x="100" y="275" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-style="italic" font-size="11" fill="#ffffff" letter-spacing="3" text-anchor="middle">ENERGY</text>
           <text id="canTextEdition" x="100" y="292" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="9" fill="#10b981" letter-spacing="4" text-anchor="middle">ORIGINAL</text>
         </svg>
-
       </div>
     </div>
 
@@ -308,6 +308,7 @@
 
   </main>
 
+  <!-- Footer -->
   <footer class="relative z-10 flex flex-col sm:flex-row items-center justify-between w-full max-w-6xl mx-auto pt-6 border-t border-white/5 text-[11px] text-slate-500 gap-2">
     <span>© 2026 Monster Energy Company. All rights reserved.</span>
     <span class="font-mono text-slate-400">High Caffeine Content (32mg/100ml)</span>
@@ -380,11 +381,9 @@
       const f = FLAVORS[idx];
       const can = document.getElementById('canWrapper');
 
-      // 1. Flip can animation
       can.classList.remove('can-enter');
       can.classList.add('can-switching');
 
-      // 2. Global theme colors
       document.documentElement.style.setProperty('--theme-color', f.color);
       document.getElementById('clawLogo').style.color = f.color;
       document.getElementById('clawLogo').style.filter = `drop-shadow(0 0 16px ${f.color})`;
@@ -395,7 +394,6 @@
       document.getElementById('orbTop').style.backgroundColor = f.glowTop;
       document.getElementById('orbBottom').style.backgroundColor = f.glowBottom;
 
-      // Update Button selection states
       document.querySelectorAll('.flavor-selector').forEach((btn, bIdx) => {
         if (bIdx === idx) {
           btn.style.borderColor = f.color;
@@ -406,7 +404,6 @@
         }
       });
 
-      // 3. Morph Can Texture & UI
       setTimeout(() => {
         document.getElementById('bgGiantWord').textContent = f.name;
         document.getElementById('flavorTitle').textContent = f.name;
@@ -416,7 +413,6 @@
         document.getElementById('statCalories').textContent = f.calories;
         document.getElementById('statSugar').textContent = f.sugar;
 
-        // Apply SVG can gradient stops & claw color
         f.bodyStops.forEach((col, i) => {
           document.getElementById(`bodyStop${i + 1}`).setAttribute('stop-color', col);
         });
@@ -429,7 +425,12 @@
         document.getElementById('canTextEdition').setAttribute('fill', f.labelColor);
         document.getElementById('canTextFlavor').setAttribute('fill', idx === 2 ? '#0f172a' : '#ffffff');
 
-        // Can entrance
+        // Reset rotation state on switch
+        currentRotY = 0;
+        currentRotX = 0;
+        targetRotY = 0;
+        targetRotX = 0;
+
         can.classList.remove('can-switching');
         can.classList.add('can-enter');
         spawnParticles(f.color);
@@ -455,28 +456,102 @@
       }
     }
 
-    // 3D Parallax Tilt Effect
-    const stage = document.querySelector('.can-stage');
+    // ========================================================
+    // 60FPS SMOOTH 3D TOUCH & DRAG ROTATION ENGINE
+    // ========================================================
     const can = document.getElementById('canWrapper');
+    let isDragging = false;
+    let startX = 0, startY = 0;
+    let currentRotY = 0, currentRotX = 0;
+    let targetRotY = 0, targetRotX = 0;
+    let velX = 0, velY = 0;
+    let lastMoveX = 0, lastMoveY = 0;
 
-    if (stage && can) {
-      window.addEventListener('mousemove', (e) => {
-        if (isTransitioning) return;
-        const { innerWidth, innerHeight } = window;
-        const x = (e.clientX / innerWidth - 0.5) * 30;
-        const y = (e.clientY / innerHeight - 0.5) * -30;
-        can.style.transform = `rotateY(${x}deg) rotateX(${y}deg) translateY(${y * 0.5}px)`;
-      });
+    function handleStart(clientX, clientY) {
+      if (isTransitioning) return;
+      isDragging = true;
+      startX = clientX;
+      startY = clientY;
+      lastMoveX = clientX;
+      lastMoveY = clientY;
+      velX = 0;
+      velY = 0;
+      can.classList.remove('can-enter');
+    }
 
-      window.addEventListener('mouseleave', () => {
-        if (isTransitioning) return;
-        can.style.transform = `rotateY(0deg) rotateX(0deg) translateY(0px)`;
-      });
+    function handleMove(clientX, clientY) {
+      if (!isDragging || isTransitioning) return;
+      const deltaX = clientX - lastMoveX;
+      const deltaY = clientY - lastMoveY;
+
+      velX = deltaX * 0.75;
+      velY = deltaY * 0.45;
+
+      targetRotY += velX;
+      targetRotX = Math.max(-35, Math.min(35, targetRotX - velY));
+
+      lastMoveX = clientX;
+      lastMoveY = clientY;
+    }
+
+    function handleEnd() {
+      isDragging = false;
+    }
+
+    // Mouse Events
+    can.addEventListener('mousedown', (e) => handleStart(e.clientX, e.clientY));
+    window.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
+    window.addEventListener('mouseup', handleEnd);
+
+    // Touch Events for Mobile
+    can.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        handleStart(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1) {
+        handleMove(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', handleEnd);
+
+    // Smooth Physics Render Loop (LERP + Inertia)
+    function renderPhysics() {
+      if (!isTransitioning) {
+        if (!isDragging) {
+          // Inertia damping & auto-centering return
+          velX *= 0.92;
+          velY *= 0.92;
+          targetRotY += velX;
+          targetRotX += velY;
+
+          // Gentle spring return towards neutral view when released
+          targetRotX += (0 - targetRotX) * 0.04;
+          targetRotY += (0 - targetRotY) * 0.015;
+        }
+
+        // LERP interpolation
+        currentRotY += (targetRotY - currentRotY) * 0.14;
+        currentRotX += (targetRotX - currentRotX) * 0.14;
+
+        can.style.transform = `rotateY(${currentRotY}deg) rotateX(${currentRotX}deg) scale(${isDragging ? 1.04 : 1})`;
+        
+        // Dynamically shift specular sheen highlight with rotation
+        const glintOffset = Math.max(10, Math.min(90, 48 + currentRotY * 0.4));
+        const glint = document.getElementById('glintCenter');
+        if (glint) glint.setAttribute('offset', `${glintOffset}%`);
+      }
+
+      requestAnimationFrame(renderPhysics);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
       document.documentElement.style.setProperty('--theme-color', '#10b981');
       spawnParticles('#10b981');
+      renderPhysics();
     });
   </script>
 </body>
