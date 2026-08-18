@@ -58,6 +58,7 @@
   <div id="drawerOverlay" onclick="toggleSidebar(false)" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden transition-opacity"></div>
 
   <div class="flex flex-1 min-h-screen relative">
+    
     <!-- Sidebar -->
     <aside id="mainSidebar" class="fixed lg:static top-0 bottom-0 left-0 w-64 bg-surface-900 border-r border-white/5 z-50 flex flex-col justify-between transition-transform duration-300 -translate-x-full lg:translate-x-0">
       <div>
@@ -93,7 +94,7 @@
       </div>
     </aside>
 
-    <!-- Main Content -->
+    <!-- Main Content App Viewport -->
     <div class="flex-1 flex flex-col min-w-0 bg-surface-950">
       <header class="sticky top-0 z-30 glass border-b border-white/5 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
         <div class="flex items-center gap-3">
@@ -101,7 +102,7 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
           </button>
           <div class="relative w-48 sm:w-80">
-            <input type="text" id="globalSearchInput" oninput="handleGlobalSearch(this.value)" placeholder="Search products, licenses, keys..." class="w-full pl-9 pr-4 py-2 rounded-xl bg-surface-900 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500">
+            <input type="text" id="globalSearchInput" oninput="handleGlobalSearch(this.value)" placeholder="Search products, accounts, keys..." class="w-full pl-9 pr-4 py-2 rounded-xl bg-surface-900 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500">
             <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           </div>
         </div>
@@ -130,7 +131,8 @@
       cart: JSON.parse(localStorage.getItem('nexus_cart') || '[]'),
       appliedCoupon: null,
       categories: [],
-      currentView: 'home'
+      currentView: 'home',
+      currentProduct: null
     };
 
     function showToast(message, type = 'success') {
@@ -179,8 +181,9 @@
       switch(view) {
         case 'home': renderHomeView(root); break;
         case 'products': renderProductsView(root, params); break;
+        case 'product-details': renderProductDetailsPage(root, params.id); break;
         case 'categories': renderCategoriesView(root); break;
-        case 'deals': renderProductsView(root, { deal: true, title: '🔥 Limited Time Deals' }); break;
+        case 'deals': renderProductsView(root, { deal: true, title: '🔥 Special Deals' }); break;
         case 'cart': renderCartView(root); break;
         case 'checkout': renderCheckoutView(root); break;
         case 'orders': renderOrdersView(root); break;
@@ -189,9 +192,15 @@
           if (state.adminToken) renderAdminDashboard(root);
           else renderAdminLoginView(root);
           break;
+        case 'admin-edit-product':
+          renderAdminEditProductPage(root, params.id);
+          break;
       }
     }
 
+    // ----------------------------------------------------
+    // 1. HOME & CARD SYSTEM
+    // ----------------------------------------------------
     async function renderHomeView(root) {
       root.innerHTML = '<div class="text-center py-20 text-slate-500 font-bold animate-pulse">Loading digital marketplace...</div>';
       try {
@@ -207,8 +216,8 @@
           <div class="relative rounded-3xl overflow-hidden glass p-8 sm:p-14 border border-emerald-500/20 bg-gradient-to-r from-emerald-950/40 via-surface-900 to-surface-950">
             <div class="max-w-2xl space-y-4">
               <span class="px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-black uppercase inline-block">⚡ Instant Automated Delivery</span>
-              <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">Unlock Premium <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">Digital Assets</span></h1>
-              <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">Genuine license keys, accounts, source codes, and development assets. Unlocked immediately upon purchase.</p>
+              <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">Unlock Premium <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">Digital Goods</span></h1>
+              <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">Genuine license keys, accounts, software source codes, and development assets. Unlocked immediately upon purchase.</p>
               <div class="flex flex-wrap gap-3 pt-3">
                 <button onclick="navigate('products')" class="px-6 py-3 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase">Browse Catalog</button>
                 <button onclick="navigate('deals')" class="px-6 py-3 rounded-2xl glass text-white font-bold text-xs uppercase">View Deals</button>
@@ -242,20 +251,22 @@
 
     function renderProductCardHTML(p) {
       return `
-        <div class="glass-card rounded-3xl overflow-hidden flex flex-col justify-between border border-white/5 relative group">
+        <div class="glass-card rounded-3xl overflow-hidden flex flex-col justify-between border border-white/5 relative group cursor-pointer" onclick="navigate('product-details', { id: '${p._id}' })">
           ${p.discount_percentage > 0 ? `<span class="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full bg-rose-500 text-white font-black text-[10px] uppercase">${p.discount_percentage}% OFF</span>` : ''}
           <span class="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-full bg-surface-950/80 border border-white/10 text-emerald-400 font-bold text-[9px] uppercase">${p.delivery_type.replace('_', ' ')}</span>
-          <div class="cursor-pointer" onclick="openProductDetails('${p._id}')">
+          
+          <div>
             <div class="h-44 w-full overflow-hidden bg-surface-900">
               <img src="${p.images[0] || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
             </div>
             <div class="p-5 space-y-2">
               <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">${p.category}</span>
-              <h3 class="text-sm font-bold text-white line-clamp-1">${p.name}</h3>
+              <h3 class="text-sm font-bold text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">${p.name}</h3>
               <p class="text-xs text-slate-400 line-clamp-2">${p.short_description || p.description}</p>
             </div>
           </div>
-          <div class="px-5 pb-5 pt-2 flex items-center justify-between border-t border-white/5">
+
+          <div class="px-5 pb-5 pt-2 flex items-center justify-between border-t border-white/5" onclick="event.stopPropagation()">
             <div>
               <div class="flex items-center gap-2">
                 <span class="text-base font-black text-white">₹${p.sale_price}</span>
@@ -269,81 +280,584 @@
       `;
     }
 
-    async function renderProductsView(root, filters = {}) {
-      let queryUrl = '/api/products?';
-      if (filters.category) queryUrl += `category=${encodeURIComponent(filters.category)}&`;
-      if (filters.deal) queryUrl += `deal=true&`;
-      if (filters.search) queryUrl += `search=${encodeURIComponent(filters.search)}&`;
+    // ----------------------------------------------------
+    // 2. DEDICATED PRODUCT DETAILS PAGE
+    // ----------------------------------------------------
+    async function renderProductDetailsPage(root, productId) {
+      root.innerHTML = '<div class="text-center py-20 text-slate-500 font-bold animate-pulse">Loading verified digital asset...</div>';
+      try {
+        const res = await fetch(`/api/products/${productId}`);
+        const p = await res.json();
+        if (!res.ok) throw new Error(p.error);
 
-      const res = await fetch(queryUrl);
-      const products = await res.json();
+        state.currentProduct = p;
+        const mainImage = p.images && p.images.length ? p.images[0] : 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800';
+
+        root.innerHTML = `
+          <div class="space-y-12">
+            
+            <!-- Breadcrumbs / Top Back Button -->
+            <div class="flex items-center justify-between text-xs text-slate-400">
+              <button onclick="navigate('products')" class="flex items-center gap-2 hover:text-white">
+                <span>←</span> <span>Back to Products</span>
+              </button>
+              <div class="flex items-center gap-2">
+                <span class="text-emerald-400 font-bold">${p.category}</span>
+                <span>/</span>
+                <span class="font-mono text-slate-500">${p.sku}</span>
+              </div>
+            </div>
+
+            <!-- Product Hero Viewport -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              
+              <!-- Left Gallery -->
+              <div class="lg:col-span-7 space-y-4">
+                <div class="h-72 sm:h-96 w-full rounded-3xl overflow-hidden glass border border-white/10 relative">
+                  <img id="mainDetailImage" src="${mainImage}" class="w-full h-full object-cover">
+                  ${p.discount_percentage > 0 ? `
+                    <span class="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-rose-500 text-white font-black text-xs uppercase shadow-xl">
+                      ${p.discount_percentage}% OFF
+                    </span>
+                  ` : ''}
+                </div>
+
+                <!-- Thumbnails -->
+                ${p.images && p.images.length > 1 ? `
+                  <div class="flex gap-3 overflow-x-auto pb-2">
+                    ${p.images.map((img, i) => `
+                      <img onclick="document.getElementById('mainDetailImage').src = '${img}'" src="${img}" class="w-20 h-20 rounded-2xl object-cover glass cursor-pointer border border-white/10 hover:border-emerald-400 transition-all">
+                    `).join('')}
+                  </div>
+                ` : ''}
+              </div>
+
+              <!-- Right Purchase Panel -->
+              <div class="lg:col-span-5 space-y-6">
+                <div class="space-y-2">
+                  <span class="px-3 py-1 rounded-full bg-surface-900 border border-white/10 text-emerald-400 font-bold text-[10px] uppercase tracking-wider inline-block">
+                    ${p.delivery_type.replace('_', ' ')}
+                  </span>
+                  <h1 class="text-2xl sm:text-3xl font-black text-white leading-snug">${p.name}</h1>
+                  <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">${p.short_description || ''}</p>
+                </div>
+
+                <!-- Price Box -->
+                <div class="p-5 rounded-3xl glass border border-white/5 space-y-2">
+                  <div class="flex items-center gap-3">
+                    <span class="text-3xl font-black text-white">₹${p.sale_price}</span>
+                    ${p.original_price > p.sale_price ? `<span class="text-sm text-slate-500 line-through">₹${p.original_price}</span>` : ''}
+                  </div>
+                  <div class="flex items-center justify-between text-xs pt-1">
+                    <span class="${p.in_stock ? 'text-emerald-400' : 'text-rose-400'} font-bold">
+                      ${p.in_stock ? `● ${p.stock_count} licenses ready for instant delivery` : '✕ Currently Out of Stock'}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="space-y-3">
+                  <button onclick="buyNow('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${p.sale_price}, '${mainImage}', '${p.delivery_type}')" ${!p.in_stock ? 'disabled' : ''} class="w-full py-4 rounded-2xl ${p.in_stock ? 'bg-emerald-500 hover:bg-emerald-400 text-gray-950' : 'bg-gray-800 text-gray-500'} font-black text-xs uppercase tracking-wider shadow-xl shadow-emerald-500/20 active:scale-95 transition-all">
+                    ${p.in_stock ? '⚡ Buy Now & Unlock Instantly' : 'Out of Stock'}
+                  </button>
+                  <button onclick="addToCart('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${p.sale_price}, '${mainImage}', '${p.delivery_type}')" ${!p.in_stock ? 'disabled' : ''} class="w-full py-4 rounded-2xl glass hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider active:scale-95 transition-all">
+                    Add To Cart
+                  </button>
+                </div>
+
+                <!-- Guarantees -->
+                <div class="grid grid-cols-2 gap-3 text-[11px] text-slate-400 pt-2">
+                  <div class="flex items-center gap-2"><span>🛡️</span> <span>Verified Product</span></div>
+                  <div class="flex items-center gap-2"><span>⚡</span> <span>Instant Cloud Access</span></div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Full Description & Information Specs -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              <div class="lg:col-span-8 space-y-8">
+                
+                <!-- Detailed Info -->
+                <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
+                  <h3 class="text-sm font-black text-white uppercase tracking-wider">Product Overview</h3>
+                  <div class="text-xs text-slate-300 leading-relaxed whitespace-pre-line">${p.description}</div>
+                </div>
+
+                <!-- Features Checklist -->
+                ${p.features && p.features.length ? `
+                  <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
+                    <h3 class="text-sm font-black text-white uppercase tracking-wider">Key Features</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      ${p.features.map(f => `
+                        <div class="flex items-center gap-3 p-3 rounded-2xl bg-surface-950 text-xs text-slate-300">
+                          <span class="text-emerald-400 font-black">✓</span> <span>${f}</span>
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+                ` : ''}
+
+                <!-- What's Included -->
+                ${p.whats_included && p.whats_included.length ? `
+                  <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
+                    <h3 class="text-sm font-black text-white uppercase tracking-wider">What's Included</h3>
+                    <div class="space-y-2">
+                      ${p.whats_included.map(item => `
+                        <div class="p-3 rounded-2xl bg-surface-950 text-xs text-slate-300 flex items-center gap-3">
+                          <span class="text-emerald-400">📦</span> <span>${item}</span>
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+                ` : ''}
+
+              </div>
+
+              <!-- Right Specifications Table & FAQs -->
+              <div class="lg:col-span-4 space-y-6">
+                
+                <!-- Specifications Sheet -->
+                ${p.specifications && p.specifications.length ? `
+                  <div class="glass rounded-3xl p-6 space-y-4">
+                    <h3 class="text-sm font-black text-white uppercase tracking-wider">Product Specifications</h3>
+                    <div class="overflow-x-auto">
+                      <table class="w-full text-left text-xs">
+                        <tbody class="divide-y divide-white/5">
+                          ${p.specifications.map(s => `
+                            <tr>
+                              <td class="py-2.5 text-slate-400 font-medium">${s.label}</td>
+                              <td class="py-2.5 text-white font-bold text-right">${s.value}</td>
+                            </tr>
+                          `).join('')}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ` : ''}
+
+                <!-- FAQs -->
+                ${p.faqs && p.faqs.length ? `
+                  <div class="glass rounded-3xl p-6 space-y-4">
+                    <h3 class="text-sm font-black text-white uppercase tracking-wider">Frequently Asked Questions</h3>
+                    <div class="space-y-3 text-xs">
+                      ${p.faqs.map(faq => `
+                        <div class="p-3 rounded-2xl bg-surface-950 space-y-1">
+                          <h4 class="font-bold text-white">${faq.question}</h4>
+                          <p class="text-slate-400 leading-relaxed">${faq.answer}</p>
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+                ` : ''}
+
+              </div>
+            </div>
+
+            <!-- Related Products -->
+            ${p.related && p.related.length ? `
+              <div class="space-y-4 pt-6 border-t border-white/5">
+                <h3 class="text-lg font-black text-white">Related ${p.category} Products</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  ${p.related.map(rel => renderProductCardHTML(rel)).join('')}
+                </div>
+              </div>
+            ` : ''}
+
+          </div>
+        `;
+      } catch (err) {
+        root.innerHTML = `<div class="glass p-8 text-center text-rose-400 text-xs">${err.message}</div>`;
+      }
+    }
+
+    function buyNow(id, name, price, image, delivery_type) {
+      addToCart(id, name, price, image, delivery_type);
+      navigate('checkout');
+    }
+
+    // ----------------------------------------------------
+    // 3. ADMIN PRODUCT MANAGEMENT & LIVE STUDIO
+    // ----------------------------------------------------
+    async function renderAdminDashboard(root) {
+      root.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold animate-pulse">Loading live studio...</div>';
+
+      try {
+        const [statsRes, prodsRes] = await Promise.all([
+          fetch('/api/admin/stats', { headers: { 'Authorization': `Bearer ${state.adminToken}` } }),
+          fetch('/api/admin/products', { headers: { 'Authorization': `Bearer ${state.adminToken}` } })
+        ]);
+        const stats = await statsRes.json();
+        const products = await prodsRes.json();
+
+        root.innerHTML = `
+          <div class="space-y-8">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h1 class="text-xl font-black text-white">Product Studio & Store Manager</h1>
+                <p class="text-xs text-slate-400">Total catalog control, live duplication, pricing & inventory</p>
+              </div>
+              <div class="flex gap-2">
+                <button onclick="navigate('admin-edit-product', { id: 'new' })" class="px-5 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20">
+                  + Create New Product
+                </button>
+                <button onclick="adminLogout()" class="px-4 py-2.5 rounded-xl bg-white/5 text-slate-300 text-xs font-bold">Logout</button>
+              </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="glass rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase font-bold">Total Sales</span><div class="text-2xl font-black text-emerald-400">₹${stats.totalRevenue}</div></div>
+              <div class="glass rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase font-bold">Orders Delivered</span><div class="text-2xl font-black text-white">${stats.totalOrders}</div></div>
+              <div class="glass rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase font-bold">Active Products</span><div class="text-2xl font-black text-white">${stats.totalProducts}</div></div>
+              <div class="glass rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase font-bold">Customers</span><div class="text-2xl font-black text-white">${stats.totalCustomers}</div></div>
+            </div>
+
+            <!-- Catalog Table -->
+            <div class="glass rounded-3xl p-6 space-y-4">
+              <h3 class="text-xs font-bold uppercase text-slate-400">Product Inventory & Actions</h3>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                  <thead>
+                    <tr class="border-b border-white/5 text-slate-500">
+                      <th class="pb-3">Product</th>
+                      <th class="pb-3">Category</th>
+                      <th class="pb-3">Price</th>
+                      <th class="pb-3">Delivery Type</th>
+                      <th class="pb-3">Status</th>
+                      <th class="pb-3">Stock</th>
+                      <th class="pb-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-white/5">
+                    ${products.map(p => `
+                      <tr>
+                        <td class="py-3.5">
+                          <div class="flex items-center gap-3">
+                            <img src="${p.images[0] || ''}" class="w-10 h-10 rounded-xl object-cover bg-surface-950">
+                            <div>
+                              <span class="font-bold text-white block">${p.name}</span>
+                              <span class="text-[10px] font-mono text-slate-500">${p.sku}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td class="py-3.5 text-slate-400">${p.category}</td>
+                        <td class="py-3.5 font-mono">₹${p.sale_price}</td>
+                        <td class="py-3.5 font-mono text-emerald-400 text-[10px]">${p.delivery_type}</td>
+                        <td class="py-3.5">
+                          <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${p.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}">
+                            ${p.status.toUpperCase()}
+                          </span>
+                        </td>
+                        <td class="py-3.5 font-bold ${p.stock_count > 0 ? 'text-emerald-400' : 'text-rose-400'}">${p.stock_count} units</td>
+                        <td class="py-3.5 text-right space-x-2">
+                          <button onclick="navigate('product-details', { id: '${p._id}' })" class="text-slate-400 hover:text-white font-bold">👁 View</button>
+                          <button onclick="navigate('admin-edit-product', { id: '${p._id}' })" class="text-emerald-400 font-bold">✏ Edit</button>
+                          <button onclick="duplicateProduct('${p._id}')" class="text-blue-400 font-bold">📋 Duplicate</button>
+                          <button onclick="renderAddInventoryModal('${p._id}', '${p.name.replace(/'/g, "\\'")}', '${p.delivery_type}')" class="text-teal-400 font-bold">+ Stock</button>
+                          <button onclick="deleteProduct('${p._id}')" class="text-rose-400 font-bold">🗑 Delete</button>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        `;
+      } catch (err) {
+        root.innerHTML = `<div class="glass p-8 text-center text-rose-400 text-xs">${err.message}</div>`;
+      }
+    }
+
+    // ----------------------------------------------------
+    // 4. ADMIN EDIT/CREATE PRODUCT FULL-PAGE STUDIO
+    // ----------------------------------------------------
+    async function renderAdminEditProductPage(root, productId) {
+      const isNew = productId === 'new';
+      let p = {
+        name: '',
+        short_description: '',
+        description: '',
+        category: 'Software',
+        tags: [],
+        sku: 'SKU-' + Date.now(),
+        original_price: 999,
+        sale_price: 499,
+        discount_percentage: 50,
+        images: ['https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800'],
+        delivery_type: 'STANDARD_LINK',
+        features: ['Instant Delivery', 'Verified Quality'],
+        whats_included: ['Digital License Key', 'Setup Guide'],
+        specifications: [{ label: 'Format', value: 'Cloud Digital' }],
+        faqs: [{ question: 'How is it delivered?', answer: 'Delivered automatically upon checkout.' }],
+        status: 'active',
+        featured: true,
+        deal: true
+      };
+
+      if (!isNew) {
+        const res = await fetch(`/api/products/${productId}`);
+        p = await res.json();
+      }
 
       root.innerHTML = `
-        <div class="space-y-6">
+        <div class="max-w-4xl mx-auto space-y-8 pb-12">
+          
           <div class="flex items-center justify-between">
             <div>
-              <h1 class="text-xl font-black text-white">${filters.title || (filters.category || 'All Digital Products')}</h1>
-              <p class="text-xs text-slate-400">${products.length} products available</p>
+              <h1 class="text-xl font-black text-white">${isNew ? 'Create New Digital Product' : `Editing: ${p.name}`}</h1>
+              <p class="text-xs text-slate-400">All changes update customer viewports in real-time</p>
             </div>
+            <button onclick="navigate('admin')" class="px-4 py-2 rounded-xl bg-white/5 text-slate-300 text-xs font-bold">Cancel</button>
           </div>
-          ${products.length === 0 ? `<div class="glass rounded-3xl p-16 text-center text-xs text-slate-400">No products found.</div>` : `
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              ${products.map(p => renderProductCardHTML(p)).join('')}
-            </div>
-          `}
-        </div>
-      `;
-    }
 
-    async function renderCategoriesView(root) {
-      const res = await fetch('/api/store/info');
-      const data = await res.json();
-      root.innerHTML = `
-        <div class="space-y-6">
-          <h1 class="text-xl font-black text-white">Browse Categories</h1>
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            ${(data.categories || []).map(c => `
-              <div onclick="navigate('products', { category: '${c.name}' })" class="glass-card rounded-3xl p-6 cursor-pointer space-y-2">
-                <div class="text-3xl">${c.icon || '📂'}</div>
-                <h3 class="text-sm font-black text-white">${c.name}</h3>
-                <p class="text-xs text-slate-400">${c.description || ''}</p>
+          <form onsubmit="saveProductChanges(event, '${productId}')" class="space-y-6 text-xs">
+            
+            <!-- Basic Information -->
+            <div class="glass rounded-3xl p-6 space-y-4">
+              <h3 class="font-bold uppercase tracking-wider text-slate-400">1. Basic Information</h3>
+              <div class="space-y-3">
+                <input type="text" id="edName" required value="${p.name || ''}" placeholder="Product Title" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white font-bold">
+                <input type="text" id="edShortDesc" required value="${p.short_description || ''}" placeholder="Short Tagline Description" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
+                <textarea id="edDesc" rows="4" placeholder="Full Detailed Description" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">${p.description || ''}</textarea>
               </div>
-            `).join('')}
-          </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label class="text-[10px] uppercase font-bold text-slate-500 block mb-1">Category</label>
+                  <select id="edCategory" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
+                    <option value="Software" ${p.category === 'Software' ? 'selected' : ''}>Software</option>
+                    <option value="Accounts" ${p.category === 'Accounts' ? 'selected' : ''}>Accounts</option>
+                    <option value="License Keys" ${p.category === 'License Keys' ? 'selected' : ''}>License Keys</option>
+                    <option value="Templates" ${p.category === 'Templates' ? 'selected' : ''}>Templates</option>
+                    <option value="Courses" ${p.category === 'Courses' ? 'selected' : ''}>Courses</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-[10px] uppercase font-bold text-slate-500 block mb-1">SKU</label>
+                  <input type="text" id="edSku" value="${p.sku || ''}" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white font-mono">
+                </div>
+                <div>
+                  <label class="text-[10px] uppercase font-bold text-slate-500 block mb-1">Status</label>
+                  <select id="edStatus" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
+                    <option value="active" ${p.status === 'active' ? 'selected' : ''}>Active</option>
+                    <option value="draft" ${p.status === 'draft' ? 'selected' : ''}>Draft</option>
+                    <option value="disabled" ${p.status === 'disabled' ? 'selected' : ''}>Disabled</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pricing & Auto Discount Engine -->
+            <div class="glass rounded-3xl p-6 space-y-4">
+              <h3 class="font-bold uppercase tracking-wider text-slate-400">2. Pricing & Delivery Method</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label class="text-[10px] uppercase font-bold text-slate-500 block mb-1">Original Price (₹)</label>
+                  <input type="number" id="edOrigPrice" oninput="calculateDiscountPreview()" value="${p.original_price || 0}" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
+                </div>
+                <div>
+                  <label class="text-[10px] uppercase font-bold text-slate-500 block mb-1">Sale Price (₹)</label>
+                  <input type="number" id="edSalePrice" oninput="calculateDiscountPreview()" value="${p.sale_price || 0}" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
+                </div>
+                <div>
+                  <label class="text-[10px] uppercase font-bold text-slate-500 block mb-1">Calculated Discount</label>
+                  <div id="edDiscountBadge" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-emerald-400 font-black flex items-center">
+                    ${p.discount_percentage || 0}% OFF
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label class="text-[10px] uppercase font-bold text-slate-500 block mb-1">Delivery Method</label>
+                <select id="edDeliveryType" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white font-mono text-emerald-400">
+                  <option value="EMAIL_PASSWORD" ${p.delivery_type === 'EMAIL_PASSWORD' ? 'selected' : ''}>EMAIL + PASSWORD</option>
+                  <option value="LICENSE_KEY" ${p.delivery_type === 'LICENSE_KEY' ? 'selected' : ''}>LICENSE KEY</option>
+                  <option value="STANDARD_LINK" ${p.delivery_type === 'STANDARD_LINK' ? 'selected' : ''}>STANDARD LINK</option>
+                  <option value="DOWNLOADABLE_FILE" ${p.delivery_type === 'DOWNLOADABLE_FILE' ? 'selected' : ''}>DOWNLOADABLE FILE</option>
+                  <option value="CUSTOM_TEXT" ${p.delivery_type === 'CUSTOM_TEXT' ? 'selected' : ''}>CUSTOM TEXT</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Images Manager -->
+            <div class="glass rounded-3xl p-6 space-y-4">
+              <h3 class="font-bold uppercase tracking-wider text-slate-400">3. Product Images (Comma separated URLs)</h3>
+              <textarea id="edImages" rows="2" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white font-mono text-[11px]">${(p.images || []).join(', ')}</textarea>
+            </div>
+
+            <!-- Features & What's Included -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div class="glass rounded-3xl p-6 space-y-3">
+                <h3 class="font-bold uppercase tracking-wider text-slate-400">4. Features (One per line)</h3>
+                <textarea id="edFeatures" rows="4" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">${(p.features || []).join('\n')}</textarea>
+              </div>
+              <div class="glass rounded-3xl p-6 space-y-3">
+                <h3 class="font-bold uppercase tracking-wider text-slate-400">5. What's Included (One per line)</h3>
+                <textarea id="edIncluded" rows="4" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">${(p.whats_included || []).join('\n')}</textarea>
+              </div>
+            </div>
+
+            <!-- Save Controls -->
+            <div class="flex gap-4 pt-4">
+              <button type="submit" class="flex-1 py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black uppercase tracking-wider shadow-xl shadow-emerald-500/20 active:scale-95">
+                Save & Update Database
+              </button>
+            </div>
+
+          </form>
         </div>
       `;
     }
 
-    async function openProductDetails(id) {
+    function calculateDiscountPreview() {
+      const orig = Number(document.getElementById('edOrigPrice').value) || 0;
+      const sale = Number(document.getElementById('edSalePrice').value) || 0;
+      const disc = orig > 0 ? Math.round(((orig - sale) / orig) * 100) : 0;
+      document.getElementById('edDiscountBadge').textContent = `${disc}% OFF`;
+    }
+
+    async function saveProductChanges(e, productId) {
+      e.preventDefault();
+      const isNew = productId === 'new';
+
+      const payload = {
+        name: document.getElementById('edName').value,
+        short_description: document.getElementById('edShortDesc').value,
+        description: document.getElementById('edDesc').value,
+        category: document.getElementById('edCategory').value,
+        sku: document.getElementById('edSku').value,
+        status: document.getElementById('edStatus').value,
+        original_price: Number(document.getElementById('edOrigPrice').value),
+        sale_price: Number(document.getElementById('edSalePrice').value),
+        delivery_type: document.getElementById('edDeliveryType').value,
+        images: document.getElementById('edImages').value.split(',').map(s => s.trim()).filter(Boolean),
+        features: document.getElementById('edFeatures').value.split('\n').map(s => s.trim()).filter(Boolean),
+        whats_included: document.getElementById('edIncluded').value.split('\n').map(s => s.trim()).filter(Boolean)
+      };
+
+      try {
+        const url = isNew ? '/api/admin/products' : `/api/admin/products/${productId}`;
+        const method = isNew ? 'POST' : 'PUT';
+
+        const res = await fetch(url, {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.adminToken}`
+          },
+          body: JSON.stringify(payload)
+        });
+        const saved = await res.json();
+        if (!res.ok) throw new Error(saved.error);
+
+        showToast('Product successfully saved!');
+        navigate('product-details', { id: saved._id });
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function duplicateProduct(id) {
+      try {
+        const res = await fetch(`/api/admin/products/${id}/duplicate`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.adminToken}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        showToast('Product cloned as Draft!');
+        renderAdminDashboard(document.getElementById('appRoot'));
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function deleteProduct(id) {
+      if (!confirm('Permanently delete this product and associated inventory?')) return;
+      try {
+        await fetch(`/api/admin/products/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.adminToken}` }
+        });
+        showToast('Product deleted');
+        renderAdminDashboard(document.getElementById('appRoot'));
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    // ----------------------------------------------------
+    // INVENTORY STOCK ATTACHMENT MODAL
+    // ----------------------------------------------------
+    function renderAddInventoryModal(productId, productName, deliveryType) {
       const modal = document.getElementById('productModal');
       const container = document.getElementById('productModalContent');
       modal.classList.remove('hidden');
       modal.classList.add('flex');
-      container.innerHTML = '<div class="text-center py-12 text-slate-500 font-bold">Loading product info...</div>';
 
-      const res = await fetch(`/api/products/${id}`);
-      const p = await res.json();
+      let fields = '';
+      if (deliveryType === 'EMAIL_PASSWORD') {
+        fields = `
+          <input type="email" id="invEmail" required placeholder="Account Email" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
+          <input type="text" id="invPassword" required placeholder="Account Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
+        `;
+      } else if (deliveryType === 'LICENSE_KEY') {
+        fields = `
+          <input type="text" id="invKey" required placeholder="Activation License Key" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
+        `;
+      } else {
+        fields = `
+          <input type="url" id="invUrl" required placeholder="Product Access URL" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
+        `;
+      }
 
       container.innerHTML = `
         <button onclick="document.getElementById('productModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400">✕</button>
-        <div class="space-y-5">
-          <img src="${p.images[0] || ''}" class="h-60 sm:h-72 w-full rounded-2xl object-cover">
-          <div class="space-y-2">
-            <span class="text-xs font-bold text-emerald-400 uppercase">${p.category}</span>
-            <h2 class="text-xl sm:text-2xl font-black text-white">${p.name}</h2>
-            <div class="flex items-center gap-3 pt-1">
-              <span class="text-2xl font-black text-white">₹${p.sale_price}</span>
-              ${p.original_price > p.sale_price ? `<span class="text-sm text-slate-500 line-through">₹${p.original_price}</span>` : ''}
-            </div>
-          </div>
-          <p class="p-4 rounded-2xl bg-surface-950 text-xs text-slate-300">${p.description}</p>
-          <button onclick="addToCart('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${p.sale_price}, '${p.images[0]}', '${p.delivery_type}'); document.getElementById('productModal').classList.add('hidden')" ${!p.in_stock ? 'disabled' : ''} class="w-full py-3.5 rounded-2xl ${p.in_stock ? 'bg-emerald-500 text-gray-950' : 'bg-gray-800 text-gray-500'} font-black text-xs uppercase">
-            ${p.in_stock ? 'Add To Cart' : 'Out of Stock'}
-          </button>
-        </div>
+        <h2 class="text-base font-black text-white mb-2">Add Stock: ${productName}</h2>
+        <p class="text-xs text-emerald-400 mb-4 font-mono">${deliveryType}</p>
+        <form onsubmit="submitInventoryStock(event, '${productId}', '${deliveryType}')" class="space-y-3 text-xs">
+          ${fields}
+          <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black uppercase">Save Stock Unit</button>
+        </form>
       `;
     }
 
+    async function submitInventoryStock(e, productId, deliveryType) {
+      e.preventDefault();
+      const payload = { delivery_type: deliveryType };
+      if (deliveryType === 'EMAIL_PASSWORD') {
+        payload.email = document.getElementById('invEmail').value;
+        payload.password = document.getElementById('invPassword').value;
+      } else if (deliveryType === 'LICENSE_KEY') {
+        payload.license_key = document.getElementById('invKey').value;
+      } else {
+        payload.delivery_url = document.getElementById('invUrl').value;
+      }
+
+      try {
+        const res = await fetch(`/api/admin/inventory/${productId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.adminToken}`
+          },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error((await res.json()).error);
+        showToast('Stock attached successfully!');
+        document.getElementById('productModal').classList.add('hidden');
+        renderAdminDashboard(document.getElementById('appRoot'));
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    // ----------------------------------------------------
+    // CART & CHECKOUT
+    // ----------------------------------------------------
     function addToCart(product_id, name, price, image, delivery_type) {
       const exists = state.cart.find(i => i.product_id === product_id);
       if (exists) return showToast('Item already in your cart', 'error');
@@ -363,7 +877,7 @@
       root.innerHTML = `
         <div class="max-w-3xl mx-auto space-y-6">
           <h1 class="text-xl font-black text-white">Shopping Cart</h1>
-          ${state.cart.length === 0 ? `<div class="glass rounded-3xl p-12 text-center text-xs text-slate-400">Cart is empty.</div>` : `
+          ${state.cart.length === 0 ? `<div class="glass rounded-3xl p-12 text-center text-xs text-slate-400">Your cart is empty.</div>` : `
             <div class="space-y-3">
               ${state.cart.map((item, idx) => `
                 <div class="glass rounded-2xl p-4 flex items-center justify-between">
@@ -383,7 +897,7 @@
             </div>
             <div class="glass rounded-3xl p-6 space-y-4">
               <div class="flex justify-between text-sm font-black text-white"><span>Total:</span> <span class="text-emerald-400">₹${subtotal}</span></div>
-              <button onclick="navigate('checkout')" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase">Checkout</button>
+              <button onclick="navigate('checkout')" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase">Proceed To Checkout</button>
             </div>
           `}
         </div>
@@ -397,11 +911,11 @@
 
       root.innerHTML = `
         <div class="max-w-4xl mx-auto space-y-6">
-          <h1 class="text-xl font-black text-white">Checkout</h1>
+          <h1 class="text-xl font-black text-white">Complete Checkout</h1>
           <div class="glass rounded-3xl p-6 space-y-4">
-            <h3 class="text-xs font-bold uppercase text-slate-400">Deliver To: ${state.user.name} (${state.user.email})</h3>
+            <h3 class="text-xs font-bold uppercase text-slate-400">Customer: ${state.user.name} (${state.user.email})</h3>
             <div class="flex gap-2">
-              <input type="text" id="couponInput" placeholder="Coupon Code (e.g. SAVE20)" class="flex-1 px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white uppercase">
+              <input type="text" id="couponInput" placeholder="Try SAVE20" class="flex-1 px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white uppercase">
               <button onclick="applyCheckoutCoupon()" class="px-5 py-3 rounded-xl bg-white/10 text-white font-bold text-xs uppercase">Apply</button>
             </div>
             <div id="couponStatus" class="text-xs"></div>
@@ -459,7 +973,7 @@
 
     async function renderOrdersView(root) {
       if (!state.token) return renderCustomerAuthModal(root, 'orders');
-      root.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold">Loading orders...</div>';
+      root.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold">Loading vault...</div>';
       try {
         const res = await fetch('/api/customer/orders', { headers: { 'Authorization': `Bearer ${state.token}` } });
         const orders = await res.json();
@@ -498,8 +1012,6 @@
         return `<div class="p-3 rounded-xl bg-surface-900 text-xs font-mono text-emerald-400 flex justify-between"><span>Key: ${d.license_key}</span> <button onclick="navigator.clipboard.writeText('${d.license_key}'); showToast('Key copied!')" class="text-emerald-400 font-bold">Copy Key</button></div>`;
       } else if (item.delivery_type === 'STANDARD_LINK') {
         return `<a href="${d.url}" target="_blank" class="inline-block px-4 py-2 rounded-xl bg-emerald-500 text-gray-950 font-bold text-xs">Open Product URL ↗</a>`;
-      } else if (item.delivery_type === 'DOWNLOADABLE_FILE') {
-        return `<a href="${d.download_url}" download class="inline-block px-4 py-2 rounded-xl bg-emerald-500 text-gray-950 font-bold text-xs">Download File ↓</a>`;
       }
       return `<div class="text-xs text-slate-300">${d.custom_text || ''}</div>`;
     }
@@ -507,7 +1019,7 @@
     function renderCustomerAuthModal(root, returnView = 'home') {
       root.innerHTML = `
         <div class="max-w-md mx-auto glass rounded-3xl p-8 space-y-4">
-          <h2 class="text-lg font-black text-white text-center">Customer Login / Signup</h2>
+          <h2 class="text-lg font-black text-white text-center">Customer Account</h2>
           <form onsubmit="handleCustomerLogin(event, '${returnView}')" class="space-y-3">
             <input type="email" id="loginEmail" required placeholder="Email" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
             <input type="password" id="loginPass" required placeholder="Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
@@ -517,7 +1029,7 @@
           <form onsubmit="handleCustomerRegister(event, '${returnView}')" class="space-y-3">
             <input type="text" id="regName" required placeholder="Full Name" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
             <input type="email" id="regEmail" required placeholder="Email" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
-            <input type="password" id="regPass" required placeholder="Create Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
+            <input type="password" id="regPass" required placeholder="Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
             <button type="submit" class="w-full py-3.5 rounded-xl bg-white/10 text-white font-black text-xs uppercase">Create Account</button>
           </form>
         </div>
@@ -618,163 +1130,6 @@
       } catch (err) { showToast(err.message, 'error'); }
     }
 
-    async function renderAdminDashboard(root) {
-      const [statsRes, prodsRes] = await Promise.all([
-        fetch('/api/admin/stats', { headers: { 'Authorization': `Bearer ${state.adminToken}` } }),
-        fetch('/api/admin/products', { headers: { 'Authorization': `Bearer ${state.adminToken}` } })
-      ]);
-      const stats = await statsRes.json();
-      const products = await prodsRes.json();
-
-      root.innerHTML = `
-        <div class="space-y-6">
-          <div class="flex justify-between items-center">
-            <h1 class="text-xl font-black text-white">Admin Dashboard</h1>
-            <div class="flex gap-2">
-              <button onclick="renderAddProductModal()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase">+ Add Product</button>
-              <button onclick="adminLogout()" class="px-4 py-2.5 rounded-xl bg-white/5 text-slate-300 text-xs font-bold">Logout</button>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="glass rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase font-bold">Revenue</span><div class="text-2xl font-black text-emerald-400">₹${stats.totalRevenue}</div></div>
-            <div class="glass rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase font-bold">Orders</span><div class="text-2xl font-black text-white">${stats.totalOrders}</div></div>
-            <div class="glass rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase font-bold">Catalog</span><div class="text-2xl font-black text-white">${stats.totalProducts}</div></div>
-            <div class="glass rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase font-bold">Users</span><div class="text-2xl font-black text-white">${stats.totalCustomers}</div></div>
-          </div>
-
-          <div class="glass rounded-3xl p-6">
-            <h3 class="text-xs font-bold uppercase text-slate-400 mb-3">Products & Stock</h3>
-            <table class="w-full text-left text-xs">
-              <thead><tr class="border-b border-white/5 text-slate-500"><th class="pb-2">Product</th><th class="pb-2">Price</th><th class="pb-2">Stock</th><th class="pb-2 text-right">Actions</th></tr></thead>
-              <tbody class="divide-y divide-white/5">
-                ${products.map(p => `
-                  <tr>
-                    <td class="py-3 text-white font-bold">${p.name}</td>
-                    <td class="py-3">₹${p.sale_price}</td>
-                    <td class="py-3 ${p.stock_count > 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold">${p.stock_count} units</td>
-                    <td class="py-3 text-right space-x-2">
-                      <button onclick="renderAddInventoryModal('${p._id}', '${p.name.replace(/'/g, "\\'")}', '${p.delivery_type}')" class="text-emerald-400 font-bold">+ Stock</button>
-                      <button onclick="deleteProduct('${p._id}')" class="text-rose-400 font-bold">Delete</button>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      `;
-    }
-
-    function renderAddProductModal() {
-      const modal = document.getElementById('productModal');
-      const container = document.getElementById('productModalContent');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-      container.innerHTML = `
-        <button onclick="document.getElementById('productModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400">✕</button>
-        <h2 class="text-base font-black text-white mb-4">Add Digital Product</h2>
-        <form onsubmit="submitNewProduct(event)" class="space-y-3 text-xs">
-          <input type="text" id="npName" required placeholder="Title" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-          <input type="text" id="npDesc" required placeholder="Short Description" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-          <select id="npCategory" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-            <option value="Software">Software</option><option value="License Keys">License Keys</option><option value="Accounts">Accounts</option><option value="Templates">Templates</option>
-          </select>
-          <select id="npDeliveryType" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-            <option value="STANDARD_LINK">Standard Link</option><option value="LICENSE_KEY">License Key</option><option value="EMAIL_PASSWORD">Email + Password</option>
-          </select>
-          <div class="grid grid-cols-2 gap-3">
-            <input type="number" id="npOrigPrice" placeholder="Original Price (₹)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-            <input type="number" id="npSalePrice" required placeholder="Sale Price (₹)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-          </div>
-          <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black uppercase">Create Product</button>
-        </form>
-      `;
-    }
-
-    async function submitNewProduct(e) {
-      e.preventDefault();
-      try {
-        const res = await fetch('/api/admin/products', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
-          body: JSON.stringify({
-            name: document.getElementById('npName').value,
-            short_description: document.getElementById('npDesc').value,
-            description: document.getElementById('npDesc').value,
-            category: document.getElementById('npCategory').value,
-            delivery_type: document.getElementById('npDeliveryType').value,
-            original_price: Number(document.getElementById('npOrigPrice').value) || Number(document.getElementById('npSalePrice').value),
-            sale_price: Number(document.getElementById('npSalePrice').value),
-            images: ['https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800']
-          })
-        });
-        if (!res.ok) throw new Error((await res.json()).error);
-        showToast('Product added!');
-        document.getElementById('productModal').classList.add('hidden');
-        renderAdminDashboard(document.getElementById('appRoot'));
-      } catch (err) { showToast(err.message, 'error'); }
-    }
-
-    function renderAddInventoryModal(productId, productName, deliveryType) {
-      const modal = document.getElementById('productModal');
-      const container = document.getElementById('productModalContent');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-      let fields = '';
-      if (deliveryType === 'EMAIL_PASSWORD') {
-        fields = `<input type="email" id="invEmail" required placeholder="Email" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white"><input type="text" id="invPassword" required placeholder="Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">`;
-      } else if (deliveryType === 'LICENSE_KEY') {
-        fields = `<input type="text" id="invKey" required placeholder="License Key" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">`;
-      } else {
-        fields = `<input type="url" id="invUrl" required placeholder="Access URL" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">`;
-      }
-      container.innerHTML = `
-        <button onclick="document.getElementById('productModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400">✕</button>
-        <h2 class="text-base font-black text-white mb-2">Add Stock: ${productName}</h2>
-        <form onsubmit="submitInventoryItem(event, '${productId}', '${deliveryType}')" class="space-y-3 text-xs">
-          ${fields}
-          <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black uppercase">Save Stock Item</button>
-        </form>
-      `;
-    }
-
-    async function submitInventoryItem(e, productId, deliveryType) {
-      e.preventDefault();
-      const payload = { delivery_type: deliveryType };
-      if (deliveryType === 'EMAIL_PASSWORD') {
-        payload.email = document.getElementById('invEmail').value;
-        payload.password = document.getElementById('invPassword').value;
-      } else if (deliveryType === 'LICENSE_KEY') {
-        payload.license_key = document.getElementById('invKey').value;
-      } else {
-        payload.delivery_url = document.getElementById('invUrl').value;
-      }
-      try {
-        const res = await fetch(`/api/admin/inventory/${productId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) throw new Error((await res.json()).error);
-        showToast('Stock attached!');
-        document.getElementById('productModal').classList.add('hidden');
-        renderAdminDashboard(document.getElementById('appRoot'));
-      } catch (err) { showToast(err.message, 'error'); }
-    }
-
-    async function deleteProduct(id) {
-      if (!confirm('Delete product?')) return;
-      try {
-        await fetch(`/api/admin/products/${id}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${state.adminToken}` }
-        });
-        showToast('Deleted');
-        renderAdminDashboard(document.getElementById('appRoot'));
-      } catch (err) { showToast(err.message, 'error'); }
-    }
-
     function adminLogout() {
       state.adminToken = '';
       state.adminUsername = '';
@@ -786,6 +1141,51 @@
     function handleGlobalSearch(val) {
       if (!val.trim()) return renderProductsView(document.getElementById('appRoot'));
       navigate('products', { search: val, title: `Search results for "${val}"` });
+    }
+
+    async function renderProductsView(root, filters = {}) {
+      let queryUrl = '/api/products?';
+      if (filters.category) queryUrl += `category=${encodeURIComponent(filters.category)}&`;
+      if (filters.deal) queryUrl += `deal=true&`;
+      if (filters.search) queryUrl += `search=${encodeURIComponent(filters.search)}&`;
+
+      const res = await fetch(queryUrl);
+      const products = await res.json();
+
+      root.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-xl font-black text-white">${filters.title || (filters.category || 'All Digital Products')}</h1>
+              <p class="text-xs text-slate-400">${products.length} products available</p>
+            </div>
+          </div>
+          ${products.length === 0 ? `<div class="glass rounded-3xl p-16 text-center text-xs text-slate-400">No products found.</div>` : `
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              ${products.map(p => renderProductCardHTML(p)).join('')}
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    async function renderCategoriesView(root) {
+      const res = await fetch('/api/store/info');
+      const data = await res.json();
+      root.innerHTML = `
+        <div class="space-y-6">
+          <h1 class="text-xl font-black text-white">Browse Categories</h1>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            ${(data.categories || []).map(c => `
+              <div onclick="navigate('products', { category: '${c.name}' })" class="glass-card rounded-3xl p-6 cursor-pointer space-y-2">
+                <div class="text-3xl">${c.icon || '📂'}</div>
+                <h3 class="text-sm font-black text-white">${c.name}</h3>
+                <p class="text-xs text-slate-400">${c.description || ''}</p>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
     }
 
     document.addEventListener('DOMContentLoaded', () => {
