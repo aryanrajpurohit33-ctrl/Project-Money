@@ -1,123 +1,1362 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cloud Storage • MongoDB Atlas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>NEXUS DIGITAL — Premium Digital Marketplace</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #030712; color: #f9fafb; }
-    .glass { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); }
-  </style>
-</head>
-<body class="min-h-screen p-4 sm:p-8 flex flex-col items-center">
-
-  <div class="w-full max-w-2xl space-y-6">
-    
-    <!-- Status Header -->
-    <header class="flex items-center justify-between glass rounded-2xl p-4 sm:p-6 shadow-xl">
-      <div class="flex items-center gap-3">
-        <div class="w-3.5 h-3.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_12px_#10b981]"></div>
-        <div>
-          <h1 class="text-base font-bold text-white leading-tight">MongoDB Cloud Vault</h1>
-          <p class="text-xs text-slate-400">Connected & Synced in Realtime</p>
-        </div>
-      </div>
-      <span class="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>
-    </header>
-
-    <!-- Entry Input Form -->
-    <div class="glass rounded-2xl p-6 shadow-xl space-y-4">
-      <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400">Store New Record</h2>
-      <div class="space-y-3">
-        <input type="text" id="recordTitle" placeholder="Title / Label..." class="w-full px-4 py-3 rounded-xl bg-gray-950/60 border border-white/10 text-sm focus:outline-none focus:border-emerald-500 transition-all text-white">
-        <textarea id="recordContent" placeholder="Content / Data / JSON string..." rows="3" class="w-full px-4 py-3 rounded-xl bg-gray-950/60 border border-white/10 text-sm focus:outline-none focus:border-emerald-500 transition-all text-white"></textarea>
-        <button onclick="saveRecord()" id="saveBtn" class="w-full py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider bg-emerald-500 hover:bg-emerald-400 text-gray-950 transition-all active:scale-[0.98] shadow-lg shadow-emerald-500/20">
-          Save to MongoDB Atlas
-        </button>
-      </div>
-    </div>
-
-    <!-- Live Records List -->
-    <div class="space-y-3">
-      <div class="flex items-center justify-between px-1">
-        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Stored Records</h2>
-        <button onclick="loadRecords()" class="text-xs text-emerald-400 hover:underline">Refresh</button>
-      </div>
-      <div id="recordsContainer" class="space-y-3">
-        <div class="text-center py-8 text-xs text-slate-500">Loading records from Atlas...</div>
-      </div>
-    </div>
-
-  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <script>
-    async function loadRecords() {
-      const container = document.getElementById('recordsContainer');
-      try {
-        const res = await fetch('/api/notes');
-        const items = await res.json();
-
-        if (items.length === 0) {
-          container.innerHTML = '<div class="glass rounded-xl p-6 text-center text-xs text-slate-500">No records found. Add your first entry above.</div>';
-          return;
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              900: '#064e3b'
+            },
+            surface: {
+              800: '#111827',
+              900: '#0b0f19',
+              950: '#030712'
+            }
+          }
         }
+      }
+    }
+  </script>
 
-        container.innerHTML = items.map(item => `
-          <div class="glass rounded-xl p-4 flex items-start justify-between gap-4 transition-all">
-            <div class="space-y-1">
-              <h3 class="text-sm font-bold text-white">${item.title || 'Untitled'}</h3>
-              <p class="text-xs text-slate-300 whitespace-pre-wrap">${item.content || ''}</p>
-              <span class="text-[10px] text-slate-500 block font-mono pt-1">${new Date(item.createdAt).toLocaleString()}</span>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+    body { background-color: #030712; color: #f3f4f6; overflow-x: hidden; }
+    
+    .glass {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    
+    .glass-card {
+      background: linear-gradient(135deg, rgba(31, 41, 55, 0.45) 0%, rgba(17, 24, 39, 0.6) 100%);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .glass-card:hover {
+      border-color: rgba(16, 185, 129, 0.4);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7);
+    }
+
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 999px; }
+
+    @keyframes slideIn {
+      from { transform: translateX(-100%); }
+      to { transform: translateX(0); }
+    }
+    .animate-drawer { animation: slideIn 0.25s ease-out forwards; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- Toast Notification Hub -->
+  <div id="toastHub" class="fixed top-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Mobile Drawer Overlay -->
+  <div id="drawerOverlay" onclick="toggleSidebar(false)" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden transition-opacity"></div>
+
+  <div class="flex flex-1 min-h-screen relative">
+
+    <!-- ============================================== -->
+    <!-- COLLAPSIBLE SIDEBAR NAVIGATION -->
+    <!-- ============================================== -->
+    <aside id="mainSidebar" class="fixed lg:static top-0 bottom-0 left-0 w-64 bg-surface-900 border-r border-white/5 z-50 flex flex-col justify-between transition-transform duration-300 -translate-x-full lg:translate-x-0">
+      
+      <div>
+        <!-- Brand Title -->
+        <div class="p-6 border-b border-white/5 flex items-center justify-between">
+          <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('home')">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center font-black text-gray-950 shadow-lg shadow-emerald-500/20">
+              N
             </div>
-            <button onclick="deleteRecord('${item._id}')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/20 transition-all">
-              Delete
+            <div>
+              <span id="brandNameDisplay" class="font-extrabold text-sm tracking-wider text-white block">NEXUS</span>
+              <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">DIGITAL STORE</span>
+            </div>
+          </div>
+          <button onclick="toggleSidebar(false)" class="lg:hidden text-slate-400 hover:text-white p-1">
+            ✕
+          </button>
+        </div>
+
+        <!-- Main Links -->
+        <nav class="p-4 space-y-1.5 text-xs font-semibold">
+          <button onclick="navigate('home')" id="nav-home" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-all">
+            <span class="text-base">🏠</span> <span>Home</span>
+          </button>
+          <button onclick="navigate('products')" id="nav-products" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-all">
+            <span class="text-base">🛍</span> <span>Products</span>
+          </button>
+          <button onclick="navigate('categories')" id="nav-categories" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-all">
+            <span class="text-base">📂</span> <span>Categories</span>
+          </button>
+          <button onclick="navigate('deals')" id="nav-deals" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-all">
+            <span class="text-base">🔥</span> <span>Special Deals</span>
+          </button>
+          <button onclick="navigate('cart')" id="nav-cart" class="nav-btn w-full flex items-center justify-between px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-all">
+            <div class="flex items-center gap-3">
+              <span class="text-base">🛒</span> <span>My Cart</span>
+            </div>
+            <span id="cartCountBadge" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-gray-950">0</span>
+          </button>
+          <button onclick="navigate('orders')" id="nav-orders" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-all">
+            <span class="text-base">📦</span> <span>Purchased Goods</span>
+          </button>
+          <button onclick="navigate('account')" id="nav-account" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 hover:text-white transition-all">
+            <span class="text-base">👤</span> <span id="navAccountLabel">My Account</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Footer / Admin Gateway -->
+      <div class="p-4 border-t border-white/5 space-y-2">
+        <button onclick="navigate('admin')" id="nav-admin" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-slate-400 bg-white/[0.03] hover:bg-emerald-500/10 hover:text-emerald-400 border border-white/5 transition-all">
+          <span class="text-base">🔐</span> <span id="adminBtnLabel">Admin Console</span>
+        </button>
+        <div class="text-[10px] text-center text-slate-600 font-mono">
+          v2.5 • Instant Cloud Delivery
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============================================== -->
+    <!-- MAIN APPLICATION VIEWPORT -->
+    <!-- ============================================== -->
+    <div class="flex-1 flex flex-col min-w-0 bg-surface-950">
+      
+      <!-- Top App Bar -->
+      <header class="sticky top-0 z-30 glass border-b border-white/5 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <button onclick="toggleSidebar(true)" class="lg:hidden p-2 rounded-xl bg-white/5 text-slate-300 hover:text-white">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+
+          <!-- Global Instant Search Input -->
+          <div class="relative w-48 sm:w-80">
+            <input type="text" id="globalSearchInput" oninput="handleGlobalSearch(this.value)" placeholder="Search products, software, keys..." class="w-full pl-9 pr-4 py-2 rounded-xl bg-surface-900 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all">
+            <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button onclick="navigate('cart')" class="relative p-2.5 rounded-xl bg-surface-900 border border-white/5 hover:border-emerald-500/40 text-slate-300 hover:text-white transition-all">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+            <span id="topCartCount" class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 text-gray-950 text-[10px] font-black flex items-center justify-center">0</span>
+          </button>
+          <button onclick="navigate('account')" class="p-2.5 rounded-xl bg-surface-900 border border-white/5 hover:border-emerald-500/40 text-slate-300 hover:text-white transition-all">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Dynamic Views Container -->
+      <main id="appRoot" class="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-8">
+        <!-- Rendered by Client-Side Router -->
+      </main>
+
+    </div>
+  </div>
+
+  <!-- Product Modal Inspection -->
+  <div id="productModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="glass max-w-2xl w-full rounded-3xl p-6 relative max-h-[90vh] overflow-y-auto custom-scroll" id="productModalContent">
+      <!-- Injected -->
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- CLIENT-SIDE APPLICATION ENGINE -->
+  <!-- ============================================== -->
+  <script>
+    // Global State Container
+    const state = {
+      user: JSON.parse(localStorage.getItem('nexus_user') || 'null'),
+      token: localStorage.getItem('nexus_token') || '',
+      adminToken: localStorage.getItem('nexus_admin_token') || '',
+      adminUsername: localStorage.getItem('nexus_admin_user') || '',
+      cart: JSON.parse(localStorage.getItem('nexus_cart') || '[]'),
+      appliedCoupon: null,
+      products: [],
+      categories: [],
+      currentView: 'home'
+    };
+
+    // Notification Engine
+    function showToast(message, type = 'success') {
+      const hub = document.getElementById('toastHub');
+      const toast = document.createElement('div');
+      const colors = type === 'success' ? 'bg-emerald-500 text-gray-950' : 'bg-rose-500 text-white';
+      toast.className = `px-5 py-3 rounded-2xl font-bold text-xs shadow-2xl flex items-center gap-2 transform transition-all duration-300 translate-y-[-10px] opacity-0 ${colors}`;
+      toast.innerHTML = `<span>${type === 'success' ? '✓' : '✕'}</span> <span>${message}</span>`;
+      hub.appendChild(toast);
+
+      setTimeout(() => toast.classList.remove('translate-y-[-10px]', 'opacity-0'), 10);
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-x-full');
+        setTimeout(() => toast.remove(), 300);
+      }, 3200);
+    }
+
+    function toggleSidebar(open) {
+      const sidebar = document.getElementById('mainSidebar');
+      const overlay = document.getElementById('drawerOverlay');
+      if (open) {
+        sidebar.classList.remove('-translate-x-full');
+        overlay.classList.remove('hidden');
+      } else {
+        sidebar.classList.add('-translate-x-full');
+        overlay.classList.add('hidden');
+      }
+    }
+
+    function updateCartBadges() {
+      const count = state.cart.length;
+      document.getElementById('cartCountBadge').textContent = count;
+      document.getElementById('topCartCount').textContent = count;
+      localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
+    }
+
+    // ----------------------------------------------------
+    // ROUTING CONTROLLER
+    // ----------------------------------------------------
+    function navigate(view, params = {}) {
+      state.currentView = view;
+      toggleSidebar(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Highlight active nav
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('bg-emerald-500/10', 'text-emerald-400'));
+      const active = document.getElementById(`nav-${view}`);
+      if (active) active.classList.add('bg-emerald-500/10', 'text-emerald-400');
+
+      const root = document.getElementById('appRoot');
+
+      switch(view) {
+        case 'home': renderHomeView(root); break;
+        case 'products': renderProductsView(root, params); break;
+        case 'categories': renderCategoriesView(root); break;
+        case 'deals': renderProductsView(root, { deal: true, title: '🔥 Limited Time Deals' }); break;
+        case 'cart': renderCartView(root); break;
+        case 'checkout': renderCheckoutView(root); break;
+        case 'orders': renderOrdersView(root); break;
+        case 'account': renderAccountView(root); break;
+        case 'admin':
+          if (state.adminToken) renderAdminDashboard(root);
+          else renderAdminLoginView(root);
+          break;
+      }
+    }
+
+    // ----------------------------------------------------
+    // 1. HOME VIEW
+    // ----------------------------------------------------
+    async function renderHomeView(root) {
+      root.innerHTML = '<div class="text-center py-20 text-slate-500 font-bold animate-pulse">Loading verified digital marketplace...</div>';
+
+      try {
+        const [prodRes, infoRes] = await Promise.all([
+          fetch('/api/products?featured=true'),
+          fetch('/api/store/info')
+        ]);
+        const featuredProducts = await prodRes.json();
+        const info = await infoRes.json();
+        state.categories = info.categories || [];
+
+        root.innerHTML = `
+          <!-- Promo Hero Banner -->
+          <div class="relative rounded-3xl overflow-hidden glass p-8 sm:p-14 border border-emerald-500/20 bg-gradient-to-r from-emerald-950/40 via-surface-900 to-surface-950">
+            <div class="max-w-2xl space-y-4">
+              <span class="px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-black tracking-wider uppercase inline-block">
+                ⚡ Instant Automated Delivery
+              </span>
+              <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
+                Unlock Premium <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">Digital Assets</span> & Software.
+              </h1>
+              <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                Genuine license keys, verified source codes, cloud accounts, and full-stack templates. Instant credential unlocking upon checkout.
+              </p>
+              <div class="flex flex-wrap gap-3 pt-3">
+                <button onclick="navigate('products')" class="px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-xs uppercase tracking-wider transition-all active:scale-95 shadow-lg shadow-emerald-500/20">
+                  Browse Catalog
+                </button>
+                <button onclick="navigate('deals')" class="px-6 py-3 rounded-2xl glass hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all">
+                  View 50%+ Deals
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Category Browser Cards -->
+          <section class="space-y-4">
+            <div class="flex items-center justify-between">
+              <h2 class="text-lg font-black text-white tracking-tight">Explore by Category</h2>
+              <button onclick="navigate('categories')" class="text-xs font-bold text-emerald-400 hover:underline">View All</button>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+              ${state.categories.map(c => `
+                <div onclick="navigate('products', { category: '${c.name}' })" class="glass-card rounded-2xl p-4 text-center cursor-pointer group">
+                  <div class="text-2xl mb-1.5 group-hover:scale-110 transition-transform">${c.icon || '📂'}</div>
+                  <h3 class="text-xs font-black text-white group-hover:text-emerald-400 transition-colors">${c.name}</h3>
+                </div>
+              `).join('')}
+            </div>
+          </section>
+
+          <!-- Featured Digital Goods Grid -->
+          <section class="space-y-4">
+            <div class="flex items-center justify-between">
+              <h2 class="text-lg font-black text-white tracking-tight">Featured Verified Products</h2>
+              <button onclick="navigate('products')" class="text-xs font-bold text-emerald-400 hover:underline">Browse All</button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              ${featuredProducts.map(p => renderProductCardHTML(p)).join('')}
+            </div>
+          </section>
+        `;
+      } catch (err) {
+        root.innerHTML = `<div class="glass p-8 rounded-2xl text-center text-rose-400 text-xs">Failed to load marketplace data: ${err.message}</div>`;
+      }
+    }
+
+    // ----------------------------------------------------
+    // 2. PRODUCT CARDS & BROWSING
+    // ----------------------------------------------------
+    function renderProductCardHTML(p) {
+      return `
+        <div class="glass-card rounded-3xl overflow-hidden flex flex-col justify-between border border-white/5 relative group">
+          
+          <!-- Discount Badge -->
+          ${p.discount_percentage > 0 ? `
+            <span class="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full bg-rose-500 text-white font-black text-[10px] tracking-wider uppercase shadow-lg">
+              ${p.discount_percentage}% OFF
+            </span>
+          ` : ''}
+
+          <!-- Delivery Type Tag -->
+          <span class="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-full bg-surface-950/80 backdrop-blur-md border border-white/10 text-emerald-400 font-bold text-[9px] uppercase tracking-wider">
+            ${p.delivery_type.replace('_', ' ')}
+          </span>
+
+          <div class="cursor-pointer" onclick="openProductDetails('${p._id}')">
+            <div class="h-44 w-full overflow-hidden bg-surface-900 relative">
+              <img src="${p.images[0] || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="${p.name}">
+            </div>
+            <div class="p-5 space-y-2">
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">${p.category}</span>
+              <h3 class="text-sm font-bold text-white leading-snug group-hover:text-emerald-400 transition-colors line-clamp-1">${p.name}</h3>
+              <p class="text-xs text-slate-400 line-clamp-2 leading-relaxed">${p.short_description || p.description}</p>
+            </div>
+          </div>
+
+          <!-- Card Action Footer -->
+          <div class="px-5 pb-5 pt-2 flex items-center justify-between border-t border-white/5">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-base font-black text-white">₹${p.sale_price}</span>
+                ${p.original_price > p.sale_price ? `<span class="text-xs text-slate-500 line-through">₹${p.original_price}</span>` : ''}
+              </div>
+              <span class="text-[10px] ${p.in_stock ? 'text-emerald-400' : 'text-rose-400'} font-bold block">
+                ${p.in_stock ? '● In Stock' : '✕ Out of Stock'}
+              </span>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+              <button onclick="addToCart('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${p.sale_price}, '${p.images[0]}', '${p.delivery_type}')" ${!p.in_stock ? 'disabled' : ''} class="px-4 py-2.5 rounded-xl ${p.in_stock ? 'bg-emerald-500 hover:bg-emerald-400 text-gray-950' : 'bg-gray-800 text-gray-500 cursor-not-allowed'} font-black text-xs uppercase tracking-wider transition-all active:scale-95">
+                Add
+              </button>
+            </div>
+          </div>
+
+        </div>
+      `;
+    }
+
+    async function renderProductsView(root, filters = {}) {
+      root.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold animate-pulse">Loading catalog...</div>';
+      
+      let queryUrl = '/api/products?';
+      if (filters.category) queryUrl += `category=${encodeURIComponent(filters.category)}&`;
+      if (filters.deal) queryUrl += `deal=true&`;
+      if (filters.search) queryUrl += `search=${encodeURIComponent(filters.search)}&`;
+
+      const res = await fetch(queryUrl);
+      const products = await res.json();
+
+      root.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 class="text-xl font-black text-white">${filters.title || (filters.category ? filters.category : 'All Digital Products')}</h1>
+              <p class="text-xs text-slate-400">${products.length} verified products available</p>
+            </div>
+            
+            <!-- Quick Filter Bar -->
+            <div class="flex items-center gap-2 overflow-x-auto pb-1">
+              <button onclick="navigate('products')" class="px-3 py-1.5 rounded-xl text-xs font-bold ${!filters.category && !filters.deal ? 'bg-emerald-500 text-gray-950' : 'glass text-slate-300'}">All</button>
+              <button onclick="navigate('deals')" class="px-3 py-1.5 rounded-xl text-xs font-bold ${filters.deal ? 'bg-emerald-500 text-gray-950' : 'glass text-slate-300'}">Deals</button>
+            </div>
+          </div>
+
+          ${products.length === 0 ? `
+            <div class="glass rounded-3xl p-16 text-center space-y-3">
+              <div class="text-4xl">🔍</div>
+              <h3 class="text-sm font-black text-white">No products found</h3>
+              <p class="text-xs text-slate-400 max-w-sm mx-auto">Try clearing your search query or selecting a different category from the sidebar.</p>
+            </div>
+          ` : `
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              ${products.map(p => renderProductCardHTML(p)).join('')}
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    async function renderCategoriesView(root) {
+      const res = await fetch('/api/store/info');
+      const data = await res.json();
+      const categories = data.categories || [];
+
+      root.innerHTML = `
+        <div class="space-y-6">
+          <div>
+            <h1 class="text-xl font-black text-white">Browse Categories</h1>
+            <p class="text-xs text-slate-400">Select a category to view specialized software and accounts</p>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            ${categories.map(c => `
+              <div onclick="navigate('products', { category: '${c.name}' })" class="glass-card rounded-3xl p-6 cursor-pointer space-y-2 border border-white/5">
+                <div class="text-3xl">${c.icon || '📂'}</div>
+                <h3 class="text-sm font-black text-white">${c.name}</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">${c.description || 'Explore top digital assets in this category.'}</p>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // Modal Inspection for Product Details
+    async function openProductDetails(id) {
+      const modal = document.getElementById('productModal');
+      const container = document.getElementById('productModalContent');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      container.innerHTML = '<div class="text-center py-12 text-slate-500 font-bold">Loading product info...</div>';
+
+      const res = await fetch(`/api/products/${id}`);
+      const p = await res.json();
+
+      container.innerHTML = `
+        <button onclick="document.getElementById('productModal').classList.add('hidden')" class="absolute top-4 right-4 p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white">✕</button>
+        <div class="space-y-5">
+          <div class="h-60 sm:h-72 w-full rounded-2xl overflow-hidden bg-surface-950">
+            <img src="${p.images[0] || ''}" class="w-full h-full object-cover">
+          </div>
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-emerald-400 uppercase tracking-widest">${p.category}</span>
+              <span class="text-xs font-mono text-slate-500">SKU: ${p.sku}</span>
+            </div>
+            <h2 class="text-xl sm:text-2xl font-black text-white">${p.name}</h2>
+            <div class="flex items-center gap-3 pt-1">
+              <span class="text-2xl font-black text-white">₹${p.sale_price}</span>
+              ${p.original_price > p.sale_price ? `<span class="text-sm text-slate-500 line-through">₹${p.original_price}</span>` : ''}
+              <span class="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold">
+                ${p.delivery_type.replace('_', ' ')}
+              </span>
+            </div>
+          </div>
+          <div class="p-4 rounded-2xl bg-surface-950/80 border border-white/5 text-xs text-slate-300 leading-relaxed">
+            ${p.description}
+          </div>
+          <div class="flex gap-3 pt-2">
+            <button onclick="addToCart('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${p.sale_price}, '${p.images[0]}', '${p.delivery_type}'); document.getElementById('productModal').classList.add('hidden')" ${!p.in_stock ? 'disabled' : ''} class="flex-1 py-3.5 rounded-2xl ${p.in_stock ? 'bg-emerald-500 hover:bg-emerald-400 text-gray-950' : 'bg-gray-800 text-gray-500'} font-black text-xs uppercase tracking-wider">
+              ${p.in_stock ? 'Add To Cart' : 'Out of Stock'}
             </button>
           </div>
-        `).join('');
-      } catch (err) {
-        container.innerHTML = `<div class="glass rounded-xl p-4 text-center text-xs text-rose-400">Error loading data: ${err.message}</div>`;
-      }
+        </div>
+      `;
     }
 
-    async function saveRecord() {
-      const title = document.getElementById('recordTitle').value.trim();
-      const content = document.getElementById('recordContent').value.trim();
-      if (!title && !content) return;
+    // ----------------------------------------------------
+    // 3. CART & CHECKOUT ENGINE
+    // ----------------------------------------------------
+    function addToCart(product_id, name, price, image, delivery_type) {
+      // Digital goods unique limitation
+      const exists = state.cart.find(item => item.product_id === product_id);
+      if (exists) {
+        showToast('Item already in your cart (1 license per checkout)', 'error');
+        return;
+      }
+      state.cart.push({ product_id, name, price, image, delivery_type });
+      updateCartBadges();
+      showToast(`Added "${name}" to cart`);
+    }
 
-      const btn = document.getElementById('saveBtn');
-      btn.disabled = true;
-      btn.textContent = 'Saving...';
+    function removeFromCart(index) {
+      state.cart.splice(index, 1);
+      updateCartBadges();
+      renderCartView(document.getElementById('appRoot'));
+    }
+
+    function renderCartView(root) {
+      const subtotal = state.cart.reduce((acc, curr) => acc + curr.price, 0);
+
+      root.innerHTML = `
+        <div class="max-w-3xl mx-auto space-y-6">
+          <h1 class="text-xl font-black text-white">Your Shopping Cart</h1>
+
+          ${state.cart.length === 0 ? `
+            <div class="glass rounded-3xl p-12 text-center space-y-4">
+              <div class="text-4xl">🛒</div>
+              <h3 class="text-sm font-black text-white">Your cart is empty</h3>
+              <p class="text-xs text-slate-400">Browse the store to find software, license keys, and assets.</p>
+              <button onclick="navigate('products')" class="px-6 py-3 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider">Start Shopping</button>
+            </div>
+          ` : `
+            <div class="space-y-3">
+              ${state.cart.map((item, idx) => `
+                <div class="glass rounded-2xl p-4 flex items-center justify-between gap-4">
+                  <div class="flex items-center gap-4">
+                    <img src="${item.image || ''}" class="w-12 h-12 rounded-xl object-cover bg-surface-950">
+                    <div>
+                      <h4 class="text-xs font-bold text-white">${item.name}</h4>
+                      <span class="text-[10px] text-emerald-400 font-mono">${item.delivery_type.replace('_', ' ')}</span>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-4">
+                    <span class="text-sm font-black text-white">₹${item.price}</span>
+                    <button onclick="removeFromCart(${idx})" class="p-2 text-slate-500 hover:text-rose-400 transition-colors">✕</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- Summary Card -->
+            <div class="glass rounded-3xl p-6 space-y-4">
+              <div class="flex justify-between text-xs text-slate-400">
+                <span>Subtotal</span>
+                <span class="text-white font-bold">₹${subtotal}</span>
+              </div>
+              <div class="border-t border-white/5 pt-4 flex justify-between text-sm font-black text-white">
+                <span>Estimated Total</span>
+                <span class="text-emerald-400">₹${subtotal}</span>
+              </div>
+              <button onclick="navigate('checkout')" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-xs uppercase tracking-wider shadow-xl shadow-emerald-500/20 active:scale-95 transition-all">
+                Proceed To Checkout
+              </button>
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    async function renderCheckoutView(root) {
+      if (!state.token) {
+        showToast('Please login or register to complete your order', 'error');
+        renderCustomerAuthModal(root, 'checkout');
+        return;
+      }
+
+      if (!state.cart.length) {
+        navigate('cart');
+        return;
+      }
+
+      const subtotal = state.cart.reduce((acc, curr) => acc + curr.price, 0);
+
+      root.innerHTML = `
+        <div class="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          <!-- Left: Order Items & Customer Verification -->
+          <div class="lg:col-span-7 space-y-6">
+            <h1 class="text-xl font-black text-white">Complete Purchase</h1>
+            
+            <div class="glass rounded-3xl p-6 space-y-4">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Customer Delivery Account</h3>
+              <div class="p-4 rounded-2xl bg-surface-950 border border-white/5 space-y-1 text-xs">
+                <p class="text-white font-bold">${state.user.name}</p>
+                <p class="text-slate-400 font-mono">${state.user.email}</p>
+                <p class="text-slate-500 text-[10px]">Instant credentials will be assigned to this account.</p>
+              </div>
+            </div>
+
+            <!-- Coupon Input -->
+            <div class="glass rounded-3xl p-6 space-y-3">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Have a Discount Code?</h3>
+              <div class="flex gap-2">
+                <input type="text" id="couponInput" placeholder="Try SAVE20" class="flex-1 px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white uppercase focus:outline-none focus:border-emerald-500">
+                <button onclick="applyCheckoutCoupon()" class="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase">Apply</button>
+              </div>
+              <div id="couponStatus" class="text-xs"></div>
+            </div>
+          </div>
+
+          <!-- Right: Summary & Payment -->
+          <div class="lg:col-span-5 space-y-4">
+            <div class="glass rounded-3xl p-6 space-y-4">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Order Summary</h3>
+              
+              <div class="space-y-2 max-h-48 overflow-y-auto custom-scroll pr-1">
+                ${state.cart.map(item => `
+                  <div class="flex justify-between text-xs">
+                    <span class="text-slate-300 line-clamp-1">${item.name}</span>
+                    <span class="text-white font-bold">₹${item.price}</span>
+                  </div>
+                `).join('')}
+              </div>
+
+              <div class="border-t border-white/5 pt-3 space-y-2 text-xs">
+                <div class="flex justify-between text-slate-400">
+                  <span>Subtotal</span>
+                  <span class="text-white font-bold">₹${subtotal}</span>
+                </div>
+                <div class="flex justify-between text-slate-400">
+                  <span>Discount</span>
+                  <span id="summaryDiscount" class="text-emerald-400 font-bold">- ₹0</span>
+                </div>
+                <div class="flex justify-between text-base font-black text-white pt-2 border-t border-white/5">
+                  <span>Final Total</span>
+                  <span id="summaryFinalTotal" class="text-emerald-400 font-black">₹${subtotal}</span>
+                </div>
+              </div>
+
+              <button onclick="executeOrder()" id="payOrderBtn" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-xs uppercase tracking-wider shadow-xl shadow-emerald-500/20 active:scale-95 transition-all">
+                Pay & Unlock Digital Goods
+              </button>
+            </div>
+          </div>
+
+        </div>
+      `;
+    }
+
+    async function applyCheckoutCoupon() {
+      const code = document.getElementById('couponInput').value.trim();
+      const status = document.getElementById('couponStatus');
+      const subtotal = state.cart.reduce((acc, curr) => acc + curr.price, 0);
+      if (!code) return;
+
+      status.innerHTML = '<span class="text-slate-400">Verifying code with server...</span>';
 
       try {
-        await fetch('/api/notes', {
+        const res = await fetch('/api/cart/validate-coupon', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, content })
+          body: JSON.stringify({ code, subtotal })
         });
-        document.getElementById('recordTitle').value = '';
-        document.getElementById('recordContent').value = '';
-        await loadRecords();
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        state.appliedCoupon = data;
+        status.innerHTML = `<span class="text-emerald-400 font-bold">✓ Coupon ${data.code} applied! Saved ₹${data.discount_amount}</span>`;
+        document.getElementById('summaryDiscount').textContent = `- ₹${data.discount_amount}`;
+        document.getElementById('summaryFinalTotal').textContent = `₹${data.final_total}`;
+        showToast('Coupon applied!');
       } catch (err) {
-        alert('Failed to save: ' + err.message);
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Save to MongoDB Atlas';
+        state.appliedCoupon = null;
+        status.innerHTML = `<span class="text-rose-400 font-bold">✕ ${err.message}</span>`;
       }
     }
 
-    async function deleteRecord(id) {
-      if (!confirm('Permanently delete this record from Atlas?')) return;
+    async function executeOrder() {
+      const btn = document.getElementById('payOrderBtn');
+      btn.disabled = true;
+      btn.textContent = 'Processing verified transaction...';
+
       try {
-        await fetch('/api/notes/' + id, { method: 'DELETE' });
-        await loadRecords();
+        const res = await fetch('/api/checkout/process', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.token}`
+          },
+          body: JSON.stringify({
+            items: state.cart,
+            coupon_code: state.appliedCoupon ? state.appliedCoupon.code : ''
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        state.cart = [];
+        state.appliedCoupon = null;
+        updateCartBadges();
+        showToast('Purchase successful! Your digital goods are ready.');
+        navigate('orders');
       } catch (err) {
-        alert('Failed to delete: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = 'Pay & Unlock Digital Goods';
+        showToast(err.message, 'error');
       }
     }
 
-    document.addEventListener('DOMContentLoaded', loadRecords);
+    // ----------------------------------------------------
+    // 4. CUSTOMER ORDERS & ASSET REVEAL
+    // ----------------------------------------------------
+    async function renderOrdersView(root) {
+      if (!state.token) {
+        renderCustomerAuthModal(root, 'orders');
+        return;
+      }
+
+      root.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold animate-pulse">Loading purchased digital goods...</div>';
+
+      try {
+        const res = await fetch('/api/customer/orders', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const orders = await res.json();
+
+        root.innerHTML = `
+          <div class="max-w-4xl mx-auto space-y-6">
+            <div>
+              <h1 class="text-xl font-black text-white">My Digital Goods Vault</h1>
+              <p class="text-xs text-slate-400">All purchased software, credentials, and links are unlocked below.</p>
+            </div>
+
+            ${orders.length === 0 ? `
+              <div class="glass rounded-3xl p-12 text-center space-y-3">
+                <div class="text-4xl">📦</div>
+                <h3 class="text-sm font-black text-white">No purchases found</h3>
+                <p class="text-xs text-slate-400">You have not purchased any digital goods yet.</p>
+                <button onclick="navigate('products')" class="px-5 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase">Browse Store</button>
+              </div>
+            ` : `
+              <div class="space-y-6">
+                ${orders.map(o => `
+                  <div class="glass rounded-3xl p-6 space-y-4 border border-white/5">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-white/5 gap-2 text-xs">
+                      <div>
+                        <span class="font-mono text-slate-500">Order #${o._id.slice(-6).toUpperCase()}</span>
+                        <span class="text-slate-400 block text-[10px]">${new Date(o.created_at).toLocaleString()}</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-bold text-[10px]">PAID ₹${o.total_amount}</span>
+                        <span class="px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 font-bold text-[10px]">DELIVERED</span>
+                      </div>
+                    </div>
+
+                    <!-- Items & Delivery Reveal Payloads -->
+                    <div class="space-y-3">
+                      ${o.items.map(item => `
+                        <div class="p-4 rounded-2xl bg-surface-950 border border-white/5 space-y-3">
+                          <div class="flex justify-between items-center">
+                            <h4 class="text-xs font-bold text-white">${item.name}</h4>
+                            <span class="text-[9px] font-mono uppercase text-emerald-400">${item.delivery_type.replace('_', ' ')}</span>
+                          </div>
+
+                          <!-- Type-Specific Secure Renderers -->
+                          ${renderDeliveryPayloadHTML(item)}
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            `}
+          </div>
+        `;
+      } catch (err) {
+        root.innerHTML = `<div class="glass p-8 text-center text-rose-400 text-xs">${err.message}</div>`;
+      }
+    }
+
+    function renderDeliveryPayloadHTML(item) {
+      const data = item.delivered_data || {};
+      if (item.delivery_type === 'EMAIL_PASSWORD') {
+        return `
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1">
+            <div class="p-3 rounded-xl bg-surface-900 border border-white/5 flex items-center justify-between">
+              <div>
+                <span class="text-[9px] uppercase text-slate-500 block">Email / Username</span>
+                <span class="font-mono text-white select-all">${data.email}</span>
+              </div>
+              <button onclick="navigator.clipboard.writeText('${data.email}'); showToast('Email copied!')" class="text-xs text-emerald-400 hover:underline">Copy</button>
+            </div>
+            <div class="p-3 rounded-xl bg-surface-900 border border-white/5 flex items-center justify-between">
+              <div>
+                <span class="text-[9px] uppercase text-slate-500 block">Password</span>
+                <span class="font-mono text-white select-all">${data.password}</span>
+              </div>
+              <button onclick="navigator.clipboard.writeText('${data.password}'); showToast('Password copied!')" class="text-xs text-emerald-400 hover:underline">Copy</button>
+            </div>
+          </div>
+        `;
+      } else if (item.delivery_type === 'LICENSE_KEY') {
+        return `
+          <div class="p-3 rounded-xl bg-surface-900 border border-white/5 flex items-center justify-between text-xs">
+            <div>
+              <span class="text-[9px] uppercase text-slate-500 block">Activation / License Key</span>
+              <span class="font-mono text-emerald-400 font-bold select-all text-sm">${data.license_key}</span>
+            </div>
+            <button onclick="navigator.clipboard.writeText('${data.license_key}'); showToast('License key copied!')" class="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 font-bold text-xs">Copy Key</button>
+          </div>
+        `;
+      } else if (item.delivery_type === 'STANDARD_LINK') {
+        return `
+          <div class="pt-1">
+            <a href="${data.url}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-bold text-xs uppercase tracking-wider">
+              <span>Access Your Product URL</span> <span>↗</span>
+            </a>
+          </div>
+        `;
+      } else if (item.delivery_type === 'DOWNLOADABLE_FILE') {
+        return `
+          <div class="pt-1">
+            <a href="${data.download_url}" download class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-bold text-xs uppercase tracking-wider">
+              <span>Download File (${data.file_name || 'Asset'})</span> <span>↓</span>
+            </a>
+          </div>
+        `;
+      } else {
+        return `<div class="p-3 rounded-xl bg-surface-900 text-xs text-slate-300 whitespace-pre-wrap">${data.custom_text || 'Digital delivery fulfilled.'}</div>`;
+      }
+    }
+
+    // ----------------------------------------------------
+    // 5. CUSTOMER AUTHENTICATION & ACCOUNT
+    // ----------------------------------------------------
+    function renderCustomerAuthModal(root, returnView = 'home') {
+      root.innerHTML = `
+        <div class="max-w-md mx-auto glass rounded-3xl p-8 space-y-6 border border-white/10">
+          <div class="text-center space-y-1">
+            <h2 class="text-xl font-black text-white">Customer Account</h2>
+            <p class="text-xs text-slate-400">Sign in or register to access digital licenses</p>
+          </div>
+
+          <div class="flex rounded-xl bg-surface-950 p-1">
+            <button onclick="toggleAuthTab('login')" id="tabLoginBtn" class="flex-1 py-2 text-xs font-bold rounded-lg bg-emerald-500 text-gray-950">Sign In</button>
+            <button onclick="toggleAuthTab('register')" id="tabRegBtn" class="flex-1 py-2 text-xs font-bold rounded-lg text-slate-400">Create Account</button>
+          </div>
+
+          <!-- Login Form -->
+          <form id="customerLoginForm" onsubmit="handleCustomerLogin(event, '${returnView}')" class="space-y-3.5">
+            <input type="email" id="loginEmail" required placeholder="Email address" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white focus:border-emerald-500 outline-none">
+            <input type="password" id="loginPass" required placeholder="Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white focus:border-emerald-500 outline-none">
+            <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-xs uppercase tracking-wider">Sign In</button>
+          </form>
+
+          <!-- Register Form -->
+          <form id="customerRegForm" onsubmit="handleCustomerRegister(event, '${returnView}')" class="space-y-3.5 hidden">
+            <input type="text" id="regName" required placeholder="Full name" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white focus:border-emerald-500 outline-none">
+            <input type="email" id="regEmail" required placeholder="Email address" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white focus:border-emerald-500 outline-none">
+            <input type="tel" id="regMobile" placeholder="Mobile Number (Optional)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white focus:border-emerald-500 outline-none">
+            <input type="password" id="regPass" required placeholder="Create Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white focus:border-emerald-500 outline-none">
+            <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-xs uppercase tracking-wider">Create Account</button>
+          </form>
+        </div>
+      `;
+    }
+
+    function toggleAuthTab(tab) {
+      const loginF = document.getElementById('customerLoginForm');
+      const regF = document.getElementById('customerRegForm');
+      const logB = document.getElementById('tabLoginBtn');
+      const regB = document.getElementById('tabRegBtn');
+      if (tab === 'login') {
+        loginF.classList.remove('hidden');
+        regF.classList.add('hidden');
+        logB.className = 'flex-1 py-2 text-xs font-bold rounded-lg bg-emerald-500 text-gray-950';
+        regB.className = 'flex-1 py-2 text-xs font-bold rounded-lg text-slate-400';
+      } else {
+        loginF.classList.add('hidden');
+        regF.classList.remove('hidden');
+        regB.className = 'flex-1 py-2 text-xs font-bold rounded-lg bg-emerald-500 text-gray-950';
+        logB.className = 'flex-1 py-2 text-xs font-bold rounded-lg text-slate-400';
+      }
+    }
+
+    async function handleCustomerLogin(e, returnView) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPass').value;
+
+      try {
+        const res = await fetch('/api/auth/customer/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        state.token = data.token;
+        state.user = data.user;
+        localStorage.setItem('nexus_token', data.token);
+        localStorage.setItem('nexus_user', JSON.stringify(data.user));
+
+        document.getElementById('navAccountLabel').textContent = data.user.name;
+        showToast(`Welcome back, ${data.user.name}!`);
+        navigate(returnView);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function handleCustomerRegister(e, returnView) {
+      e.preventDefault();
+      const name = document.getElementById('regName').value;
+      const email = document.getElementById('regEmail').value;
+      const mobile = document.getElementById('regMobile').value;
+      const password = document.getElementById('regPass').value;
+
+      try {
+        const res = await fetch('/api/auth/customer/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, mobile, password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        state.token = data.token;
+        state.user = data.user;
+        localStorage.setItem('nexus_token', data.token);
+        localStorage.setItem('nexus_user', JSON.stringify(data.user));
+
+        document.getElementById('navAccountLabel').textContent = data.user.name;
+        showToast('Account registered successfully!');
+        navigate(returnView);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    function renderAccountView(root) {
+      if (!state.token) {
+        renderCustomerAuthModal(root, 'account');
+        return;
+      }
+
+      root.innerHTML = `
+        <div class="max-w-2xl mx-auto glass rounded-3xl p-8 space-y-6 border border-white/5">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-xl font-black text-white">${state.user.name}</h1>
+              <p class="text-xs text-slate-400 font-mono">${state.user.email}</p>
+            </div>
+            <button onclick="customerLogout()" class="px-4 py-2 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 text-xs font-bold">Logout</button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div onclick="navigate('orders')" class="glass-card rounded-2xl p-5 cursor-pointer space-y-1">
+              <span class="text-2xl">📦</span>
+              <h3 class="text-xs font-bold text-white">My Digital Goods</h3>
+              <p class="text-[10px] text-slate-400">View license keys & downloads</p>
+            </div>
+            <div onclick="navigate('cart')" class="glass-card rounded-2xl p-5 cursor-pointer space-y-1">
+              <span class="text-2xl">🛒</span>
+              <h3 class="text-xs font-bold text-white">Shopping Cart</h3>
+              <p class="text-[10px] text-slate-400">${state.cart.length} active items</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function customerLogout() {
+      state.token = '';
+      state.user = null;
+      localStorage.removeItem('nexus_token');
+      localStorage.removeItem('nexus_user');
+      document.getElementById('navAccountLabel').textContent = 'My Account';
+      showToast('Logged out successfully');
+      navigate('home');
+    }
+
+    // ----------------------------------------------------
+    // 6. ADMIN CONSOLE, DASHBOARD & MANAGEMENT
+    // ----------------------------------------------------
+    function renderAdminLoginView(root) {
+      root.innerHTML = `
+        <div class="max-w-sm mx-auto glass rounded-3xl p-8 space-y-6 border border-emerald-500/20 shadow-2xl">
+          <div class="text-center space-y-1">
+            <span class="text-3xl">🔐</span>
+            <h2 class="text-lg font-black text-white">Administrator Access</h2>
+            <p class="text-xs text-slate-400">Enter your credentials to manage digital goods</p>
+          </div>
+
+          <form onsubmit="handleAdminLogin(event)" class="space-y-4">
+            <input type="text" id="adminUserInput" placeholder="Username (Aryan)" required class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white focus:border-emerald-500 outline-none">
+            <input type="password" id="adminPassInput" placeholder="Password (5669)" required class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white focus:border-emerald-500 outline-none">
+            <button type="submit" id="adminLoginBtn" class="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-xs uppercase tracking-wider transition-all">Authenticate</button>
+          </form>
+        </div>
+      `;
+    }
+
+    async function handleAdminLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('adminUserInput').value.trim();
+      const password = document.getElementById('adminPassInput').value.trim();
+      const btn = document.getElementById('adminLoginBtn');
+      btn.disabled = true;
+      btn.textContent = 'Verifying...';
+
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        state.adminToken = data.token;
+        state.adminUsername = data.username;
+        localStorage.setItem('nexus_admin_token', data.token);
+        localStorage.setItem('nexus_admin_user', data.username);
+
+        showToast('Admin session authenticated!');
+        renderAdminDashboard(document.getElementById('appRoot'));
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'Authenticate';
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function renderAdminDashboard(root) {
+      root.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold animate-pulse">Loading live analytics...</div>';
+
+      try {
+        const [statsRes, prodsRes] = await Promise.all([
+          fetch('/api/admin/stats', { headers: { 'Authorization': `Bearer ${state.adminToken}` } }),
+          fetch('/api/admin/products', { headers: { 'Authorization': `Bearer ${state.adminToken}` } })
+        ]);
+        const stats = await statsRes.json();
+        const products = await prodsRes.json();
+
+        root.innerHTML = `
+          <div class="space-y-8">
+            
+            <!-- Top Dashboard Bar -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h1 class="text-xl font-black text-white">Administrator Dashboard</h1>
+                <p class="text-xs text-slate-400">Live sales, inventory locks, and digital delivery manager</p>
+              </div>
+              <div class="flex gap-2">
+                <button onclick="renderAddProductModal()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20">
+                  + Add Product
+                </button>
+                <button onclick="adminLogout()" class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 text-xs font-bold">
+                  Logout
+                </button>
+              </div>
+            </div>
+
+            <!-- Real Stats Cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="glass rounded-2xl p-5 space-y-1">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Revenue</span>
+                <div class="text-2xl font-black text-emerald-400">₹${stats.totalRevenue}</div>
+              </div>
+              <div class="glass rounded-2xl p-5 space-y-1">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Completed Orders</span>
+                <div class="text-2xl font-black text-white">${stats.totalOrders}</div>
+              </div>
+              <div class="glass rounded-2xl p-5 space-y-1">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Products Catalog</span>
+                <div class="text-2xl font-black text-white">${stats.totalProducts}</div>
+              </div>
+              <div class="glass rounded-2xl p-5 space-y-1">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Registered Users</span>
+                <div class="text-2xl font-black text-white">${stats.totalCustomers}</div>
+              </div>
+            </div>
+
+            <!-- Revenue Chart -->
+            <div class="glass rounded-3xl p-6 space-y-4">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Real Sales Performance (Past 7 Days)</h3>
+              <div class="h-56 w-full">
+                <canvas id="adminSalesChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Products & Inventory Management Table -->
+            <div class="glass rounded-3xl p-6 space-y-4">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Products & Digital Inventory</h3>
+              
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                  <thead>
+                    <tr class="border-b border-white/5 text-slate-500">
+                      <th class="pb-3">Product</th>
+                      <th class="pb-3">Category</th>
+                      <th class="pb-3">Price</th>
+                      <th class="pb-3">Delivery Type</th>
+                      <th class="pb-3">Available Stock</th>
+                      <th class="pb-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-white/5">
+                    ${products.map(p => `
+                      <tr>
+                        <td class="py-3 font-bold text-white">${p.name}</td>
+                        <td class="py-3 text-slate-400">${p.category}</td>
+                        <td class="py-3 font-mono">₹${p.sale_price}</td>
+                        <td class="py-3 font-mono text-emerald-400">${p.delivery_type}</td>
+                        <td class="py-3 font-bold ${p.stock_count > 0 ? 'text-emerald-400' : 'text-rose-400'}">${p.stock_count} units</td>
+                        <td class="py-3 text-right space-x-2">
+                          <button onclick="renderAddInventoryModal('${p._id}', '${p.name.replace(/'/g, "\\'")}', '${p.delivery_type}')" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 font-bold hover:bg-emerald-500/20">+ Stock</button>
+                          <button onclick="deleteProduct('${p._id}')" class="px-2.5 py-1 rounded-lg bg-rose-500/10 text-rose-400 font-bold hover:bg-rose-500/20">Delete</button>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        `;
+
+        // Render Chart.js
+        setTimeout(() => {
+          const ctx = document.getElementById('adminSalesChart');
+          if (ctx) {
+            const labels = stats.dailyRevenue?.map(d => d._id) || ['Today'];
+            const data = stats.dailyRevenue?.map(d => d.revenue) || [stats.totalRevenue];
+            new Chart(ctx, {
+              type: 'line',
+              data: {
+                labels: labels.length ? labels : ['Day 1'],
+                datasets: [{
+                  label: 'Revenue (₹)',
+                  data: data.length ? data : [0],
+                  borderColor: '#10b981',
+                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                  fill: true,
+                  tension: 0.4
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                  x: { grid: { color: 'rgba(255,255,255,0.05)' } },
+                  y: { grid: { color: 'rgba(255,255,255,0.05)' } }
+                }
+              }
+            });
+          }
+        }, 50);
+
+      } catch (err) {
+        root.innerHTML = `<div class="glass p-8 text-center text-rose-400 text-xs">${err.message}</div>`;
+      }
+    }
+
+    function renderAddProductModal() {
+      const modal = document.getElementById('productModal');
+      const container = document.getElementById('productModalContent');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      container.innerHTML = `
+        <button onclick="document.getElementById('productModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+        <h2 class="text-base font-black text-white mb-4">Add New Digital Product</h2>
+        <form onsubmit="submitNewProduct(event)" class="space-y-3.5 text-xs">
+          <input type="text" id="npName" required placeholder="Product Title" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white outline-none focus:border-emerald-500">
+          <input type="text" id="npDesc" required placeholder="Short Description" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white outline-none focus:border-emerald-500">
+          
+          <div class="grid grid-cols-2 gap-3">
+            <select id="npCategory" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white outline-none">
+              ${state.categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+            </select>
+            <select id="npDeliveryType" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white outline-none">
+              <option value="STANDARD_LINK">Standard Link</option>
+              <option value="LICENSE_KEY">License Key</option>
+              <option value="EMAIL_PASSWORD">Email + Password</option>
+              <option value="DOWNLOADABLE_FILE">Downloadable File</option>
+              <option value="CUSTOM_TEXT">Custom Text</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <input type="number" id="npOrigPrice" placeholder="Original Price (₹)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white outline-none">
+            <input type="number" id="npSalePrice" required placeholder="Sale Price (₹)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white outline-none">
+          </div>
+
+          <input type="text" id="npImage" placeholder="Image URL (Unsplash/CDN)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white outline-none">
+          
+          <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black uppercase tracking-wider">Create Product</button>
+        </form>
+      `;
+    }
+
+    async function submitNewProduct(e) {
+      e.preventDefault();
+      const payload = {
+        name: document.getElementById('npName').value,
+        short_description: document.getElementById('npDesc').value,
+        description: document.getElementById('npDesc').value,
+        category: document.getElementById('npCategory').value,
+        delivery_type: document.getElementById('npDeliveryType').value,
+        original_price: Number(document.getElementById('npOrigPrice').value) || Number(document.getElementById('npSalePrice').value),
+        sale_price: Number(document.getElementById('npSalePrice').value),
+        images: [document.getElementById('npImage').value || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800']
+      };
+
+      try {
+        const res = await fetch('/api/admin/products', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.adminToken}`
+          },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error((await res.json()).error);
+        showToast('Product added successfully!');
+        document.getElementById('productModal').classList.add('hidden');
+        renderAdminDashboard(document.getElementById('appRoot'));
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    function renderAddInventoryModal(productId, productName, deliveryType) {
+      const modal = document.getElementById('productModal');
+      const container = document.getElementById('productModalContent');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      let dynamicFields = '';
+      if (deliveryType === 'EMAIL_PASSWORD') {
+        dynamicFields = `
+          <input type="email" id="invEmail" required placeholder="Account Email" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white outline-none">
+          <input type="text" id="invPassword" required placeholder="Account Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white outline-none">
+        `;
+      } else if (deliveryType === 'LICENSE_KEY') {
+        dynamicFields = `
+          <input type="text" id="invKey" required placeholder="Activation License Key (e.g. XXXXX-XXXXX)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white outline-none">
+        `;
+      } else if (deliveryType === 'STANDARD_LINK') {
+        dynamicFields = `
+          <input type="url" id="invUrl" required placeholder="Product Access URL" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white outline-none">
+        `;
+      } else {
+        dynamicFields = `
+          <textarea id="invCustom" required placeholder="Custom Delivery Credentials / Instructions" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white outline-none" rows="3"></textarea>
+        `;
+      }
+
+      container.innerHTML = `
+        <button onclick="document.getElementById('productModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+        <h2 class="text-base font-black text-white">Add Delivery Stock Item</h2>
+        <p class="text-xs text-slate-400 mb-4">${productName} (${deliveryType})</p>
+
+        <form onsubmit="submitInventoryItem(event, '${productId}', '${deliveryType}')" class="space-y-3.5 text-xs">
+          ${dynamicFields}
+          <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black uppercase tracking-wider">Save Stock Item</button>
+        </form>
+      `;
+    }
+
+    async function submitInventoryItem(e, productId, deliveryType) {
+      e.preventDefault();
+      const payload = { delivery_type: deliveryType };
+
+      if (deliveryType === 'EMAIL_PASSWORD') {
+        payload.email = document.getElementById('invEmail').value;
+        payload.password = document.getElementById('invPassword').value;
+      } else if (deliveryType === 'LICENSE_KEY') {
+        payload.license_key = document.getElementById('invKey').value;
+      } else if (deliveryType === 'STANDARD_LINK') {
+        payload.delivery_url = document.getElementById('invUrl').value;
+      } else {
+        payload.custom_text = document.getElementById('invCustom').value;
+      }
+
+      try {
+        const res = await fetch(`/api/admin/inventory/${productId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.adminToken}`
+          },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error((await res.json()).error);
+
+        showToast('Stock item successfully attached!');
+        document.getElementById('productModal').classList.add('hidden');
+        renderAdminDashboard(document.getElementById('appRoot'));
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function deleteProduct(id) {
+      if (!confirm('Permanently delete this product and its inventory?')) return;
+      try {
+        await fetch(`/api/admin/products/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.adminToken}` }
+        });
+        showToast('Product deleted');
+        renderAdminDashboard(document.getElementById('appRoot'));
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    function adminLogout() {
+      state.adminToken = '';
+      state.adminUsername = '';
+      localStorage.removeItem('nexus_admin_token');
+      localStorage.removeItem('nexus_admin_user');
+      showToast('Admin session terminated');
+      navigate('home');
+    }
+
+    function handleGlobalSearch(term) {
+      if (!term.trim()) {
+        if (state.currentView === 'products') renderProductsView(document.getElementById('appRoot'));
+        return;
+      }
+      navigate('products', { search: term, title: `Search results for "${term}"` });
+    }
+
+    // ----------------------------------------------------
+    // INITIAL BOOTSTRAP
+    // ----------------------------------------------------
+    document.addEventListener('DOMContentLoaded', () => {
+      updateCartBadges();
+      if (state.user) {
+        document.getElementById('navAccountLabel').textContent = state.user.name;
+      }
+      navigate('home');
+    });
   </script>
 </body>
 </html>
