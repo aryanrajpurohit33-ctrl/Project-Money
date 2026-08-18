@@ -72,7 +72,7 @@
   <div id="appBackdrop" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden transition-opacity"></div>
   <div id="mainViewport" class="flex flex-1 min-h-screen"></div>
 
-  <!-- Global Modal for Inspection & Studio Edit Forms -->
+  <!-- Global Modal for Inspection & Edit Forms -->
   <div id="globalModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
     <div class="glass max-w-3xl w-full rounded-3xl p-6 relative max-h-[90vh] overflow-y-auto custom-scroll" id="globalModalContent"></div>
   </div>
@@ -89,7 +89,8 @@
       adminSection: 'dashboard',
       paymentSettings: null,
       slotFilterProduct: 'ALL',
-      slotFilterStatus: 'ALL'
+      slotFilterStatus: 'ALL',
+      loadedSlots: []
     };
 
     function showToast(message, type = 'success') {
@@ -247,45 +248,36 @@
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            ${products.map(p => {
-              const savings = p.original_price > p.sale_price ? p.original_price - p.sale_price : 0;
-              return `
-                <div class="glass-card rounded-3xl overflow-hidden flex flex-col justify-between border border-white/5 relative group cursor-pointer" onclick="navigate('product-details', { id: '${p._id}' })">
-                  ${p.discount_percentage > 0 ? `
-                    <span class="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full bg-rose-500 text-white font-black text-[10px] uppercase">
-                      ${p.discount_percentage}% OFF
-                    </span>
-                  ` : ''}
-                  <span class="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-full bg-surface-950/80 border border-white/10 text-emerald-400 font-bold text-[9px] uppercase">
-                    ${p.product_type === 'SUBSCRIPTION' ? '🔄 Subscription' : '⚡ One-Time'}
-                  </span>
+            ${products.map(p => `
+              <div class="glass-card rounded-3xl overflow-hidden flex flex-col justify-between border border-white/5 relative group cursor-pointer" onclick="navigate('product-details', { id: '${p._id}' })">
+                <span class="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full ${p.product_type === 'SUBSCRIPTION' ? 'bg-indigo-500' : 'bg-emerald-500'} text-white font-black text-[10px] uppercase">
+                  ${p.product_type === 'SUBSCRIPTION' ? '🔄 Subscription' : '⚡ One-Time'}
+                </span>
 
-                  <div>
-                    <div class="h-48 w-full overflow-hidden bg-surface-900">
-                      <img src="${p.images && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                    </div>
-                    <div class="p-5 space-y-2">
-                      <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">${p.category || 'Digital Good'}</span>
-                      <h3 class="text-sm font-bold text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">${p.name}</h3>
-                      <p class="text-xs text-slate-400 line-clamp-2">${p.short_description || p.description}</p>
-                    </div>
+                <div>
+                  <div class="h-48 w-full overflow-hidden bg-surface-900">
+                    <img src="${p.images && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                   </div>
-
-                  <div class="px-5 pb-5 pt-2 flex items-center justify-between border-t border-white/5" onclick="event.stopPropagation()">
-                    <div>
-                      <div class="flex items-center gap-2">
-                        <span class="text-base font-black text-white">₹${p.sale_price}</span>
-                        ${p.original_price > p.sale_price ? `<span class="text-xs text-slate-500 line-through">₹${p.original_price}</span>` : ''}
-                      </div>
-                      ${savings > 0 ? `<span class="text-[10px] text-emerald-400 font-bold block">Save ₹${savings}</span>` : ''}
-                    </div>
-                    <button onclick="navigate('product-details', { id: '${p._id}' })" class="px-4 py-2 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95">
-                      View Details
-                    </button>
+                  <div class="p-5 space-y-2">
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">${p.category || 'Digital Good'}</span>
+                    <h3 class="text-sm font-bold text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">${p.name}</h3>
+                    <p class="text-xs text-slate-400 line-clamp-2">${p.short_description || p.description}</p>
                   </div>
                 </div>
-              `;
-            }).join('')}
+
+                <div class="px-5 pb-5 pt-2 flex items-center justify-between border-t border-white/5" onclick="event.stopPropagation()">
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-base font-black text-white">₹${p.sale_price}</span>
+                      ${p.original_price > p.sale_price ? `<span class="text-xs text-slate-500 line-through">₹${p.original_price}</span>` : ''}
+                    </div>
+                  </div>
+                  <button onclick="navigate('product-details', { id: '${p._id}' })" class="px-4 py-2 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95">
+                    View Details
+                  </button>
+                </div>
+              </div>
+            `).join('')}
           </div>
         </div>
       `;
@@ -929,11 +921,6 @@
       navigate('home');
     }
 
-    function handleStoreSearch(val) {
-      if (!val.trim()) return renderStoreProducts(document.getElementById('storeContent'));
-      renderStoreProducts(document.getElementById('storeContent'), { search: val, title: `Search results for "${val}"` });
-    }
-
     // =========================================================================
     // DEDICATED SAAS ADMIN CONTROL CENTER
     // =========================================================================
@@ -1004,7 +991,7 @@
                 <button onclick="switchAdminSection('slots')" id="adnav-slots" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all border border-emerald-500/20 bg-emerald-500/5">🔑 <span>Account Slots</span></button>
                 <button onclick="switchAdminSection('products')" id="adnav-products" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🛍 <span>Product Studio</span></button>
                 <button onclick="switchAdminSection('payment-settings')" id="adnav-payment-settings" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">💰 <span>Payment Gateway</span></button>
-                <button onclick="switchAdminSection('system-monitor')" id="adnav-system-monitor" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🖥️ <span>System & Infrastructure</span></button>
+                <button onclick="switchAdminSection('system-monitor')" id="adnav-system-monitor" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all border border-emerald-500/20 bg-emerald-500/5">🖥️ <span>System & Infrastructure</span></button>
               </nav>
             </div>
 
@@ -1075,10 +1062,10 @@
     }
 
     // =========================================================================
-    // DEDICATED ACCOUNT SLOTS PAGE (SINGLE SOURCE OF TRUTH & LIVE SYNC)
+    // DEDICATED ACCOUNT SLOTS PAGE (FIXED DISPLAY, ASSIGNMENTS & ACCURATE COUNTS)
     // =========================================================================
     async function renderAdminAccountSlots(container) {
-      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading Account Slots suite...</div>';
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading Account Slots suite from MongoDB Atlas...</div>';
 
       try {
         let queryUrl = `/api/admin/slots?`;
@@ -1092,7 +1079,8 @@
 
         const data = await slotsRes.json();
         const products = await prodsRes.json();
-        const stats = data.stats || { total: 0, available: 0, assigned: 0, expired: 0, disabled: 0 };
+        state.loadedSlots = data.slots || [];
+        const stats = data.stats || { total: 0, available: 0, assigned: 0, full: 0, disabled: 0, total_active_users: 0 };
 
         container.innerHTML = `
           <div class="space-y-8 font-mono">
@@ -1100,23 +1088,24 @@
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h1 class="text-xl font-black text-white font-sans">Account Slots Management</h1>
-                <p class="text-xs text-slate-400">Manage subscription credentials. Editing credentials immediately live-syncs to active customers.</p>
+                <p class="text-xs text-slate-400">Single source of truth for credentials. Updating credentials live-syncs to active customers.</p>
               </div>
               <button onclick="openSlotFormModal('new')" class="px-5 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95">
                 + Add New Slot
               </button>
             </div>
 
-            <!-- Statistics KPI Cards -->
-            <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <!-- Database-backed KPI Cards -->
+            <div class="grid grid-cols-2 sm:grid-cols-6 gap-3">
               <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase block">Total Slots</span><span class="text-xl font-black text-white">${stats.total}</span></div>
               <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-emerald-400 uppercase block">🟢 Available</span><span class="text-xl font-black text-emerald-400">${stats.available}</span></div>
               <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-indigo-400 uppercase block">🔵 Assigned</span><span class="text-xl font-black text-indigo-400">${stats.assigned}</span></div>
-              <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-amber-400 uppercase block">⚪ Expired</span><span class="text-xl font-black text-amber-400">${stats.expired}</span></div>
-              <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-rose-400 uppercase block">🔴 Disabled</span><span class="text-xl font-black text-rose-400">${stats.disabled}</span></div>
+              <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-rose-400 uppercase block">🔴 Full</span><span class="text-xl font-black text-rose-400">${stats.full}</span></div>
+              <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-teal-400 uppercase block">👥 Active Users</span><span class="text-xl font-black text-teal-400">${stats.total_active_users}</span></div>
+              <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase block">⚪ Disabled</span><span class="text-xl font-black text-slate-400">${stats.disabled}</span></div>
             </div>
 
-            <!-- Filter and Search Bar -->
+            <!-- Filter & Search Controls -->
             <div class="admin-card rounded-2xl p-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
               <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                 <select id="slotProductFilter" onchange="state.slotFilterProduct=this.value; renderAdminAccountSlots(document.getElementById('adminMainContent'))" class="px-3 py-2 rounded-xl bg-surface-950 border border-admin-border text-xs text-white">
@@ -1128,17 +1117,68 @@
                   <option value="ALL" ${state.slotFilterStatus === 'ALL' ? 'selected' : ''}>All Statuses</option>
                   <option value="AVAILABLE" ${state.slotFilterStatus === 'AVAILABLE' ? 'selected' : ''}>Available</option>
                   <option value="ASSIGNED" ${state.slotFilterStatus === 'ASSIGNED' ? 'selected' : ''}>Assigned</option>
-                  <option value="EXPIRED" ${state.slotFilterStatus === 'EXPIRED' ? 'selected' : ''}>Expired</option>
+                  <option value="FULL" ${state.slotFilterStatus === 'FULL' ? 'selected' : ''}>Full</option>
                   <option value="DISABLED" ${state.slotFilterStatus === 'DISABLED' ? 'selected' : ''}>Disabled</option>
                 </select>
               </div>
 
-              <input type="text" oninput="handleSlotSearch(this.value)" placeholder="Search slots by label or email..." class="w-full sm:w-64 px-4 py-2 rounded-xl bg-surface-950 border border-admin-border text-xs text-white placeholder-slate-500">
+              <input type="text" oninput="handleSlotSearch(this.value)" placeholder="Search by slot, email, or customer..." class="w-full sm:w-64 px-4 py-2 rounded-xl bg-surface-950 border border-admin-border text-xs text-white placeholder-slate-500">
             </div>
 
-            <!-- Slots Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="slotsCardsGrid">
-              ${data.slots.map(s => renderSlotCardHTML(s)).join('')}
+            <!-- Main Inventory Table View -->
+            <div class="admin-card rounded-3xl p-6">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs min-w-[850px]" id="accountSlotsTable">
+                  <thead>
+                    <tr class="border-b border-admin-border text-slate-500 font-mono">
+                      <th class="pb-3">Slot</th>
+                      <th class="pb-3">Product</th>
+                      <th class="pb-3">Email / Username</th>
+                      <th class="pb-3">Status</th>
+                      <th class="pb-3">Active Users</th>
+                      <th class="pb-3">Primary Assignment</th>
+                      <th class="pb-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-admin-border font-mono">
+                    ${data.slots.length === 0 ? `
+                      <tr>
+                        <td colspan="7" class="py-8 text-center text-slate-500">No account slots found. Click "+ Add New Slot" to create one.</td>
+                      </tr>
+                    ` : data.slots.map(s => {
+                      const firstCust = s.active_customers && s.active_customers[0];
+                      return `
+                        <tr class="hover:bg-white/[0.02] transition-colors">
+                          <td class="py-3.5 font-bold text-white">${s.account_label}</td>
+                          <td class="py-3.5 text-slate-300">${s.product_id?.name || 'Subscription Product'}</td>
+                          <td class="py-3.5 text-slate-400 select-all">${s.email}</td>
+                          <td class="py-3.5">
+                            <span class="px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
+                              s.status === 'AVAILABLE' ? 'bg-emerald-500/10 text-emerald-400' :
+                              s.status === 'ASSIGNED' ? 'bg-indigo-500/10 text-indigo-400' :
+                              s.status === 'FULL' ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-500/10 text-slate-400'
+                            }">${s.status}</span>
+                          </td>
+                          <td class="py-3.5">
+                            <span class="font-bold ${s.active_users_count >= s.max_active_users ? 'text-rose-400' : 'text-emerald-400'}">${s.active_users_count} / ${s.max_active_users}</span>
+                          </td>
+                          <td class="py-3.5 text-xs text-slate-300">
+                            ${firstCust ? `
+                              <span class="font-bold block text-white">${firstCust.customer_name}</span>
+                              <span class="text-[10px] text-slate-500">Expires: ${new Date(firstCust.expires_at).toLocaleDateString()}</span>
+                            ` : '<span class="text-slate-500">— None —</span>'}
+                          </td>
+                          <td class="py-3.5 text-right space-x-2">
+                            <button onclick="openSlotDetailsModal('${s._id}')" class="px-2.5 py-1 rounded-lg bg-white/5 text-slate-300 hover:text-white font-bold">👁 View</button>
+                            <button onclick="openSlotFormModal('${s._id}', '${s.status}')" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 font-bold">✏️ Edit</button>
+                            ${s.active_users_count === 0 ? `<button onclick="deleteSlotRecord('${s._id}')" class="px-2 py-1 text-rose-400 hover:text-rose-300">✕</button>` : ''}
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
           </div>
@@ -1148,57 +1188,7 @@
       }
     }
 
-    function renderSlotCardHTML(s) {
-      const isAssigned = s.status === 'ASSIGNED';
-      const cust = s.current_customer_id;
-      const sub = s.current_subscription_id;
-
-      return `
-        <div class="admin-card rounded-3xl p-5 space-y-4 border ${isAssigned ? 'border-indigo-500/30' : 'border-admin-border'} flex flex-col justify-between">
-          <div class="space-y-2">
-            <div class="flex justify-between items-start">
-              <div>
-                <span class="text-[10px] text-slate-500 uppercase block font-sans">${s.product_id?.name || 'Subscription Product'}</span>
-                <h3 class="text-sm font-black text-white">${s.account_label}</h3>
-              </div>
-              <span class="px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
-                s.status === 'AVAILABLE' ? 'bg-emerald-500/10 text-emerald-400' :
-                s.status === 'ASSIGNED' ? 'bg-indigo-500/10 text-indigo-400' :
-                s.status === 'EXPIRED' ? 'bg-amber-500/10 text-amber-400' : 'bg-rose-500/10 text-rose-400'
-              }">${s.status}</span>
-            </div>
-
-            <div class="p-3 rounded-2xl bg-surface-950 border border-admin-border space-y-1 text-xs">
-              <div class="flex justify-between">
-                <span class="text-slate-500 text-[10px]">EMAIL:</span>
-                <span class="text-white select-all">${s.email}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-slate-500 text-[10px]">PASSWORD:</span>
-                <span class="text-emerald-400 select-all">${s.password}</span>
-              </div>
-            </div>
-
-            ${isAssigned && cust ? `
-              <div class="p-3 rounded-2xl bg-indigo-950/20 border border-indigo-500/20 text-[11px] space-y-1">
-                <div class="text-indigo-400 font-bold">Currently Assigned:</div>
-                <div class="text-slate-300">${cust.name} (${cust.email})</div>
-                ${sub ? `<div class="text-[10px] text-slate-400">Expires: ${new Date(sub.expires_at).toLocaleDateString()}</div>` : ''}
-              </div>
-            ` : ''}
-          </div>
-
-          <div class="flex items-center justify-between border-t border-admin-border pt-3 text-xs">
-            <button onclick="openSlotHistoryModal('${s._id}', '${s.account_label}')" class="text-slate-400 hover:text-white">📜 History</button>
-            <div class="space-x-2">
-              <button onclick="openSlotFormModal('${s._id}', '${s.status}')" class="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 font-bold">✏️ Edit</button>
-              ${!isAssigned ? `<button onclick="deleteSlotRecord('${s._id}')" class="px-2 py-1.5 text-rose-400 hover:text-rose-300">✕</button>` : ''}
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
+    // Modal to Add / Edit Slot
     async function openSlotFormModal(slotId, currentStatus) {
       const isNew = slotId === 'new';
       const modal = document.getElementById('globalModal');
@@ -1211,6 +1201,7 @@
         email: '',
         password: '',
         notes: '',
+        max_active_users: 1,
         status: 'AVAILABLE'
       };
 
@@ -1218,9 +1209,7 @@
       const products = await prodsRes.json();
 
       if (!isNew) {
-        const sRes = await fetch('/api/admin/slots', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
-        const allSlots = await sRes.json();
-        slotData = allSlots.slots.find(s => s._id === slotId) || slotData;
+        slotData = state.loadedSlots.find(s => s._id === slotId) || slotData;
       }
 
       content.innerHTML = `
@@ -1231,9 +1220,9 @@
             <p class="text-xs text-slate-400 font-sans">Single source of truth. Any changes immediately update active customer viewports.</p>
           </div>
 
-          ${currentStatus === 'ASSIGNED' ? `
-            <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs">
-              ⚠️ <strong>Notice:</strong> This account slot is currently assigned to an active customer. Updating these credentials will immediately update the login information shown on their Purchased Items page without altering their subscription expiration date.
+          ${currentStatus === 'ASSIGNED' || currentStatus === 'FULL' ? `
+            <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-sans">
+              ⚠️ <strong>Live Sync Notice:</strong> This slot is assigned to active customers. Updating these credentials will immediately update the login information shown on their Purchased Items page.
             </div>
           ` : ''}
 
@@ -1249,8 +1238,8 @@
             ` : ''}
 
             <div>
-              <label class="text-slate-400 block mb-1">Slot Name / Label</label>
-              <input type="text" id="slotFormLabel" required value="${slotData.account_label || ''}" placeholder="e.g. Slot 1" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
+              <label class="text-slate-400 block mb-1">Slot Label / Name</label>
+              <input type="text" id="slotFormLabel" required value="${slotData.account_label || ''}" placeholder="e.g. Slot 1 (Private UHD)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
             </div>
 
             <div>
@@ -1263,23 +1252,27 @@
               <input type="text" id="slotFormPassword" required value="${slotData.password || ''}" placeholder="Enter password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-emerald-400 font-bold">
             </div>
 
-            <div>
-              <label class="text-slate-400 block mb-1">Slot Status</label>
-              <select id="slotFormStatus" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
-                <option value="AVAILABLE" ${slotData.status === 'AVAILABLE' ? 'selected' : ''}>Available</option>
-                <option value="ASSIGNED" ${slotData.status === 'ASSIGNED' ? 'selected' : ''}>Assigned</option>
-                <option value="EXPIRED" ${slotData.status === 'EXPIRED' ? 'selected' : ''}>Expired</option>
-                <option value="DISABLED" ${slotData.status === 'DISABLED' ? 'selected' : ''}>Disabled</option>
-              </select>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-slate-400 block mb-1">Max Active Users Capacity</label>
+                <input type="number" id="slotFormMaxUsers" min="1" max="100" value="${slotData.max_active_users || 1}" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
+              </div>
+              <div>
+                <label class="text-slate-400 block mb-1">Status</label>
+                <select id="slotFormStatus" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
+                  <option value="AVAILABLE" ${slotData.status === 'AVAILABLE' ? 'selected' : ''}>Available</option>
+                  <option value="DISABLED" ${slotData.status === 'DISABLED' ? 'selected' : ''}>Disabled</option>
+                </select>
+              </div>
             </div>
 
             <div>
-              <label class="text-slate-400 block mb-1">Optional Admin Notes</label>
-              <input type="text" id="slotFormNotes" value="${slotData.notes || ''}" placeholder="Internal notes (e.g. 4-screen premium profile)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
+              <label class="text-slate-400 block mb-1">Admin Notes (Optional)</label>
+              <input type="text" id="slotFormNotes" value="${slotData.notes || ''}" placeholder="Internal notes" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
             </div>
 
             <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-              ${isNew ? 'Save Account Slot' : 'Save Changes & Sync to Customer'}
+              ${isNew ? 'Save Account Slot to Database' : 'Save Changes & Sync to Customer'}
             </button>
           </form>
         </div>
@@ -1291,11 +1284,12 @@
       const isNew = slotId === 'new';
 
       const payload = {
-        account_label: document.getElementById('slotFormLabel').value,
-        email: document.getElementById('slotFormEmail').value,
-        password: document.getElementById('slotFormPassword').value,
+        account_label: document.getElementById('slotFormLabel').value.trim(),
+        email: document.getElementById('slotFormEmail').value.trim(),
+        password: document.getElementById('slotFormPassword').value.trim(),
+        max_active_users: Number(document.getElementById('slotFormMaxUsers').value) || 1,
         status: document.getElementById('slotFormStatus').value,
-        notes: document.getElementById('slotFormNotes').value
+        notes: document.getElementById('slotFormNotes').value.trim()
       };
 
       if (isNew) {
@@ -1312,71 +1306,123 @@
           body: JSON.stringify(payload)
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
+        if (!res.ok) throw new Error(data.error || 'Failed to save slot');
 
-        showToast(isNew ? 'Account Slot created!' : 'Credentials updated & live-synced!');
+        showToast(isNew ? 'Account Slot created in database!' : 'Credentials updated and live-synced!');
         document.getElementById('globalModal').classList.add('hidden');
         renderAdminAccountSlots(document.getElementById('adminMainContent'));
-      } catch (err) { showToast(err.message, 'error'); }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
     }
 
-    async function openSlotHistoryModal(slotId, label) {
+    // Modal to View Slot Details & Active Customer Drilldown
+    function openSlotDetailsModal(slotId) {
+      const slot = state.loadedSlots.find(s => s._id === slotId);
+      if (!slot) return;
+
       const modal = document.getElementById('globalModal');
       const content = document.getElementById('globalModalContent');
       modal.classList.remove('hidden');
       modal.classList.add('flex');
 
-      content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono">Loading slot history...</div>';
+      content.innerHTML = `
+        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+        <div class="space-y-6 font-mono text-xs">
+          <div>
+            <span class="text-[10px] text-emerald-400 uppercase tracking-widest block font-sans">${slot.product_id?.name || 'Subscription Product'}</span>
+            <h2 class="text-lg font-black text-white font-sans">${slot.account_label}</h2>
+          </div>
 
-      try {
-        const res = await fetch('/api/admin/slots', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
-        const data = await res.json();
-        const slot = data.slots.find(s => s._id === slotId);
+          <!-- Credentials Card -->
+          <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-2">
+            <div class="flex justify-between items-center pb-2 border-b border-admin-border">
+              <span class="text-slate-500">Live Status:</span>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                slot.status === 'AVAILABLE' ? 'bg-emerald-500/10 text-emerald-400' :
+                slot.status === 'ASSIGNED' ? 'bg-indigo-500/10 text-indigo-400' :
+                slot.status === 'FULL' ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-500/10 text-slate-400'
+              }">${slot.status}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-500">Email:</span>
+              <span class="text-white select-all font-bold">${slot.email}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-500">Password:</span>
+              <span class="text-emerald-400 select-all font-bold">${slot.password}</span>
+            </div>
+            <div class="flex justify-between items-center pt-1">
+              <span class="text-slate-500">Capacity Usage:</span>
+              <span class="text-white font-bold">${slot.active_users_count} / ${slot.max_active_users} Users (${slot.available_capacity} Free Slots)</span>
+            </div>
+          </div>
 
-        content.innerHTML = `
-          <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
-          <div class="space-y-4 font-mono text-xs">
-            <h3 class="text-base font-black text-white font-sans">Assignment History: ${label}</h3>
-            <p class="text-xs text-slate-400 font-sans">Historical customer leases on this credential slot</p>
-
-            <div class="space-y-2 max-h-64 overflow-y-auto custom-scroll">
-              ${(slot.assignment_history || []).length === 0 ? '<div class="p-4 rounded-xl bg-surface-950 text-slate-500 text-center">No previous assignments.</div>' : ''}
-              ${(slot.assignment_history || []).map(h => `
-                <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border space-y-1">
-                  <div class="flex justify-between font-bold text-white">
-                    <span>${h.customer_name} (${h.customer_email})</span>
-                    <span class="text-emerald-400 font-mono">${h.duration?.replace('_', ' ')}</span>
+          <!-- Active Customers List -->
+          <div class="space-y-3">
+            <h3 class="text-xs font-bold text-white font-sans uppercase">Currently Active Assigned Customers (${slot.active_customers?.length || 0})</h3>
+            <div class="space-y-2 max-h-48 overflow-y-auto custom-scroll">
+              ${(slot.active_customers || []).length === 0 ? `
+                <div class="p-4 rounded-xl bg-surface-950 border border-admin-border text-slate-500 text-center">No customers currently active on this slot.</div>
+              ` : slot.active_customers.map(c => `
+                <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
+                  <div>
+                    <span class="text-white font-bold block">${c.customer_name}</span>
+                    <span class="text-slate-400 text-[10px]">${c.customer_email} • ${c.order_number}</span>
                   </div>
-                  <div class="text-[10px] text-slate-400">
-                    Tenure: ${new Date(h.start_at).toLocaleDateString()} → ${new Date(h.expires_at).toLocaleDateString()}
+                  <div class="text-right">
+                    <span class="text-emerald-400 text-[10px] font-bold block">Expires: ${new Date(c.expires_at).toLocaleDateString()}</span>
+                    <span class="text-slate-500 text-[9px]">${c.duration.replace('_', ' ')}</span>
                   </div>
                 </div>
               `).join('')}
             </div>
           </div>
-        `;
-      } catch (err) { content.innerHTML = `<div class="text-rose-400 text-center py-6">${err.message}</div>`; }
+
+          <!-- Historical Tenant Record -->
+          <div class="space-y-3">
+            <h3 class="text-xs font-bold text-slate-400 font-sans uppercase">Historical Tenants (${slot.assignment_history?.length || 0})</h3>
+            <div class="space-y-1.5 max-h-36 overflow-y-auto custom-scroll">
+              ${(slot.assignment_history || []).length === 0 ? `
+                <div class="p-3 rounded-xl bg-surface-950 text-slate-500 text-center text-[10px]">No historical leases.</div>
+              ` : slot.assignment_history.map(h => `
+                <div class="p-2.5 rounded-xl bg-surface-950 text-[10px] flex justify-between text-slate-400">
+                  <span>${h.customer_name} (${h.customer_email})</span>
+                  <span>${new Date(h.start_at).toLocaleDateString()} → ${new Date(h.expires_at).toLocaleDateString()}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2 border-t border-admin-border">
+            <button onclick="openSlotFormModal('${slot._id}', '${slot.status}')" class="px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 font-bold">Edit Credentials</button>
+            <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="px-4 py-2 rounded-xl bg-white/5 text-slate-400">Close</button>
+          </div>
+        </div>
+      `;
     }
 
     async function deleteSlotRecord(id) {
-      if (!confirm('Permanently remove this account slot?')) return;
+      if (!confirm('Permanently remove this account slot from database?')) return;
       try {
         const res = await fetch(`/api/admin/slots/${id}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${state.adminToken}` }
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        showToast('Slot deleted');
+        if (!res.ok) throw new Error(data.error || 'Failed to delete slot');
+        showToast('Slot removed from database');
         renderAdminAccountSlots(document.getElementById('adminMainContent'));
-      } catch (err) { showToast(err.message, 'error'); }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
     }
 
     function handleSlotSearch(val) {
       const regex = new RegExp(val, 'i');
-      document.querySelectorAll('#slotsCardsGrid > div').forEach(card => {
-        if (regex.test(card.textContent)) card.classList.remove('hidden');
-        else card.classList.add('hidden');
+      document.querySelectorAll('#accountSlotsTable tbody tr').forEach(row => {
+        if (regex.test(row.textContent)) row.classList.remove('hidden');
+        else row.classList.add('hidden');
       });
     }
 
@@ -1433,7 +1479,7 @@
                         ${t.status === 'PROCESSING' ? `
                           <select id="slotSelect-${t._id}" class="px-3 py-1.5 rounded-xl bg-surface-950 border border-admin-border text-[11px] text-emerald-400">
                             ${(t.available_slots || []).map(s => `
-                              <option value="${s._id}">${s.account_label} (${s.email})</option>
+                              <option value="${s._id}">${s.account_label} (${s.email}) [${s.usage}]</option>
                             `).join('')}
                             ${!(t.available_slots && t.available_slots.length) ? '<option value="">✕ No slots available</option>' : ''}
                           </select>
@@ -1527,7 +1573,7 @@
     }
 
     // =========================================================================
-    // MASTER ADMIN PRODUCT STUDIO: PRESERVED FULL CONTROLS
+    // MASTER ADMIN PRODUCT STUDIO
     // =========================================================================
     async function renderAdminProductsStudio(container) {
       const res = await fetch('/api/admin/products', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
