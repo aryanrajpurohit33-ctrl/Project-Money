@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Premium Access Pass</title>
+  <title>Lofi Room</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -17,13 +17,6 @@
         extend: {
           fontFamily: {
             sans: ['"Plus Jakarta Sans"', 'sans-serif'],
-          },
-          colors: {
-            brand: {
-              400: '#4ade80',
-              500: '#22c55e',
-              600: '#16a34a',
-            }
           }
         }
       }
@@ -31,215 +24,180 @@
   </script>
 
   <style>
-    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-    body {
-      background-color: #030712;
-      color: #f3f4f6;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      overflow-x: hidden;
+    * {
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
     }
-    .glass-card {
-      background: linear-gradient(165deg, rgba(17, 24, 39, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+    html, body {
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+      background-color: #05070f;
+      color: #f8fafc;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    /* Fullscreen Japanese Lofi GIF Background */
+    .bg-gif {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+      filter: brightness(0.65) contrast(1.05);
+      pointer-events: none;
+    }
+
+    /* Ambient Glass Card */
+    .glass-dock {
+      background: rgba(10, 15, 29, 0.55);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.6), inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
     }
-    .btn-shine {
-      background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
-      box-shadow: 0 10px 25px -5px rgba(34, 197, 94, 0.4);
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Visualizer Bar Animations */
+    .eq-bar {
+      width: 3px;
+      border-radius: 99px;
+      background: #34d399;
+      animation: bounceEQ 1.2s ease-in-out infinite alternate;
     }
-    .btn-shine:active { transform: scale(0.98); }
-    .ambient-orb {
-      position: fixed;
-      border-radius: 50%;
-      filter: blur(90px);
-      pointer-events: none;
-      z-index: 0;
+    .eq-paused {
+      animation-play-state: paused !important;
+      height: 4px !important;
+    }
+    .bar-1 { height: 14px; animation-delay: 0.1s; }
+    .bar-2 { height: 22px; animation-delay: 0.3s; }
+    .bar-3 { height: 10px; animation-delay: 0.2s; }
+    .bar-4 { height: 18px; animation-delay: 0.4s; }
+
+    @keyframes bounceEQ {
+      0% { height: 4px; }
+      50% { height: 22px; }
+      100% { height: 8px; }
     }
   </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4 sm:p-6 relative select-none">
+<body class="h-[100dvh] w-full flex flex-col justify-between p-6 relative select-none">
 
-  <!-- Ambient Glow Effects -->
-  <div class="ambient-orb -top-20 -left-20 w-80 h-80 bg-emerald-500/15"></div>
-  <div class="ambient-orb -bottom-20 -right-20 w-80 h-80 bg-sky-500/10"></div>
+  <!-- Fullscreen Japanese Lofi GIF Background -->
+  <img 
+    class="bg-gif" 
+    src="https://media.giphy.com/media/l41lFw057lAJQMwg0/giphy.gif" 
+    alt="Japanese Lofi View"
+  />
 
-  <!-- Main Container -->
-  <main class="w-full max-w-md relative z-10">
-    
-    <!-- STAGE 1: SALES LANDING PAGE -->
-    <div id="landingStage" class="glass-card rounded-3xl p-6 sm:p-8 space-y-6">
-      
-      <!-- Header Badge & Title -->
-      <div class="text-center space-y-2">
-        <span class="px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-          Exclusive Access
-        </span>
-        <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Direct Resource Link</h1>
-        <p class="text-xs text-slate-400">Unlock instant, lifetime access to the verified resource package.</p>
-      </div>
+  <!-- Subtle Film Vignette Overlay -->
+  <div class="fixed inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/40 pointer-events-none z-[1]"></div>
 
-      <!-- Offer Highlights -->
-      <div class="space-y-2.5 bg-[#070D16]/60 p-4 rounded-2xl border border-white/5 text-xs text-slate-300">
-        <div class="flex items-center gap-2.5">
-          <svg class="w-4 h-4 text-emerald-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-          <span>One-time direct access link delivery</span>
-        </div>
-        <div class="flex items-center gap-2.5">
-          <svg class="w-4 h-4 text-emerald-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-          <span>High-speed download / mirror mirrors</span>
-        </div>
-        <div class="flex items-center gap-2.5">
-          <svg class="w-4 h-4 text-emerald-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-          <span>Instant unlocking post UPI verification</span>
-        </div>
-      </div>
-
-      <!-- Pricing Summary -->
-      <div class="flex items-baseline justify-between p-4 rounded-2xl bg-black/40 border border-white/10">
-        <div>
-          <span class="text-[11px] uppercase font-semibold text-slate-400">Total Price</span>
-          <div class="text-2xl font-black text-white font-mono">₹99 <span class="text-xs text-slate-500 line-through font-normal">₹299</span></div>
-        </div>
-        <span class="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">67% OFF</span>
-      </div>
-
-      <!-- Action Button -->
-      <button onclick="goToCheckout()" class="btn-shine w-full py-3.5 px-4 text-gray-950 font-bold text-sm rounded-xl flex items-center justify-center gap-2 focus:outline-none">
-        <span>Get Access Link Now</span>
-        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-      </button>
-
-      <div class="flex items-center justify-center gap-2 text-[10px] text-slate-500">
-        <svg class="w-3.5 h-3.5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        <span>Secure UPI Transfer • Immediate Delivery</span>
-      </div>
+  <!-- Top Simple Bar -->
+  <header class="relative z-10 flex items-center justify-between w-full max-w-4xl mx-auto">
+    <div class="flex items-center gap-2.5">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      <span class="text-xs uppercase tracking-widest font-semibold text-white/80">Lofi Lounge</span>
     </div>
+    <div id="liveClock" class="text-xs font-mono font-medium text-white/70">--:--:--</div>
+  </header>
 
-    <!-- STAGE 2: UPI PAYMENT & VERIFICATION -->
-    <div id="checkoutStage" class="glass-card rounded-3xl p-6 sm:p-8 space-y-5 hidden">
-      
-      <div class="flex items-center justify-between border-b border-white/10 pb-3">
-        <h2 class="text-sm font-bold text-white">Scan & Pay ₹99</h2>
-        <button onclick="goToLanding()" class="text-xs text-slate-400 hover:text-white">← Change</button>
-      </div>
-
-      <!-- Dynamic QR Code Display -->
-      <div class="flex flex-col items-center justify-center p-4 bg-white rounded-2xl shadow-inner">
-        <img id="upiQrCode" class="w-48 h-48 rounded-lg" alt="Scan UPI QR Code">
-        <span class="text-[11px] text-gray-700 font-semibold mt-2">Scan via GPay, PhonePe, Paytm, or BHIM</span>
-      </div>
-
-      <!-- Direct UPI ID fallback -->
-      <div class="p-3 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between text-xs">
-        <div>
-          <span class="text-[10px] text-slate-400 block uppercase">UPI ID</span>
-          <span id="upiIdText" class="font-mono text-emerald-400 font-bold">yourname@upi</span>
-        </div>
-        <button onclick="copyUpiId()" class="px-2.5 py-1 rounded-lg bg-slate-800 text-[11px] font-semibold text-slate-300 hover:bg-slate-700">Copy</button>
-      </div>
-
-      <!-- Verification Input Form -->
-      <form onsubmit="verifyAndUnlock(event)" class="space-y-3 pt-1">
-        <div>
-          <label class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Enter 12-Digit UPI Ref / UTR No.</label>
-          <input type="text" id="utrInput" required placeholder="e.g. 423456789012" maxlength="12" class="w-full bg-[#060B13] border border-white/10 rounded-xl px-4 py-2.5 text-sm font-mono text-white placeholder-slate-600 focus:outline-none focus:border-emerald-400">
-        </div>
-
-        <button type="submit" id="verifyBtn" class="btn-shine w-full py-3 px-4 text-gray-950 font-bold text-xs rounded-xl flex items-center justify-center gap-2">
-          <span>Verify & Unlock Link</span>
-        </button>
-      </form>
-
-    </div>
-
-    <!-- STAGE 3: SUCCESSFUL DELIVERY SCREEN -->
-    <div id="deliveryStage" class="glass-card rounded-3xl p-6 sm:p-8 space-y-5 text-center hidden">
-      
-      <div class="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400">
-        <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-      </div>
-
-      <div class="space-y-1">
-        <h2 class="text-xl font-bold text-white">Payment Confirmed</h2>
-        <p class="text-xs text-slate-400">Your exclusive link has been unlocked below.</p>
-      </div>
-
-      <!-- Unlocked Resource Link Card -->
-      <div class="p-4 rounded-2xl bg-black/50 border border-emerald-500/30 space-y-3">
-        <span class="text-[10px] uppercase font-semibold text-slate-400 tracking-wider block">Access URL</span>
-        <input type="text" id="targetLinkDisplay" readonly class="w-full bg-[#060B13] border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-emerald-400 text-center focus:outline-none">
-        
-        <a id="targetLinkAnchor" href="#" target="_blank" class="btn-shine w-full py-2.5 px-4 text-gray-950 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 inline-block">
-          Open Resource Link ↗
-        </a>
-      </div>
-
-      <button onclick="goToLanding()" class="text-xs text-slate-500 hover:text-slate-400">Back to Store</button>
-    </div>
-
+  <!-- Center Minimalist Typography -->
+  <main class="relative z-10 flex flex-col items-center justify-center text-center space-y-2">
+    <h1 class="text-3xl sm:text-5xl font-extralight tracking-widest text-white/90 drop-shadow-lg">
+      東京 • 静けさ
+    </h1>
+    <p class="text-xs sm:text-sm font-light text-slate-300/80 tracking-wide max-w-sm">
+      Peaceful moments, Japanese rain & chilled lofi beats.
+    </p>
   </main>
 
-  <script>
-    // ===================================================
-    // CONFIGURE YOUR UPI DETAILS & DELIVERY LINK HERE
-    // ===================================================
-    const STORE_CONFIG = {
-      upiId: 'aryanrajpurohit33@okaxis',     // Replace with your real UPI ID
-      merchantName: 'Project Access',
-      amount: '99',
-      deliveryLink: 'https://example.com/your-private-link' // The link given to the buyer
-    };
-
-    document.getElementById('upiIdText').textContent = STORE_CONFIG.upiId;
-
-    function goToCheckout() {
-      // Build dynamic UPI payment string & QR image
-      const upiUrl = `upi://pay?pa=${encodeURIComponent(STORE_CONFIG.upiId)}&pn=${encodeURIComponent(STORE_CONFIG.merchantName)}&am=${STORE_CONFIG.amount}&cu=INR`;
-      const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiUrl)}`;
+  <!-- Bottom Floating Audio Control Dock -->
+  <footer class="relative z-10 w-full max-w-sm mx-auto mb-2">
+    <div class="glass-dock rounded-2xl p-4 flex items-center justify-between">
       
-      document.getElementById('upiQrCode').src = qrApiUrl;
-      document.getElementById('landingStage').classList.add('hidden');
-      document.getElementById('checkoutStage').classList.remove('hidden');
-    }
+      <!-- Audio Status & Meta -->
+      <div class="flex items-center gap-3">
+        <!-- Visualizer -->
+        <div class="flex items-end gap-1 h-6 px-1">
+          <span class="eq-bar bar-1 eq-paused" id="eq1"></span>
+          <span class="eq-bar bar-2 eq-paused" id="eq2"></span>
+          <span class="eq-bar bar-3 eq-paused" id="eq3"></span>
+          <span class="eq-bar bar-4 eq-paused" id="eq4"></span>
+        </div>
 
-    function goToLanding() {
-      document.getElementById('checkoutStage').classList.add('hidden');
-      document.getElementById('deliveryStage').classList.add('hidden');
-      document.getElementById('landingStage').classList.remove('hidden');
-    }
+        <div>
+          <div class="text-xs font-semibold text-white tracking-wide" id="trackTitle">Lofi Radio (24/7)</div>
+          <div class="text-[11px] text-slate-400" id="playStatus">Paused • Click play</div>
+        </div>
+      </div>
 
-    function copyUpiId() {
-      navigator.clipboard.writeText(STORE_CONFIG.upiId);
-      alert('UPI ID copied to clipboard!');
-    }
+      <!-- Play / Pause Button -->
+      <button 
+        id="playBtn" 
+        onclick="toggleLofiAudio()" 
+        class="w-10 h-10 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-gray-950 flex items-center justify-center transition-all shadow-lg shadow-emerald-500/25 focus:outline-none"
+        aria-label="Toggle Audio"
+      >
+        <svg id="playIcon" class="w-5 h-5 ml-0.5" viewBox="0 0 24 24" fill="currentColor">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+        <svg id="pauseIcon" class="w-5 h-5 hidden" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="6" y="4" width="4" height="16"/>
+          <rect x="14" y="4" width="4" height="16"/>
+        </svg>
+      </button>
 
-    function verifyAndUnlock(e) {
-      e.preventDefault();
-      const utr = document.getElementById('utrInput').value.trim();
-      const btn = document.getElementById('verifyBtn');
+    </div>
+  </footer>
 
-      if (utr.length < 6) {
-        alert('Please enter a valid UPI reference/UTR number.');
-        return;
+  <!-- Audio Stream (Direct 24/7 Lofi Stream) -->
+  <audio id="lofiPlayer" preload="none" src="https://stream.zeno.fm/f3wvbbqmdg8uv"></audio>
+
+  <script>
+    const audio = document.getElementById('lofiPlayer');
+    const playIcon = document.getElementById('playIcon');
+    const pauseIcon = document.getElementById('pauseIcon');
+    const statusText = document.getElementById('playStatus');
+    const eqBars = [
+      document.getElementById('eq1'),
+      document.getElementById('eq2'),
+      document.getElementById('eq3'),
+      document.getElementById('eq4')
+    ];
+
+    function toggleLofiAudio() {
+      if (audio.paused) {
+        audio.play().then(() => {
+          playIcon.classList.add('hidden');
+          pauseIcon.classList.remove('hidden');
+          statusText.textContent = "Live • Streaming";
+          eqBars.forEach(b => b.classList.remove('eq-paused'));
+        }).catch(() => {
+          statusText.textContent = "Click again to allow stream";
+        });
+      } else {
+        audio.pause();
+        playIcon.classList.remove('hidden');
+        pauseIcon.classList.add('hidden');
+        statusText.textContent = "Paused";
+        eqBars.forEach(b => b.classList.add('eq-paused'));
       }
-
-      btn.disabled = true;
-      btn.innerText = "Verifying Payment...";
-
-      // Verification latency simulation
-      setTimeout(() => {
-        document.getElementById('targetLinkDisplay').value = STORE_CONFIG.deliveryLink;
-        document.getElementById('targetLinkAnchor').href = STORE_CONFIG.deliveryLink;
-        
-        document.getElementById('checkoutStage').classList.add('hidden');
-        document.getElementById('deliveryStage').classList.remove('hidden');
-        btn.disabled = false;
-        btn.innerText = "Verify & Unlock Link";
-      }, 1200);
     }
+
+    function updateTime() {
+      const now = new Date();
+      document.getElementById('liveClock').textContent = now.toLocaleTimeString([], { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit' 
+      });
+    }
+
+    setInterval(updateTime, 1000);
+    updateTime();
   </script>
 </body>
 </html>
