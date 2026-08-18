@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>NEXUS DIGITAL — Marketplace & Admin Control</title>
+  <title>NEXUS DIGITAL — Subscriptions & Digital Marketplace</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -42,7 +42,6 @@
     .glass {
       background: rgba(17, 24, 39, 0.75);
       backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
       border: 1px solid rgba(255, 255, 255, 0.08);
     }
     
@@ -55,7 +54,6 @@
     .glass-card:hover {
       border-color: rgba(16, 185, 129, 0.4);
       transform: translateY(-4px);
-      box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7);
     }
 
     .admin-card {
@@ -87,7 +85,6 @@
       adminToken: localStorage.getItem('nexus_admin_token') || '',
       adminUsername: localStorage.getItem('nexus_admin_user') || '',
       cart: JSON.parse(localStorage.getItem('nexus_cart') || '[]'),
-      appliedCoupon: null,
       currentView: 'home',
       adminSection: 'dashboard',
       paymentSettings: null
@@ -119,59 +116,33 @@
     function toggleCustomerDrawer(open) {
       const side = document.getElementById('customerSidebar');
       const drop = document.getElementById('appBackdrop');
-      if (open) {
-        side.classList.remove('-translate-x-full');
-        drop.classList.remove('hidden');
-      } else {
-        side.classList.add('-translate-x-full');
-        drop.classList.add('hidden');
-      }
+      if (open) { side.classList.remove('-translate-x-full'); drop.classList.remove('hidden'); }
+      else { side.classList.add('-translate-x-full'); drop.classList.add('hidden'); }
     }
 
     function toggleAdminDrawer(open) {
       const side = document.getElementById('adminSidebar');
       const drop = document.getElementById('appBackdrop');
-      if (open) {
-        side.classList.remove('-translate-x-full');
-        drop.classList.remove('hidden');
-      } else {
-        side.classList.add('-translate-x-full');
-        drop.classList.add('hidden');
-      }
+      if (open) { side.classList.remove('-translate-x-full'); drop.classList.remove('hidden'); }
+      else { side.classList.add('-translate-x-full'); drop.classList.add('hidden'); }
     }
-
-    function sendHeartbeat(action = '') {
-      fetch('/api/presence/heartbeat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: state.sessionId,
-          page: state.currentView,
-          action
-        })
-      }).catch(() => {});
-    }
-    setInterval(sendHeartbeat, 15000);
 
     function navigate(view, params = {}) {
       state.currentView = view;
       closeAllDrawers();
-      sendHeartbeat();
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
       const viewport = document.getElementById('mainViewport');
-
       if (view === 'admin-center') {
         if (!state.adminToken) renderAdminLogin(viewport);
         else renderAdminSaaSLayout(viewport);
         return;
       }
-
       renderStorefrontLayout(viewport, view, params);
     }
 
     // =========================================================================
-    // CUSTOMER STOREFRONT LAYOUT
+    // STOREFRONT LAYOUT & SUBSCRIPTION PRODUCT SELECTION
     // =========================================================================
     function renderStorefrontLayout(viewport, view, params) {
       viewport.innerHTML = `
@@ -183,7 +154,7 @@
                   <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center font-black text-gray-950 shadow-lg shadow-emerald-500/20">N</div>
                   <div>
                     <span class="font-extrabold text-sm tracking-wider text-white block">NEXUS</span>
-                    <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">DIGITAL STORE</span>
+                    <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">DIGITAL VAULT</span>
                   </div>
                 </div>
                 <button onclick="toggleCustomerDrawer(false)" class="lg:hidden text-slate-400 p-1">✕</button>
@@ -214,10 +185,7 @@
                 <button onclick="toggleCustomerDrawer(true)" class="lg:hidden p-2 rounded-xl bg-white/5 text-slate-300">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
-                <div class="relative w-48 sm:w-80">
-                  <input type="text" oninput="handleStoreSearch(this.value)" placeholder="Search products..." class="w-full pl-9 pr-4 py-2 rounded-xl bg-surface-900 border border-white/10 text-xs text-white placeholder-slate-500 focus:border-emerald-500 outline-none">
-                  <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                </div>
+                <span class="text-xs font-bold text-slate-400">Digital Goods & Subscriptions</span>
               </div>
               <div class="flex items-center gap-3">
                 <button onclick="navigate('cart')" class="relative p-2.5 rounded-xl bg-surface-900 border border-white/5 text-slate-300">
@@ -234,8 +202,8 @@
 
       const storeContent = document.getElementById('storeContent');
       switch(view) {
-        case 'home': renderStoreHome(storeContent); break;
-        case 'products': renderStoreProducts(storeContent, params); break;
+        case 'home':
+        case 'products': renderStoreProducts(storeContent); break;
         case 'product-details': renderStoreProductDetails(storeContent, params.id); break;
         case 'cart': renderStoreCart(storeContent); break;
         case 'checkout': renderStoreCheckout(storeContent); break;
@@ -244,241 +212,188 @@
       }
     }
 
-    async function renderStoreHome(container) {
-      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold animate-pulse">Loading digital goods...</div>';
+    async function renderStoreProducts(container) {
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold animate-pulse">Loading catalog...</div>';
       const res = await fetch('/api/products');
       const products = await res.json();
 
       container.innerHTML = `
-        <div class="relative rounded-3xl overflow-hidden glass p-8 sm:p-14 border border-emerald-500/20 bg-gradient-to-r from-emerald-950/40 via-surface-900 to-surface-950">
-          <div class="max-w-2xl space-y-4">
-            <span class="px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-black uppercase inline-block">⚡ Verified Instant Delivery</span>
-            <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">Premium <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">Digital Goods</span> Marketplace</h1>
-            <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">Official license keys, software source code, and verified accounts. Pay with UPI or Crypto with fast verified unlock.</p>
-            <div class="pt-2">
-              <button onclick="navigate('products')" class="px-7 py-3.5 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95">Browse Catalog</button>
-            </div>
-          </div>
-        </div>
-
-        <section class="space-y-4">
-          <h2 class="text-lg font-black text-white">All Digital Products</h2>
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            ${products.map(p => renderStoreProductCardHTML(p)).join('')}
-          </div>
-        </section>
-      `;
-    }
-
-    function renderStoreProductCardHTML(p) {
-      return `
-        <div class="glass-card rounded-3xl overflow-hidden flex flex-col justify-between border border-white/5 relative group cursor-pointer" onclick="navigate('product-details', { id: '${p._id}' })">
-          ${p.discount_percentage > 0 ? `<span class="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full bg-rose-500 text-white font-black text-[10px] uppercase">${p.discount_percentage}% OFF</span>` : ''}
-          <span class="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-full bg-surface-950/80 border border-white/10 text-emerald-400 font-bold text-[9px] uppercase">${p.delivery_type.replace('_', ' ')}</span>
-          <div>
-            <div class="h-44 w-full overflow-hidden bg-surface-900">
-              <img src="${p.images[0] || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-            </div>
-            <div class="p-5 space-y-2">
-              <h3 class="text-sm font-bold text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">${p.name}</h3>
-              <p class="text-xs text-slate-400 line-clamp-2">${p.short_description || p.description}</p>
-            </div>
-          </div>
-          <div class="px-5 pb-5 pt-2 flex items-center justify-between border-t border-white/5" onclick="event.stopPropagation()">
-            <div>
-              <span class="text-base font-black text-white">₹${p.sale_price}</span>
-              ${p.original_price > p.sale_price ? `<span class="text-xs text-slate-500 line-through ml-1">₹${p.original_price}</span>` : ''}
-              <span class="text-[10px] ${p.in_stock ? 'text-emerald-400' : 'text-rose-400'} font-bold block">${p.in_stock ? '● In Stock' : '✕ Out of Stock'}</span>
-            </div>
-            <button onclick="addToCart('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${p.sale_price}, '${p.images[0]}', '${p.delivery_type}')" ${!p.in_stock ? 'disabled' : ''} class="px-4 py-2.5 rounded-xl ${p.in_stock ? 'bg-emerald-500 text-gray-950' : 'bg-gray-800 text-gray-500 cursor-not-allowed'} font-black text-xs uppercase">Add</button>
-          </div>
-        </div>
-      `;
-    }
-
-    async function renderStoreProducts(container, filters = {}) {
-      let queryUrl = '/api/products?';
-      if (filters.search) queryUrl += `search=${encodeURIComponent(filters.search)}&`;
-
-      const res = await fetch(queryUrl);
-      const products = await res.json();
-
-      container.innerHTML = `
         <div class="space-y-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <h1 class="text-xl font-black text-white">${filters.title || 'All Digital Products'}</h1>
-              <p class="text-xs text-slate-400">${products.length} products found</p>
-            </div>
+          <div>
+            <h1 class="text-xl font-black text-white">Digital Products & Subscriptions</h1>
+            <p class="text-xs text-slate-400">Choose one-time digital goods or flexible monthly/yearly subscriptions</p>
           </div>
+
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            ${products.map(p => renderStoreProductCardHTML(p)).join('')}
+            ${products.map(p => `
+              <div class="glass-card rounded-3xl overflow-hidden flex flex-col justify-between border border-white/5 relative group cursor-pointer" onclick="navigate('product-details', { id: '${p._id}' })">
+                <span class="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full ${p.product_type === 'SUBSCRIPTION' ? 'bg-indigo-500' : 'bg-emerald-500'} text-white font-black text-[10px] uppercase">
+                  ${p.product_type === 'SUBSCRIPTION' ? '🔄 Subscription' : '⚡ One-Time'}
+                </span>
+
+                <div>
+                  <div class="h-44 w-full overflow-hidden bg-surface-900">
+                    <img src="${p.images[0] || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                  </div>
+                  <div class="p-5 space-y-2">
+                    <h3 class="text-sm font-bold text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">${p.name}</h3>
+                    <p class="text-xs text-slate-400 line-clamp-2">${p.short_description || p.description}</p>
+                  </div>
+                </div>
+
+                <div class="px-5 pb-5 pt-2 flex items-center justify-between border-t border-white/5" onclick="event.stopPropagation()">
+                  <div>
+                    <span class="text-base font-black text-white">₹${p.sale_price}</span>
+                    <span class="text-[10px] ${p.in_stock ? 'text-emerald-400' : 'text-rose-400'} font-bold block">${p.in_stock ? '● In Stock' : '✕ Out of Stock'}</span>
+                  </div>
+                  <button onclick="navigate('product-details', { id: '${p._id}' })" class="px-4 py-2 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase">Select</button>
+                </div>
+              </div>
+            `).join('')}
           </div>
         </div>
       `;
     }
+
+    let selectedSubDuration = '1_MONTH';
+    let currentSelectedPrice = 199;
 
     async function renderStoreProductDetails(container, productId) {
       container.innerHTML = '<div class="text-center py-20 text-slate-500 font-bold animate-pulse">Loading product details...</div>';
       const res = await fetch(`/api/products/${productId}`);
       const p = await res.json();
-      const mainImage = p.images && p.images.length ? p.images[0] : 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800';
+      selectedSubDuration = '1_MONTH';
+      currentSelectedPrice = p.product_type === 'SUBSCRIPTION' ? p.subscription_pricing.one_month : p.sale_price;
 
       container.innerHTML = `
         <div class="space-y-10">
           <button onclick="navigate('products')" class="text-xs text-slate-400 hover:text-white flex items-center gap-1">← Back to Catalog</button>
+          
           <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div class="lg:col-span-7 space-y-4">
-              <div class="h-72 sm:h-96 rounded-3xl overflow-hidden glass border border-white/10 relative">
-                <img id="storeMainImg" src="${mainImage}" class="w-full h-full object-cover">
+            <div class="lg:col-span-7">
+              <div class="h-72 sm:h-96 rounded-3xl overflow-hidden glass border border-white/10">
+                <img src="${p.images[0] || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" class="w-full h-full object-cover">
               </div>
             </div>
+
             <div class="lg:col-span-5 space-y-6">
               <div>
-                <span class="px-3 py-1 rounded-full bg-surface-900 border border-white/10 text-emerald-400 font-bold text-[10px] uppercase">${p.delivery_type.replace('_', ' ')}</span>
+                <span class="px-3 py-1 rounded-full ${p.product_type === 'SUBSCRIPTION' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-emerald-500/20 text-emerald-400'} font-bold text-[10px] uppercase">
+                  ${p.product_type === 'SUBSCRIPTION' ? '🔄 Subscription Tier' : '⚡ One-Time Digital Product'}
+                </span>
                 <h1 class="text-2xl sm:text-3xl font-black text-white mt-2">${p.name}</h1>
                 <p class="text-xs text-slate-400 mt-1">${p.short_description || ''}</p>
               </div>
+
+              <!-- Subscription Duration Switcher -->
+              ${p.product_type === 'SUBSCRIPTION' ? `
+                <div class="space-y-2">
+                  <label class="text-xs font-bold text-slate-300">Select Subscription Duration:</label>
+                  <div class="grid grid-cols-3 gap-2">
+                    <button onclick="pickDuration('1_MONTH', ${p.subscription_pricing.one_month})" id="dur-1_MONTH" class="dur-btn p-3 rounded-2xl border-2 border-emerald-500 bg-emerald-500/10 text-center">
+                      <span class="text-xs font-black text-white block">1 Month</span>
+                      <span class="text-[11px] font-mono text-emerald-400">₹${p.subscription_pricing.one_month}</span>
+                    </button>
+                    <button onclick="pickDuration('6_MONTHS', ${p.subscription_pricing.six_months})" id="dur-6_MONTHS" class="dur-btn p-3 rounded-2xl border border-white/10 glass text-center">
+                      <span class="text-xs font-black text-white block">6 Months</span>
+                      <span class="text-[11px] font-mono text-emerald-400">₹${p.subscription_pricing.six_months}</span>
+                    </button>
+                    <button onclick="pickDuration('1_YEAR', ${p.subscription_pricing.one_year})" id="dur-1_YEAR" class="dur-btn p-3 rounded-2xl border border-white/10 glass text-center">
+                      <span class="text-xs font-black text-white block">1 Year</span>
+                      <span class="text-[11px] font-mono text-emerald-400">₹${p.subscription_pricing.one_year}</span>
+                    </button>
+                  </div>
+                </div>
+              ` : ''}
+
               <div class="p-5 rounded-3xl glass border border-white/5">
-                <div class="text-3xl font-black text-white">₹${p.sale_price}</div>
-                <span class="text-xs ${p.in_stock ? 'text-emerald-400' : 'text-rose-400'} font-bold">${p.in_stock ? `● In Stock (${p.stock_count} units)` : '✕ Out of Stock'}</span>
+                <div class="text-3xl font-black text-white" id="displayActivePrice">₹${currentSelectedPrice}</div>
+                <span class="text-xs ${p.in_stock ? 'text-emerald-400' : 'text-rose-400'} font-bold">
+                  ${p.in_stock ? `● Available in Stock (${p.stock_count} slots)` : '✕ Out of Stock'}
+                </span>
               </div>
-              <div class="space-y-3">
-                <button onclick="buyNowStore('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${p.sale_price}, '${mainImage}', '${p.delivery_type}')" ${!p.in_stock ? 'disabled' : ''} class="w-full py-4 rounded-2xl ${p.in_stock ? 'bg-emerald-500 text-gray-950 font-black' : 'bg-gray-800 text-gray-500'} text-xs uppercase tracking-wider">Buy Now (UPI / Crypto)</button>
-                <button onclick="addToCart('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${p.sale_price}, '${mainImage}', '${p.delivery_type}')" ${!p.in_stock ? 'disabled' : ''} class="w-full py-4 rounded-2xl glass text-white font-bold text-xs uppercase">Add to Cart</button>
-              </div>
+
+              <button onclick="checkoutDirect('${p._id}', '${p.name.replace(/'/g, "\\'")}', '${p.product_type}')" ${!p.in_stock ? 'disabled' : ''} class="w-full py-4 rounded-2xl ${p.in_stock ? 'bg-emerald-500 text-gray-950 font-black' : 'bg-gray-800 text-gray-500'} text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+                ${p.in_stock ? 'Proceed to Payment (UPI / Crypto)' : 'Out of Stock'}
+              </button>
             </div>
           </div>
+
           <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
-            <h3 class="text-sm font-black text-white uppercase">Product Description</h3>
+            <h3 class="text-sm font-black text-white uppercase">Product Overview</h3>
             <p class="text-xs text-slate-300 leading-relaxed whitespace-pre-line">${p.description}</p>
           </div>
         </div>
       `;
     }
 
-    function buyNowStore(id, name, price, image, delivery_type) {
-      addToCart(id, name, price, image, delivery_type);
+    function pickDuration(dur, price) {
+      selectedSubDuration = dur;
+      currentSelectedPrice = price;
+      document.getElementById('displayActivePrice').textContent = `₹${price}`;
+      document.querySelectorAll('.dur-btn').forEach(b => b.className = 'dur-btn p-3 rounded-2xl border border-white/10 glass text-center');
+      document.getElementById(`dur-${dur}`).className = 'dur-btn p-3 rounded-2xl border-2 border-emerald-500 bg-emerald-500/10 text-center';
+    }
+
+    function checkoutDirect(id, name, product_type) {
+      state.cart = [{
+        product_id: id,
+        name: name + (product_type === 'SUBSCRIPTION' ? ` (${selectedSubDuration.replace('_', ' ')})` : ''),
+        price: currentSelectedPrice,
+        product_type: product_type,
+        duration: product_type === 'SUBSCRIPTION' ? selectedSubDuration : 'ONE_TIME'
+      }];
+      localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
       navigate('checkout');
     }
 
-    function addToCart(product_id, name, price, image, delivery_type) {
-      const exists = state.cart.find(i => i.product_id === product_id);
-      if (exists) return showToast('Item already in your cart', 'error');
-      state.cart.push({ product_id, name, price, image, delivery_type });
-      localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
-      document.querySelectorAll('.cart-count-badge').forEach(b => b.textContent = state.cart.length);
-      showToast(`Added "${name}" to cart`);
-    }
-
-    function removeFromCart(idx) {
-      state.cart.splice(idx, 1);
-      localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
-      document.querySelectorAll('.cart-count-badge').forEach(b => b.textContent = state.cart.length);
-      renderStoreCart(document.getElementById('storeContent'));
-    }
-
-    function renderStoreCart(container) {
-      const subtotal = state.cart.reduce((a, b) => a + b.price, 0);
-      container.innerHTML = `
-        <div class="max-w-3xl mx-auto space-y-6">
-          <h1 class="text-xl font-black text-white">Shopping Cart</h1>
-          ${state.cart.length === 0 ? `<div class="glass rounded-3xl p-12 text-center text-xs text-slate-400">Cart is empty.</div>` : `
-            <div class="space-y-3">
-              ${state.cart.map((item, idx) => `
-                <div class="glass rounded-2xl p-4 flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <img src="${item.image || ''}" class="w-12 h-12 rounded-xl object-cover">
-                    <div>
-                      <h4 class="text-xs font-bold text-white">${item.name}</h4>
-                      <span class="text-[10px] text-emerald-400 font-mono">${item.delivery_type.replace('_', ' ')}</span>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-4">
-                    <span class="text-sm font-black text-white">₹${item.price}</span>
-                    <button onclick="removeFromCart(${idx})" class="text-slate-500 hover:text-rose-400">✕</button>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-            <div class="glass rounded-3xl p-6 space-y-4">
-              <div class="flex justify-between text-sm font-black text-white"><span>Total:</span> <span class="text-emerald-400">₹${subtotal}</span></div>
-              <button onclick="navigate('checkout')" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase">Proceed To Checkout</button>
-            </div>
-          `}
-        </div>
-      `;
-    }
-
     // =========================================================================
-    // CHECKOUT & CLIENT IMAGE COMPRESSOR
+    // CHECKOUT & SCREENSHOT SUBMISSION
     // =========================================================================
     async function renderStoreCheckout(container) {
       if (!state.token) return renderCustomerAuthPrompt(container, 'checkout');
-      if (!state.cart.length) return navigate('cart');
+      if (!state.cart.length) return navigate('products');
 
       const pRes = await fetch('/api/payment-methods');
       state.paymentSettings = await pRes.json();
-      const subtotal = state.cart.reduce((a, b) => a + b.price, 0);
+      const item = state.cart[0];
 
       container.innerHTML = `
-        <div class="max-w-4xl mx-auto space-y-8">
+        <div class="max-w-3xl mx-auto space-y-8">
           <div>
             <h1 class="text-2xl font-black text-white">Choose Payment Method</h1>
-            <p class="text-xs text-slate-400">Select payment method and upload transfer proof for manual verification</p>
+            <p class="text-xs text-slate-400">Order: ${item.name} — Amount: ₹${item.price}</p>
           </div>
 
-          <div id="checkoutStep1" class="grid grid-cols-1 md:grid-cols-12 gap-8">
-            <div class="md:col-span-7 space-y-4">
-              <div onclick="selectPaymentMethod('UPI')" id="methodCardUPI" class="glass rounded-3xl p-6 cursor-pointer border-2 border-emerald-500/80 space-y-2">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <span class="text-2xl">💳</span>
-                    <div>
-                      <h3 class="text-sm font-bold text-white">Instant UPI Pay</h3>
-                      <p class="text-[10px] text-slate-400">Google Pay, PhonePe, Paytm & Any UPI App</p>
-                    </div>
-                  </div>
-                  <span id="radioUPI" class="w-4 h-4 rounded-full border-2 border-emerald-400 bg-emerald-400"></span>
+          <div id="chkStep1" class="space-y-4">
+            <div onclick="selectPaymentMethod('UPI')" id="methodCardUPI" class="glass rounded-3xl p-6 cursor-pointer border-2 border-emerald-500/80 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="text-2xl">💳</span>
+                <div>
+                  <h3 class="text-sm font-bold text-white">Instant UPI Pay</h3>
+                  <p class="text-[10px] text-slate-400">Google Pay, PhonePe, Paytm</p>
                 </div>
               </div>
-
-              <div onclick="selectPaymentMethod('CRYPTO')" id="methodCardCrypto" class="glass rounded-3xl p-6 cursor-pointer border border-white/5 space-y-2">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <span class="text-2xl">₿</span>
-                    <div>
-                      <h3 class="text-sm font-bold text-white">Crypto Currency</h3>
-                      <p class="text-[10px] text-slate-400">${state.paymentSettings.crypto_currency} (${state.paymentSettings.crypto_network})</p>
-                    </div>
-                  </div>
-                  <span id="radioCrypto" class="w-4 h-4 rounded-full border-2 border-slate-600"></span>
-                </div>
-              </div>
-
-              <div class="glass rounded-2xl p-4 flex gap-2">
-                <input type="text" id="storeCouponInput" placeholder="Coupon Code (e.g. SAVE20)" class="flex-1 px-4 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-xs text-white uppercase">
-                <button onclick="applyStoreCoupon()" class="px-5 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs">Apply</button>
-              </div>
-              <div id="storeCouponMsg" class="text-xs"></div>
+              <span id="radioUPI" class="w-4 h-4 rounded-full border-2 border-emerald-400 bg-emerald-400"></span>
             </div>
 
-            <div class="md:col-span-5 space-y-4">
-              <div class="glass rounded-3xl p-6 space-y-4">
-                <h3 class="text-xs font-bold uppercase text-slate-400">Order Total</h3>
-                <div class="flex justify-between text-base font-black text-white">
-                  <span>Payable:</span>
-                  <span id="chkFinalAmount" class="text-emerald-400 font-mono">₹${subtotal}</span>
+            <div onclick="selectPaymentMethod('CRYPTO')" id="methodCardCrypto" class="glass rounded-3xl p-6 cursor-pointer border border-white/5 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="text-2xl">₿</span>
+                <div>
+                  <h3 class="text-sm font-bold text-white">Cryptocurrency</h3>
+                  <p class="text-[10px] text-slate-400">${state.paymentSettings.crypto_currency} (${state.paymentSettings.crypto_network})</p>
                 </div>
-
-                <button onclick="startPaymentFlow()" id="startPayBtn" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider">
-                  Proceed to Payment →
-                </button>
               </div>
+              <span id="radioCrypto" class="w-4 h-4 rounded-full border-2 border-slate-600"></span>
             </div>
+
+            <button onclick="startCheckoutPayment()" id="chkNextBtn" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider">
+              Continue to Payment Details →
+            </button>
           </div>
 
-          <div id="checkoutStep2" class="hidden space-y-6"></div>
+          <div id="chkStep2" class="hidden space-y-6"></div>
         </div>
       `;
     }
@@ -487,39 +402,20 @@
     function selectPaymentMethod(m) {
       selectedMethod = m;
       if (m === 'UPI') {
-        document.getElementById('methodCardUPI').className = 'glass rounded-3xl p-6 cursor-pointer border-2 border-emerald-500/80 space-y-2';
-        document.getElementById('methodCardCrypto').className = 'glass rounded-3xl p-6 cursor-pointer border border-white/5 space-y-2';
+        document.getElementById('methodCardUPI').className = 'glass rounded-3xl p-6 cursor-pointer border-2 border-emerald-500/80 flex items-center justify-between';
+        document.getElementById('methodCardCrypto').className = 'glass rounded-3xl p-6 cursor-pointer border border-white/5 flex items-center justify-between';
         document.getElementById('radioUPI').className = 'w-4 h-4 rounded-full border-2 border-emerald-400 bg-emerald-400';
         document.getElementById('radioCrypto').className = 'w-4 h-4 rounded-full border-2 border-slate-600';
       } else {
-        document.getElementById('methodCardCrypto').className = 'glass rounded-3xl p-6 cursor-pointer border-2 border-emerald-500/80 space-y-2';
-        document.getElementById('methodCardUPI').className = 'glass rounded-3xl p-6 cursor-pointer border border-white/5 space-y-2';
+        document.getElementById('methodCardCrypto').className = 'glass rounded-3xl p-6 cursor-pointer border-2 border-emerald-500/80 flex items-center justify-between';
+        document.getElementById('methodCardUPI').className = 'glass rounded-3xl p-6 cursor-pointer border border-white/5 flex items-center justify-between';
         document.getElementById('radioCrypto').className = 'w-4 h-4 rounded-full border-2 border-emerald-400 bg-emerald-400';
         document.getElementById('radioUPI').className = 'w-4 h-4 rounded-full border-2 border-slate-600';
       }
     }
 
-    async function applyStoreCoupon() {
-      const code = document.getElementById('storeCouponInput').value.trim();
-      const subtotal = state.cart.reduce((a, b) => a + b.price, 0);
-      try {
-        const res = await fetch('/api/cart/validate-coupon', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, subtotal })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        state.appliedCoupon = data;
-        document.getElementById('storeCouponMsg').innerHTML = `<span class="text-emerald-400 font-bold">✓ Applied! Total: ₹${data.final_total}</span>`;
-        document.getElementById('chkFinalAmount').textContent = `₹${data.final_total}`;
-      } catch (err) {
-        document.getElementById('storeCouponMsg').innerHTML = `<span class="text-rose-400 font-bold">✕ ${err.message}</span>`;
-      }
-    }
-
-    async function startPaymentFlow() {
-      const btn = document.getElementById('startPayBtn');
+    async function startCheckoutPayment() {
+      const btn = document.getElementById('chkNextBtn');
       btn.disabled = true;
       btn.textContent = 'Generating Transaction...';
 
@@ -532,46 +428,40 @@
           },
           body: JSON.stringify({
             items: state.cart,
-            payment_method: selectedMethod,
-            coupon_code: state.appliedCoupon ? state.appliedCoupon.code : ''
+            payment_method: selectedMethod
           })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
 
-        document.getElementById('checkoutStep1').classList.add('hidden');
-        const step2 = document.getElementById('checkoutStep2');
+        document.getElementById('chkStep1').classList.add('hidden');
+        const step2 = document.getElementById('chkStep2');
         step2.classList.remove('hidden');
 
         const ps = state.paymentSettings;
         const txn = data.transaction;
 
-        let detailsHTML = '';
-        if (selectedMethod === 'UPI') {
-          detailsHTML = `
-            <div class="text-center space-y-4">
-              <img src="${ps.upi_qr_url}" class="w-56 h-56 mx-auto rounded-2xl glass p-2 bg-white">
-              <div class="space-y-1">
-                <span class="text-[10px] text-slate-500 uppercase font-bold">UPI ID</span>
-                <div class="font-mono text-emerald-400 text-sm font-bold">${ps.upi_id}</div>
-                <button onclick="navigator.clipboard.writeText('${ps.upi_id}'); showToast('UPI ID copied!')" class="text-xs text-slate-400 hover:text-white underline">Copy UPI ID</button>
-              </div>
-              <div class="text-xs text-slate-400 max-w-sm mx-auto whitespace-pre-line text-left bg-surface-950 p-4 rounded-2xl">${ps.upi_instructions}</div>
+        let detailsHTML = selectedMethod === 'UPI' ? `
+          <div class="text-center space-y-4">
+            <img src="${ps.upi_qr_url}" class="w-56 h-56 mx-auto rounded-2xl glass p-2 bg-white">
+            <div class="space-y-1">
+              <span class="text-[10px] text-slate-500 uppercase font-bold">UPI ID</span>
+              <div class="font-mono text-emerald-400 text-sm font-bold">${ps.upi_id}</div>
+              <button onclick="navigator.clipboard.writeText('${ps.upi_id}'); showToast('Copied UPI ID!')" class="text-xs text-slate-400 hover:text-white underline">Copy UPI ID</button>
             </div>
-          `;
-        } else {
-          detailsHTML = `
-            <div class="text-center space-y-4">
-              <img src="${ps.crypto_qr_url}" class="w-56 h-56 mx-auto rounded-2xl glass p-2 bg-white">
-              <div class="space-y-1">
-                <span class="text-[10px] text-slate-500 uppercase font-bold">Deposit Wallet (${ps.crypto_currency} - ${ps.crypto_network})</span>
-                <div class="font-mono text-emerald-400 text-xs font-bold break-all">${ps.crypto_wallet_address}</div>
-                <button onclick="navigator.clipboard.writeText('${ps.crypto_wallet_address}'); showToast('Wallet address copied!')" class="text-xs text-slate-400 hover:text-white underline">Copy Wallet Address</button>
-              </div>
-              <div class="text-xs text-slate-400 max-w-sm mx-auto whitespace-pre-line text-left bg-surface-950 p-4 rounded-2xl">${ps.crypto_instructions}</div>
+            <div class="text-xs text-slate-400 max-w-sm mx-auto whitespace-pre-line text-left bg-surface-950 p-4 rounded-2xl">${ps.upi_instructions}</div>
+          </div>
+        ` : `
+          <div class="text-center space-y-4">
+            <img src="${ps.crypto_qr_url}" class="w-56 h-56 mx-auto rounded-2xl glass p-2 bg-white">
+            <div class="space-y-1">
+              <span class="text-[10px] text-slate-500 uppercase font-bold">Wallet Address (${ps.crypto_currency} - ${ps.crypto_network})</span>
+              <div class="font-mono text-emerald-400 text-xs font-bold break-all">${ps.crypto_wallet_address}</div>
+              <button onclick="navigator.clipboard.writeText('${ps.crypto_wallet_address}'); showToast('Copied Address!')" class="text-xs text-slate-400 hover:text-white underline">Copy Address</button>
             </div>
-          `;
-        }
+            <div class="text-xs text-slate-400 max-w-sm mx-auto whitespace-pre-line text-left bg-surface-950 p-4 rounded-2xl">${ps.crypto_instructions}</div>
+          </div>
+        `;
 
         step2.innerHTML = `
           <div class="glass rounded-3xl p-6 sm:p-10 space-y-6 max-w-2xl mx-auto">
@@ -581,16 +471,16 @@
                 <h3 class="text-base font-black text-white font-mono">${txn.txn_id}</h3>
               </div>
               <div class="text-right">
-                <span class="text-[10px] text-slate-500">AMOUNT</span>
+                <span class="text-[10px] text-slate-500">TOTAL</span>
                 <div class="text-lg font-black text-emerald-400 font-mono">₹${txn.amount}</div>
               </div>
             </div>
 
             ${detailsHTML}
 
-            <form onsubmit="submitPaymentProof(event, '${txn.txn_id}')" class="space-y-4 pt-4 border-t border-white/5">
-              <label class="text-xs font-bold text-white block">Upload Payment Proof Screenshot (JPG, PNG, WEBP)</label>
-              <input type="file" id="proofFileInput" accept="image/*" required class="w-full text-xs text-slate-400 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20">
+            <form onsubmit="submitProofScreenshot(event, '${txn.txn_id}')" class="space-y-4 pt-4 border-t border-white/5">
+              <label class="text-xs font-bold text-white block">Upload Payment Screenshot / Transfer Proof (JPG, PNG)</label>
+              <input type="file" id="proofImgInput" accept="image/*" required class="w-full text-xs text-slate-400 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-500/10 file:text-emerald-400">
               
               <button type="submit" id="submitProofBtn" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider">
                 Submit Payment Proof for Verification
@@ -600,7 +490,7 @@
         `;
       } catch (err) {
         btn.disabled = false;
-        btn.textContent = 'Proceed to Payment →';
+        btn.textContent = 'Continue to Payment Details →';
         showToast(err.message, 'error');
       }
     }
@@ -615,29 +505,14 @@
           img.onload = () => {
             const canvas = document.createElement('canvas');
             const MAX_WIDTH = 1280;
-            const MAX_HEIGHT = 1280;
             let width = img.width;
             let height = img.height;
-
-            if (width > height) {
-              if (width > MAX_WIDTH) {
-                height *= MAX_WIDTH / width;
-                width = MAX_WIDTH;
-              }
-            } else {
-              if (height > MAX_HEIGHT) {
-                width *= MAX_HEIGHT / height;
-                height = MAX_HEIGHT;
-              }
-            }
-
+            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
             canvas.width = width;
             canvas.height = height;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
-
-            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.82);
-            resolve(compressedBase64);
+            resolve(canvas.toDataURL('image/jpeg', 0.82));
           };
           img.onerror = (err) => reject(err);
         };
@@ -645,9 +520,9 @@
       });
     }
 
-    async function submitPaymentProof(e, txnId) {
+    async function submitProofScreenshot(e, txnId) {
       e.preventDefault();
-      const fileInput = document.getElementById('proofFileInput');
+      const fileInput = document.getElementById('proofImgInput');
       if (!fileInput.files.length) return;
 
       const btn = document.getElementById('submitProofBtn');
@@ -655,8 +530,7 @@
       btn.textContent = 'Compressing & Uploading Proof...';
 
       try {
-        const compressedBase64 = await compressImageFile(fileInput.files[0]);
-
+        const base64Data = await compressImageFile(fileInput.files[0]);
         const res = await fetch('/api/checkout/upload-proof-json', {
           method: 'POST',
           headers: {
@@ -665,17 +539,14 @@
           },
           body: JSON.stringify({
             transaction_id: txnId,
-            screenshot_base64: compressedBase64
+            screenshot_base64: base64Data
           })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
 
         state.cart = [];
-        state.appliedCoupon = null;
         localStorage.removeItem('nexus_cart');
-        document.querySelectorAll('.cart-count-badge').forEach(b => b.textContent = '0');
-
         showToast('Proof submitted! Payment is being verified.');
         navigate('orders');
       } catch (err) {
@@ -685,9 +556,12 @@
       }
     }
 
+    // =========================================================================
+    // CUSTOMER PURCHASED ITEMS & EXPIRATION PROTECTOR
+    // =========================================================================
     async function renderStoreOrders(container) {
       if (!state.token) return renderCustomerAuthPrompt(container, 'orders');
-      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold">Loading vault...</div>';
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold">Loading purchased items...</div>';
 
       try {
         const res = await fetch('/api/customer/orders', {
@@ -698,11 +572,11 @@
         container.innerHTML = `
           <div class="max-w-4xl mx-auto space-y-6">
             <div>
-              <h1 class="text-xl font-black text-white">Purchased Digital Goods</h1>
-              <p class="text-xs text-slate-400">Credentials will unlock as soon as your payment proof is confirmed by the admin.</p>
+              <h1 class="text-xl font-black text-white">Purchased Digital Goods & Subscriptions</h1>
+              <p class="text-xs text-slate-400">Active credentials remain accessible until subscription expiration.</p>
             </div>
 
-            ${orders.length === 0 ? `<div class="glass rounded-3xl p-12 text-center text-xs text-slate-400">No orders found.</div>` : `
+            ${orders.length === 0 ? `<div class="glass rounded-3xl p-12 text-center text-xs text-slate-400">No purchases found.</div>` : `
               <div class="space-y-4">
                 ${orders.map(o => {
                   const isPaid = o.payment_status === 'Paid';
@@ -713,29 +587,63 @@
                           <span class="font-mono text-slate-400 font-bold">${o.order_number}</span>
                           <span class="text-[10px] text-slate-500 block">${new Date(o.created_at).toLocaleString()}</span>
                         </div>
-                        <div class="flex items-center gap-2">
-                          <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase ${isPaid ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}">
-                            ${isPaid ? '🟢 PAYMENT CONFIRMED' : '🟡 PAYMENT PROCESSING'}
-                          </span>
-                        </div>
+                        <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase ${isPaid ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}">
+                          ${isPaid ? '🟢 PAYMENT CONFIRMED' : '🟡 PAYMENT PROCESSING'}
+                        </span>
                       </div>
 
                       <div class="space-y-3">
-                        ${o.items.map(item => `
-                          <div class="p-4 rounded-2xl bg-surface-950 border border-white/5 space-y-2">
-                            <div class="flex justify-between items-center">
-                              <h4 class="text-xs font-bold text-white">${item.name}</h4>
-                              <span class="text-[9px] font-mono uppercase text-slate-500">${item.delivery_type.replace('_', ' ')}</span>
-                            </div>
+                        ${o.items.map(item => {
+                          const isSub = item.is_subscription;
+                          const isExpired = item.is_expired;
 
-                            ${isPaid ? renderCustomerUnlockedItemHTML(item) : `
-                              <div class="p-3 rounded-xl bg-surface-900 border border-amber-500/20 text-xs text-amber-400 flex items-center gap-2">
-                                <span>🔒</span>
-                                <span>Credentials locked. Your payment proof is under verification.</span>
+                          return `
+                            <div class="p-4 rounded-2xl bg-surface-950 border border-white/5 space-y-3">
+                              <div class="flex justify-between items-center">
+                                <div>
+                                  <h4 class="text-xs font-bold text-white">${item.name}</h4>
+                                  ${isSub ? `
+                                    <span class="text-[10px] font-mono ${isExpired ? 'text-rose-400' : 'text-emerald-400'}">
+                                      ${isExpired ? `⚪ Expired on ${new Date(item.expires_at).toLocaleDateString()}` : `🟢 Active until ${new Date(item.expires_at).toLocaleDateString()}`}
+                                    </span>
+                                  ` : ''}
+                                </div>
+                                ${isExpired ? `
+                                  <button onclick="navigate('product-details', { id: '${item.product_id}' })" class="px-3 py-1 rounded-xl bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 text-[10px] font-bold">
+                                    🔄 Renew Subscription
+                                  </button>
+                                ` : ''}
                               </div>
-                            `}
-                          </div>
-                        `).join('')}
+
+                              ${isPaid ? (
+                                isExpired ? `
+                                  <div class="p-3 rounded-xl bg-surface-900 border border-rose-500/20 text-xs text-rose-400">
+                                    ⚠️ This subscription has expired. Credentials have been safely removed. Please renew to regain access.
+                                  </div>
+                                ` : `
+                                  <div class="p-3 rounded-xl bg-surface-900 border border-white/5 space-y-2">
+                                    <div class="text-xs text-slate-400 font-bold">${item.delivered_data?.account_label || 'Assigned Credentials'}</div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                      <div class="p-2.5 rounded-lg bg-surface-950 flex justify-between">
+                                        <span class="font-mono text-white select-all">Email: ${item.delivered_data?.email}</span>
+                                        <button onclick="navigator.clipboard.writeText('${item.delivered_data?.email}'); showToast('Copied!')" class="text-emerald-400 text-[10px]">Copy</button>
+                                      </div>
+                                      <div class="p-2.5 rounded-lg bg-surface-950 flex justify-between">
+                                        <span class="font-mono text-white select-all">Pass: ${item.delivered_data?.password}</span>
+                                        <button onclick="navigator.clipboard.writeText('${item.delivered_data?.password}'); showToast('Copied!')" class="text-emerald-400 text-[10px]">Copy</button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                `
+                              ) : `
+                                <div class="p-3 rounded-xl bg-surface-900 border border-amber-500/20 text-xs text-amber-400 flex items-center gap-2">
+                                  <span>🔒</span>
+                                  <span>Credentials locked. Your payment proof is under verification.</span>
+                                </div>
+                              `}
+                            </div>
+                          `;
+                        }).join('')}
                       </div>
                     </div>
                   `;
@@ -747,34 +655,6 @@
       } catch (err) {
         container.innerHTML = `<div class="glass p-8 text-center text-rose-400 text-xs">${err.message}</div>`;
       }
-    }
-
-    function renderCustomerUnlockedItemHTML(item) {
-      const d = item.delivered_data || {};
-      if (item.delivery_type === 'EMAIL_PASSWORD') {
-        return `
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1">
-            <div class="p-3 rounded-xl bg-surface-900 flex justify-between">
-              <span class="font-mono text-white select-all">Email: ${d.email}</span>
-              <button onclick="navigator.clipboard.writeText('${d.email}'); showToast('Copied!')" class="text-emerald-400">Copy</button>
-            </div>
-            <div class="p-3 rounded-xl bg-surface-900 flex justify-between">
-              <span class="font-mono text-white select-all">Pass: ${d.password}</span>
-              <button onclick="navigator.clipboard.writeText('${d.password}'); showToast('Copied!')" class="text-emerald-400">Copy</button>
-            </div>
-          </div>
-        `;
-      } else if (item.delivery_type === 'LICENSE_KEY') {
-        return `
-          <div class="p-3 rounded-xl bg-surface-900 text-xs font-mono text-emerald-400 flex justify-between">
-            <span class="select-all font-bold">Key: ${d.license_key}</span>
-            <button onclick="navigator.clipboard.writeText('${d.license_key}'); showToast('Key copied!')" class="text-emerald-400 font-bold">Copy Key</button>
-          </div>
-        `;
-      } else if (item.delivery_type === 'STANDARD_LINK') {
-        return `<a href="${d.url}" target="_blank" class="inline-block px-4 py-2 rounded-xl bg-emerald-500 text-gray-950 font-bold text-xs">Open Product URL ↗</a>`;
-      }
-      return `<div class="text-xs text-slate-300">${d.custom_text || 'Item fulfilled.'}</div>`;
     }
 
     function renderCustomerAuthPrompt(container, returnView) {
@@ -856,13 +736,8 @@
       navigate('home');
     }
 
-    function handleStoreSearch(val) {
-      if (!val.trim()) return renderStoreProducts(document.getElementById('storeContent'));
-      renderStoreProducts(document.getElementById('storeContent'), { search: val, title: `Search results for "${val}"` });
-    }
-
     // =========================================================================
-    // DEDICATED SAAS ADMIN CONTROL CENTER & SYSTEM MONITOR
+    // DEDICATED SAAS ADMIN CONTROL CENTER & SUBSCRIPTION ENGINE
     // =========================================================================
     function renderAdminLogin(viewport) {
       viewport.innerHTML = `
@@ -879,7 +754,7 @@
               <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider">Authorize Session</button>
             </form>
             <div class="text-center">
-              <button onclick="navigate('home')" class="text-xs text-slate-500 hover:text-slate-300">← Back to Customer Store</button>
+              <button onclick="navigate('home')" class="text-xs text-slate-500 hover:text-slate-300">← Back to Storefront</button>
             </div>
           </div>
         </div>
@@ -928,15 +803,15 @@
                   <div class="flex items-center gap-3">💳 <span>Transactions Queue</span></div>
                   <span id="pendingTxnCountBadge" class="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-400 font-mono">0</span>
                 </button>
+                <button onclick="switchAdminSection('subscriptions')" id="adnav-subscriptions" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🔄 <span>Subscription Engine</span></button>
                 <button onclick="switchAdminSection('products')" id="adnav-products" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🛍 <span>Product Studio</span></button>
                 <button onclick="switchAdminSection('payment-settings')" id="adnav-payment-settings" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">💰 <span>Payment Gateway</span></button>
-                <button onclick="switchAdminSection('system-monitor')" id="adnav-system-monitor" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all border border-emerald-500/20 bg-emerald-500/5">🖥️ <span>System & Infrastructure</span></button>
               </nav>
             </div>
 
             <div class="p-4 border-t border-admin-border space-y-2">
               <button onclick="navigate('home')" class="w-full py-2.5 rounded-xl bg-white/5 text-slate-400 hover:text-white text-xs font-bold">👁 Customer Store</button>
-              <button onclick="adminSignOut()" class="w-full py-2.5 rounded-xl bg-rose-500/10 text-rose-400 text-xs font-bold">🚪 End Admin Session</button>
+              <button onclick="adminSignOut()" class="w-full py-2.5 rounded-xl bg-rose-500/10 text-rose-400 text-xs font-bold">🚪 End Session</button>
             </div>
           </aside>
 
@@ -975,93 +850,71 @@
       switch(sec) {
         case 'dashboard': renderAdminOverview(content); break;
         case 'transactions': renderAdminTransactions(content); break;
+        case 'subscriptions': renderAdminSubscriptions(content); break;
         case 'products': renderAdminProductsStudio(content); break;
         case 'payment-settings': renderAdminPaymentSettings(content); break;
-        case 'system-monitor': renderAdminSystemMonitor(content); break;
       }
     }
 
     async function renderAdminOverview(container) {
-      container.innerHTML = '<div class="text-center py-12 text-slate-500 font-mono">Refreshing live status & metrics...</div>';
-      const [statsRes, liveRes] = await Promise.all([
-        fetch('/api/admin/stats', { headers: { 'Authorization': `Bearer ${state.adminToken}` } }),
-        fetch('/api/admin/live-status', { headers: { 'Authorization': `Bearer ${state.adminToken}` } })
-      ]);
+      const statsRes = await fetch('/api/admin/stats', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
       const stats = await statsRes.json();
-      const live = await liveRes.json();
-
-      const pBadge = document.getElementById('pendingTxnCountBadge');
-      if (pBadge) pBadge.textContent = stats.pendingPayments || '0';
+      document.getElementById('pendingTxnCountBadge').textContent = stats.pendingPayments || '0';
 
       container.innerHTML = `
         <div class="space-y-6">
-          <div class="admin-card rounded-3xl p-6 border border-emerald-500/30 bg-gradient-to-r from-emerald-950/20 to-admin-card">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div class="flex items-center gap-3">
-                <span class="w-3.5 h-3.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <div>
-                  <h3 class="text-sm font-bold text-white">LIVE WEBSITE STATUS</h3>
-                  <p class="text-xs text-slate-400">Real-time visitor presence</p>
-                </div>
-              </div>
-              <div class="flex flex-wrap gap-2 font-mono text-xs">
-                <div class="px-3 py-1.5 rounded-xl bg-surface-950 border border-admin-border"><span class="text-emerald-400 font-bold">${live.total_live_visitors}</span> Live Visitors</div>
-                <div class="px-3 py-1.5 rounded-xl bg-surface-950 border border-admin-border"><span class="text-teal-400 font-bold">${live.product_viewers}</span> Viewing Products</div>
-                <div class="px-3 py-1.5 rounded-xl bg-surface-950 border border-admin-border"><span class="text-amber-400 font-bold">${live.checkout_users}</span> At Checkout</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <h1 class="text-xl font-black text-white font-sans">Overview Dashboard</h1>
+          <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
             <div class="admin-card rounded-2xl p-5"><span class="text-[10px] text-slate-500 font-mono uppercase">Total Revenue</span><div class="text-2xl font-black text-emerald-400 font-mono">₹${stats.totalRevenue}</div></div>
             <div class="admin-card rounded-2xl p-5"><span class="text-[10px] text-slate-500 font-mono uppercase">Pending Payments</span><div class="text-2xl font-black text-amber-400 font-mono">${stats.pendingPayments}</div></div>
-            <div class="admin-card rounded-2xl p-5"><span class="text-[10px] text-slate-500 font-mono uppercase">Confirmed Payments</span><div class="text-2xl font-black text-white font-mono">${stats.confirmedPayments}</div></div>
-            <div class="admin-card rounded-2xl p-5"><span class="text-[10px] text-slate-500 font-mono uppercase">Today's Orders</span><div class="text-2xl font-black text-white font-mono">${stats.todayOrders}</div></div>
+            <div class="admin-card rounded-2xl p-5"><span class="text-[10px] text-slate-500 font-mono uppercase">Active Subscriptions</span><div class="text-2xl font-black text-indigo-400 font-mono">${stats.activeSubs}</div></div>
           </div>
         </div>
       `;
     }
 
+    // =========================================================================
+    // TRANSACTIONS QUEUE & MANUAL ACCOUNT SLOT ASSIGNMENT
+    // =========================================================================
     async function renderAdminTransactions(container) {
-      container.innerHTML = '<div class="text-center py-12 text-slate-500 font-mono">Loading transaction queue...</div>';
+      container.innerHTML = '<div class="text-center py-12 text-slate-500 font-mono">Loading transactions...</div>';
       const res = await fetch('/api/admin/transactions', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
       const txns = await res.json();
 
       container.innerHTML = `
         <div class="space-y-6">
           <div>
-            <h2 class="text-lg font-black text-white">Manual Payment Verifications</h2>
-            <p class="text-xs text-slate-400">Verify screenshots to unlock customer digital keys</p>
+            <h2 class="text-lg font-black text-white">Manual Payment & Subscription Verification Queue</h2>
+            <p class="text-xs text-slate-400">Inspect screenshots and choose which account slot to assign to the customer</p>
           </div>
 
           <div class="admin-card rounded-3xl p-6">
             <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs min-w-[600px]">
+              <table class="w-full text-left text-xs min-w-[700px]">
                 <thead>
                   <tr class="border-b border-admin-border text-slate-500 font-mono">
-                    <th class="pb-3">TXN ID</th>
+                    <th class="pb-3">TXN / Order</th>
                     <th class="pb-3">Customer</th>
+                    <th class="pb-3">Product / Duration</th>
                     <th class="pb-3">Amount</th>
-                    <th class="pb-3">Method</th>
-                    <th class="pb-3">Status</th>
                     <th class="pb-3">Proof</th>
+                    <th class="pb-3">Assign Account Slot</th>
                     <th class="pb-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-admin-border font-mono">
                   ${txns.map(t => `
                     <tr>
-                      <td class="py-3.5 font-bold text-white">${t.txn_id}</td>
-                      <td class="py-3.5 text-slate-300">${t.customer_name || 'Customer'}</td>
-                      <td class="py-3.5 text-emerald-400 font-bold">₹${t.amount}</td>
-                      <td class="py-3.5 text-slate-400">${t.payment_method}</td>
                       <td class="py-3.5">
-                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                          t.status === 'CONFIRMED' ? 'bg-emerald-500/10 text-emerald-400' :
-                          t.status === 'PROCESSING' ? 'bg-amber-500/10 text-amber-400' :
-                          t.status === 'REJECTED' ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-500/10 text-slate-400'
-                        }">${t.status}</span>
+                        <span class="font-bold text-white block">${t.txn_id}</span>
+                        <span class="text-[10px] text-slate-500">${t.payment_method}</span>
                       </td>
+                      <td class="py-3.5 text-slate-300">${t.customer_name}</td>
+                      <td class="py-3.5">
+                        <span class="text-white font-bold block">${t.product_name || 'Product'}</span>
+                        <span class="text-[10px] ${t.duration !== 'ONE_TIME' ? 'text-indigo-400 font-bold' : 'text-slate-500'}">${t.duration.replace('_', ' ')}</span>
+                      </td>
+                      <td class="py-3.5 text-emerald-400 font-bold">₹${t.amount}</td>
                       <td class="py-3.5">
                         ${t.has_proof ? `
                           <button onclick="viewProofModal('${t._id}', '${t.txn_id}')" class="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-bold text-[11px]">
@@ -1069,11 +922,23 @@
                           </button>
                         ` : '<span class="text-slate-500">No proof</span>'}
                       </td>
+                      <td class="py-3.5">
+                        ${t.status === 'PROCESSING' ? `
+                          <select id="slotSelect-${t._id}" class="px-3 py-1.5 rounded-xl bg-surface-950 border border-admin-border text-[11px] text-emerald-400">
+                            ${(t.available_slots || []).map(s => `
+                              <option value="${s._id}">${s.account_label} (${s.email})</option>
+                            `).join('')}
+                            ${!(t.available_slots && t.available_slots.length) ? '<option value="">✕ No slots available</option>' : ''}
+                          </select>
+                        ` : '<span class="text-slate-500">Bound & Assigned</span>'}
+                      </td>
                       <td class="py-3.5 text-right space-x-2">
                         ${t.status === 'PROCESSING' ? `
-                          <button onclick="confirmTransaction('${t._id}')" class="px-3 py-1 rounded-lg bg-emerald-500 text-gray-950 font-black">Confirm</button>
-                          <button onclick="rejectTransaction('${t._id}')" class="px-3 py-1 rounded-lg bg-rose-500/20 text-rose-400 font-bold">Reject</button>
-                        ` : '<span class="text-slate-600">Settled</span>'}
+                          <button onclick="confirmAndAssignTransaction('${t._id}')" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-gray-950 font-black">Confirm & Assign</button>
+                          <button onclick="rejectTransaction('${t._id}')" class="px-3 py-1.5 rounded-lg bg-rose-500/20 text-rose-400 font-bold">Reject</button>
+                        ` : `
+                          <span class="px-2 py-0.5 rounded text-[10px] ${t.status === 'CONFIRMED' ? 'text-emerald-400 bg-emerald-500/10' : 'text-rose-400 bg-rose-500/10'}">${t.status}</span>
+                        `}
                       </td>
                     </tr>
                   `).join('')}
@@ -1091,7 +956,7 @@
       modal.classList.remove('hidden');
       modal.classList.add('flex');
 
-      content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono">Fetching screenshot from MongoDB Atlas...</div>';
+      content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono">Loading proof...</div>';
 
       try {
         const res = await fetch(`/api/admin/transactions/${txnDbId}/proof`, {
@@ -1099,14 +964,9 @@
         });
         const data = await res.json();
 
-        if (!data.proof_screenshot) {
-          content.innerHTML = '<div class="text-center py-8 text-rose-400">No screenshot data found.</div>';
-          return;
-        }
-
         content.innerHTML = `
           <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
-          <h3 class="text-base font-bold text-white mb-3 font-mono">Payment Proof Screenshot (${txnId})</h3>
+          <h3 class="text-base font-bold text-white mb-3 font-mono">Payment Proof (${txnId})</h3>
           <div class="rounded-2xl overflow-hidden glass max-h-[75vh] flex items-center justify-center bg-black/90 p-2">
             <img src="${data.proof_screenshot}" class="max-h-[70vh] w-auto object-contain rounded-xl shadow-2xl">
           </div>
@@ -1116,16 +976,25 @@
       }
     }
 
-    async function confirmTransaction(id) {
-      if (!confirm('Confirm payment and unlock credentials for customer?')) return;
+    async function confirmAndAssignTransaction(id) {
+      const selectEl = document.getElementById(`slotSelect-${id}`);
+      const slot_id = selectEl ? selectEl.value : null;
+
+      if (!confirm('Confirm this payment, bind the selected account slot, and activate the customer subscription?')) return;
+
       try {
-        const res = await fetch(`/api/admin/transactions/${id}/confirm`, {
+        const res = await fetch(`/api/admin/transactions/${id}/confirm-and-assign`, {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${state.adminToken}` }
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.adminToken}`
+          },
+          body: JSON.stringify({ slot_id })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        showToast('Payment confirmed! Digital items unlocked.');
+
+        showToast('Subscription activated and account slot bound!');
         renderAdminTransactions(document.getElementById('adminMainContent'));
       } catch (err) { showToast(err.message, 'error'); }
     }
@@ -1151,297 +1020,71 @@
     }
 
     // =========================================================================
-    // SYSTEM & INFRASTRUCTURE MONITOR
+    // ADMIN SUBSCRIPTIONS ENGINE DASHBOARD
     // =========================================================================
-    async function renderAdminSystemMonitor(container) {
-      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Running live infrastructure diagnostics & MongoDB ping...</div>';
-
-      try {
-        const res = await fetch('/api/admin/system/infrastructure', {
-          headers: { 'Authorization': `Bearer ${state.adminToken}` }
-        });
-        const data = await res.json();
-
-        container.innerHTML = `
-          <div class="space-y-8 pb-12 font-mono">
-            
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h1 class="text-xl font-black text-white font-sans">System & Infrastructure Monitor</h1>
-                <p class="text-xs text-slate-400">Live hardware profiling, database cluster metrics & runtime diagnostics</p>
-              </div>
-              <div class="flex items-center gap-2">
-                <button onclick="runSystemHealthCheck()" class="px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold hover:bg-emerald-500/20 transition-all">
-                  🩺 Run Full Health Check
-                </button>
-                <button onclick="switchAdminSection('system-monitor')" class="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold">
-                  ↻ Refresh
-                </button>
-              </div>
-            </div>
-
-            <!-- Core Infrastructure KPI Row -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              
-              <!-- RAM / Service Memory -->
-              <div class="admin-card rounded-2xl p-5 space-y-2">
-                <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
-                  <span>Service Memory (RSS)</span>
-                  <span class="text-emerald-400">● Normal</span>
-                </div>
-                <div class="text-2xl font-black text-white">${data.server.service_memory_rss_mb} MB</div>
-                <div class="w-full bg-surface-950 rounded-full h-1.5 overflow-hidden">
-                  <div class="bg-emerald-500 h-full rounded-full" style="width: ${Math.min(100, Math.round((data.server.service_memory_rss_mb / 512) * 100))}%"></div>
-                </div>
-                <div class="flex justify-between text-[9px] text-slate-500">
-                  <span>Heap: ${data.server.heap_used_mb}MB</span>
-                  <span>Container: ${data.server.os_mem_percent}% used</span>
-                </div>
-              </div>
-
-              <!-- Database Connection & Latency -->
-              <div class="admin-card rounded-2xl p-5 space-y-2">
-                <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
-                  <span>MongoDB Atlas Ping</span>
-                  <span class="text-emerald-400">● Connected</span>
-                </div>
-                <div class="text-2xl font-black text-emerald-400">${data.database.ping_latency_ms} ms</div>
-                <div class="w-full bg-surface-950 rounded-full h-1.5 overflow-hidden">
-                  <div class="bg-emerald-500 h-full rounded-full" style="width: ${Math.min(100, data.database.ping_latency_ms)}%"></div>
-                </div>
-                <div class="flex justify-between text-[9px] text-slate-500">
-                  <span>Collections: ${data.database.collections_count}</span>
-                  <span>Storage: ${data.database.storage_size_mb} MB</span>
-                </div>
-              </div>
-
-              <!-- Process Uptime -->
-              <div class="admin-card rounded-2xl p-5 space-y-2">
-                <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
-                  <span>Backend Uptime</span>
-                  <span class="text-emerald-400">● Live</span>
-                </div>
-                <div class="text-lg font-black text-white mt-1">${data.server.uptime_formatted}</div>
-                <div class="text-[9px] text-slate-500">Continuous uptime without restart</div>
-              </div>
-
-              <!-- Average API Latency & Error Rate -->
-              <div class="admin-card rounded-2xl p-5 space-y-2">
-                <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
-                  <span>Avg Latency / Errors</span>
-                  <span class="${data.server.error_rate_percent > 5 ? 'text-rose-400' : 'text-emerald-400'}">● ${data.server.error_rate_percent}% Err</span>
-                </div>
-                <div class="text-2xl font-black text-white">${data.server.avg_response_time_ms} ms</div>
-                <div class="text-[9px] text-slate-500">Sampled across ${data.server.request_count_tracked} live requests</div>
-              </div>
-
-            </div>
-
-            <!-- Hosting & Environment Container -->
-            <div class="admin-card rounded-3xl p-6 space-y-4">
-              <h3 class="text-xs font-bold uppercase text-slate-400">Hosting & Runtime Environment</h3>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-1">
-                  <span class="text-[10px] text-slate-500 uppercase block">Hosting Environment</span>
-                  <span class="text-white font-bold">${data.server.hosting.provider}</span>
-                </div>
-                <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-1">
-                  <span class="text-[10px] text-slate-500 uppercase block">Node.js Engine</span>
-                  <span class="text-white font-bold">${data.server.hosting.node_version} (${data.server.hosting.platform})</span>
-                </div>
-                <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-1">
-                  <span class="text-[10px] text-slate-500 uppercase block">Hosting Plan Memory Limit</span>
-                  <span class="text-slate-400 italic">Metric unavailable from provider</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Database Collections Table -->
-            <div class="admin-card rounded-3xl p-6 space-y-4">
-              <div class="flex justify-between items-center">
-                <h3 class="text-xs font-bold uppercase text-slate-400">MongoDB Collections Overview</h3>
-                <span class="text-[10px] text-emerald-400 font-mono">Data Size: ${data.database.data_size_mb} MB | Indexes: ${data.database.indexes_size_mb} MB</span>
-              </div>
-              <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs">
-                  <thead>
-                    <tr class="border-b border-admin-border text-slate-500">
-                      <th class="pb-2">Collection Name</th>
-                      <th class="pb-2">Document Count</th>
-                      <th class="pb-2 text-right">Cluster Status</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-admin-border">
-                    ${data.database.collections.map(c => `
-                      <tr>
-                        <td class="py-3 text-white font-bold">${c.name}</td>
-                        <td class="py-3 text-slate-300 font-bold">${c.count} records</td>
-                        <td class="py-3 text-right text-emerald-400">🟢 ${c.status}</td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- Recent API Endpoints Profiler -->
-            <div class="admin-card rounded-3xl p-6 space-y-4">
-              <h3 class="text-xs font-bold uppercase text-slate-400">Recent API Requests & Latency Profiler</h3>
-              <div class="space-y-2">
-                ${data.recent_api_metrics.map(req => `
-                  <div class="p-3 rounded-2xl bg-surface-950 border border-admin-border text-xs flex justify-between items-center">
-                    <div class="flex items-center gap-3">
-                      <span class="px-2 py-0.5 rounded text-[10px] font-bold ${req.method === 'POST' ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'}">${req.method}</span>
-                      <span class="text-white">${req.endpoint}</span>
-                    </div>
-                    <div class="flex items-center gap-4">
-                      <span class="font-bold ${req.statusCode >= 400 ? 'text-rose-400' : 'text-emerald-400'}">${req.statusCode}</span>
-                      <span class="text-slate-400">${req.responseTime} ms</span>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-
-          </div>
-        `;
-      } catch (err) {
-        container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">Failed to load system diagnostics: ${err.message}</div>`;
-      }
-    }
-
-    async function runSystemHealthCheck() {
-      const modal = document.getElementById('globalModal');
-      const content = document.getElementById('globalModalContent');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-
-      content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono animate-pulse">Running active end-to-end subsystem health checks...</div>';
-
-      try {
-        const res = await fetch('/api/admin/system/health-check', {
-          headers: { 'Authorization': `Bearer ${state.adminToken}` }
-        });
-        const data = await res.json();
-        const c = data.checks;
-
-        content.innerHTML = `
-          <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
-          <div class="space-y-5 font-mono">
-            <div>
-              <h3 class="text-base font-bold text-white font-sans">Full Subsystem Health Results</h3>
-              <p class="text-xs text-slate-400">Timestamp: ${new Date(data.timestamp).toLocaleTimeString()}</p>
-            </div>
-
-            <div class="space-y-2.5 text-xs">
-              <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
-                <span>Frontend Layer</span>
-                <span class="text-emerald-400 font-bold">🟢 ${c.frontend.status} (${c.frontend.latency_ms}ms)</span>
-              </div>
-              <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
-                <span>Backend Express Engine</span>
-                <span class="text-emerald-400 font-bold">🟢 ${c.backend.status} (${c.backend.uptime_sec}s uptime)</span>
-              </div>
-              <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
-                <span>MongoDB Atlas Cluster</span>
-                <span class="${c.database.status === 'Connected' ? 'text-emerald-400' : 'text-rose-400'} font-bold">
-                  ${c.database.status === 'Connected' ? '🟢 Connected (' + c.database.latency_ms + 'ms ping)' : '🔴 ' + c.database.status}
-                </span>
-              </div>
-              <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
-                <span>JWT Authentication & Encryption</span>
-                <span class="text-emerald-400 font-bold">🟢 Operational (${c.auth_service.algorithm})</span>
-              </div>
-              <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
-                <span>Digital Delivery Stock Queue</span>
-                <span class="${c.digital_delivery.stock_ready ? 'text-emerald-400' : 'text-amber-400'} font-bold">
-                  ${c.digital_delivery.stock_ready ? '🟢 Ready (' + c.digital_delivery.available_stock + ' keys in stock)' : '🟡 Stock Low (0 units)'}
-                </span>
-              </div>
-            </div>
-
-            <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="w-full py-3.5 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider font-sans">
-              Done
-            </button>
-          </div>
-        `;
-      } catch (err) {
-        content.innerHTML = `<div class="text-center py-8 text-rose-400 font-mono">Health Check Error: ${err.message}</div>`;
-      }
-    }
-
-    async function renderAdminPaymentSettings(container) {
-      container.innerHTML = '<div class="text-center py-12 text-slate-500 font-mono">Loading payment configurations...</div>';
-      const res = await fetch('/api/admin/payment-settings', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
-      const s = await res.json();
+    async function renderAdminSubscriptions(container) {
+      container.innerHTML = '<div class="text-center py-12 text-slate-500 font-mono">Loading active subscriptions...</div>';
+      const res = await fetch('/api/admin/subscriptions', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+      const data = await res.json();
 
       container.innerHTML = `
-        <div class="max-w-3xl space-y-6">
-          <div>
-            <h2 class="text-lg font-black text-white">Payment Gateway Settings</h2>
-            <p class="text-xs text-slate-400">Configure UPI and Crypto details displayed to customers</p>
+        <div class="space-y-6">
+          <div class="flex justify-between items-center">
+            <div>
+              <h2 class="text-lg font-black text-white font-sans">Active & Historical Customer Subscriptions</h2>
+              <p class="text-xs text-slate-400 font-mono">Real-time calendar start & expiration dates</p>
+            </div>
           </div>
 
-          <form onsubmit="saveAdminPaymentSettings(event)" class="space-y-6 text-xs">
-            <div class="admin-card rounded-3xl p-6 space-y-4">
-              <h3 class="font-bold uppercase text-emerald-400 font-mono">1. UPI Configuration</h3>
-              <div class="space-y-3">
-                <input type="text" id="admUpiId" required value="${s.upi_id || ''}" placeholder="UPI ID (e.g. merchant@okaxis)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
-                <input type="text" id="admUpiName" required value="${s.upi_name || ''}" placeholder="Payee Name" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
-                <input type="text" id="admUpiQr" required value="${s.upi_qr_url || ''}" placeholder="QR Code URL" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
-                <textarea id="admUpiInst" rows="3" placeholder="Instructions" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">${s.upi_instructions || ''}</textarea>
-              </div>
-            </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="admin-card rounded-2xl p-5"><span class="text-[10px] text-slate-500 uppercase font-mono">Active Subscriptions</span><div class="text-2xl font-black text-emerald-400 font-mono">${data.totalActive}</div></div>
+            <div class="admin-card rounded-2xl p-5"><span class="text-[10px] text-slate-500 uppercase font-mono">Expired Subscriptions</span><div class="text-2xl font-black text-rose-400 font-mono">${data.totalExpired}</div></div>
+          </div>
 
-            <div class="admin-card rounded-3xl p-6 space-y-4">
-              <h3 class="font-bold uppercase text-teal-400 font-mono">2. Crypto Configuration</h3>
-              <div class="space-y-3">
-                <div class="grid grid-cols-2 gap-3">
-                  <input type="text" id="admCryptoCurr" required value="${s.crypto_currency || 'USDT'}" placeholder="Currency" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
-                  <input type="text" id="admCryptoNet" required value="${s.crypto_network || 'TRC20'}" placeholder="Network" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
-                </div>
-                <input type="text" id="admCryptoWallet" required value="${s.crypto_wallet_address || ''}" placeholder="Wallet Address" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
-                <input type="text" id="admCryptoQr" required value="${s.crypto_qr_url || ''}" placeholder="Crypto QR Code URL" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
-                <textarea id="admCryptoInst" rows="3" placeholder="Instructions" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">${s.crypto_instructions || ''}</textarea>
-              </div>
+          <div class="admin-card rounded-3xl p-6">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono min-w-[700px]">
+                <thead>
+                  <tr class="border-b border-admin-border text-slate-500">
+                    <th class="pb-3">Customer</th>
+                    <th class="pb-3">Product</th>
+                    <th class="pb-3">Assigned Slot</th>
+                    <th class="pb-3">Duration</th>
+                    <th class="pb-3">Started</th>
+                    <th class="pb-3">Expires At</th>
+                    <th class="pb-3 text-right">Live Status</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-admin-border">
+                  ${data.subscriptions.map(s => {
+                    const isLive = new Date(s.expires_at) > new Date() && s.status === 'ACTIVE';
+                    return `
+                      <tr>
+                        <td class="py-3.5 text-white font-bold">${s.user_id?.name || 'Customer'} (${s.user_id?.email || ''})</td>
+                        <td class="py-3.5 text-slate-300">${s.product_name}</td>
+                        <td class="py-3.5 text-emerald-400">${s.inventory_slot_id?.account_label || 'Slot'}</td>
+                        <td class="py-3.5">${s.duration.replace('_', ' ')}</td>
+                        <td class="py-3.5 text-slate-400">${new Date(s.start_at).toLocaleDateString()}</td>
+                        <td class="py-3.5 text-slate-300 font-bold">${new Date(s.expires_at).toLocaleDateString()}</td>
+                        <td class="py-3.5 text-right">
+                          <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${isLive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">
+                            ${isLive ? '🟢 ACTIVE' : '⚪ EXPIRED'}
+                          </span>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
             </div>
-
-            <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase tracking-wider">
-              Save Payment Settings
-            </button>
-          </form>
+          </div>
         </div>
       `;
     }
 
-    async function saveAdminPaymentSettings(e) {
-      e.preventDefault();
-      const payload = {
-        upi_id: document.getElementById('admUpiId').value,
-        upi_name: document.getElementById('admUpiName').value,
-        upi_qr_url: document.getElementById('admUpiQr').value,
-        upi_instructions: document.getElementById('admUpiInst').value,
-        crypto_currency: document.getElementById('admCryptoCurr').value,
-        crypto_network: document.getElementById('admCryptoNet').value,
-        crypto_wallet_address: document.getElementById('admCryptoWallet').value,
-        crypto_qr_url: document.getElementById('admCryptoQr').value,
-        crypto_instructions: document.getElementById('admCryptoInst').value
-      };
-
-      try {
-        const res = await fetch('/api/admin/payment-settings', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${state.adminToken}`
-          },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) throw new Error((await res.json()).error);
-        showToast('Payment settings saved!');
-      } catch (err) { showToast(err.message, 'error'); }
-    }
-
+    // =========================================================================
+    // ADMIN PRODUCT STUDIO & INVENTORY SLOTS MANAGER
+    // =========================================================================
     async function renderAdminProductsStudio(container) {
       const res = await fetch('/api/admin/products', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
       const products = await res.json();
@@ -1449,21 +1092,42 @@
       container.innerHTML = `
         <div class="space-y-6">
           <div class="flex justify-between items-center">
-            <h2 class="text-lg font-black text-white">Product Studio</h2>
-            <button onclick="openProductFormModal('new')" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase">+ Add Product</button>
+            <h2 class="text-lg font-black text-white font-sans">Product Studio & Account Inventory</h2>
+            <button onclick="openNewProductModal()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase font-sans">+ Add Product</button>
           </div>
 
           <div class="admin-card rounded-3xl p-6">
-            <table class="w-full text-left text-xs font-mono">
-              <thead><tr class="border-b border-admin-border text-slate-500"><th class="pb-2">Product</th><th class="pb-2">Price</th><th class="pb-2">Stock</th><th class="pb-2 text-right">Actions</th></tr></thead>
+            <table class="w-full text-left text-xs font-mono min-w-[650px]">
+              <thead>
+                <tr class="border-b border-admin-border text-slate-500">
+                  <th class="pb-2">Product</th>
+                  <th class="pb-2">Type</th>
+                  <th class="pb-2">Pricing</th>
+                  <th class="pb-2">Inventory Slots</th>
+                  <th class="pb-2 text-right">Actions</th>
+                </tr>
+              </thead>
               <tbody class="divide-y divide-admin-border">
                 ${products.map(p => `
                   <tr>
                     <td class="py-3 text-white font-bold">${p.name}</td>
-                    <td class="py-3">₹${p.sale_price}</td>
-                    <td class="py-3 ${p.stock_count > 0 ? 'text-emerald-400' : 'text-rose-400'}">${p.stock_count} units</td>
+                    <td class="py-3">
+                      <span class="px-2 py-0.5 rounded text-[10px] ${p.product_type === 'SUBSCRIPTION' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-emerald-500/10 text-emerald-400'}">
+                        ${p.product_type}
+                      </span>
+                    </td>
+                    <td class="py-3">
+                      ${p.product_type === 'SUBSCRIPTION' 
+                        ? `1M: ₹${p.subscription_pricing.one_month} | 6M: ₹${p.subscription_pricing.six_months}` 
+                        : `₹${p.sale_price}`
+                      }
+                    </td>
+                    <td class="py-3">
+                      <span class="text-emerald-400 font-bold">${p.available_slots || 0} Available</span>
+                      <span class="text-slate-500"> / ${p.total_slots || 0} Total</span>
+                    </td>
                     <td class="py-3 text-right space-x-2">
-                      <button onclick="openProductInventoryModal('${p._id}', '${p.name.replace(/'/g, "\\'")}', '${p.delivery_type}')" class="text-teal-400">+ Stock</button>
+                      <button onclick="openManageSlotsModal('${p._id}', '${p.name.replace(/'/g, "\\'")}')" class="text-teal-400 font-bold">+ Manage Slots</button>
                       <button onclick="deleteAdminProduct('${p._id}')" class="text-rose-400">Delete</button>
                     </td>
                   </tr>
@@ -1475,7 +1139,7 @@
       `;
     }
 
-    function openProductFormModal(id) {
+    function openNewProductModal() {
       const modal = document.getElementById('globalModal');
       const content = document.getElementById('globalModalContent');
       modal.classList.remove('hidden');
@@ -1483,108 +1147,205 @@
 
       content.innerHTML = `
         <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400">✕</button>
-        <h3 class="text-base font-black text-white mb-4">Add Digital Product</h3>
-        <form onsubmit="submitAdminProduct(event)" class="space-y-3 text-xs">
+        <h3 class="text-base font-black text-white mb-4">Create Product</h3>
+        <form onsubmit="submitNewAdminProduct(event)" class="space-y-3 text-xs">
           <input type="text" id="npTitle" required placeholder="Product Title" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
           <input type="text" id="npShort" required placeholder="Short Tagline" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-          <textarea id="npFull" rows="3" placeholder="Full Description" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white"></textarea>
-          <div class="grid grid-cols-2 gap-3">
-            <input type="number" id="npPrice" required placeholder="Sale Price (₹)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-            <select id="npDeliv" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-              <option value="EMAIL_PASSWORD">Email + Password</option>
-              <option value="LICENSE_KEY">License Key</option>
-              <option value="STANDARD_LINK">Standard Link</option>
+          
+          <div>
+            <label class="text-[10px] text-slate-400 font-bold uppercase block mb-1">Product Type</label>
+            <select id="npType" onchange="toggleProductTypeForm(this.value)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
+              <option value="ONE_TIME">One-Time Digital Good</option>
+              <option value="SUBSCRIPTION">Subscription Product (1M / 6M / 1Y)</option>
             </select>
           </div>
+
+          <div id="subPricesContainer" class="hidden grid grid-cols-3 gap-2">
+            <input type="number" id="npPrice1M" placeholder="1 Month (₹)" value="199" class="px-3 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white">
+            <input type="number" id="npPrice6M" placeholder="6 Months (₹)" value="899" class="px-3 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white">
+            <input type="number" id="npPrice1Y" placeholder="1 Year (₹)" value="1499" class="px-3 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white">
+          </div>
+
+          <div id="oneTimePriceContainer">
+            <input type="number" id="npPrice" placeholder="Sale Price (₹)" value="499" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
+          </div>
+
           <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black uppercase">Create Product</button>
         </form>
       `;
     }
 
-    async function submitAdminProduct(e) {
+    function toggleProductTypeForm(val) {
+      if (val === 'SUBSCRIPTION') {
+        document.getElementById('subPricesContainer').classList.remove('hidden');
+        document.getElementById('oneTimePriceContainer').classList.add('hidden');
+      } else {
+        document.getElementById('subPricesContainer').classList.add('hidden');
+        document.getElementById('oneTimePriceContainer').classList.remove('hidden');
+      }
+    }
+
+    async function submitNewAdminProduct(e) {
       e.preventDefault();
+      const pType = document.getElementById('npType').value;
+      const payload = {
+        name: document.getElementById('npTitle').value,
+        short_description: document.getElementById('npShort').value,
+        product_type: pType,
+        sale_price: pType === 'SUBSCRIPTION' ? Number(document.getElementById('npPrice1M').value) : Number(document.getElementById('npPrice').value),
+        original_price: pType === 'SUBSCRIPTION' ? Number(document.getElementById('npPrice1M').value) * 1.5 : Number(document.getElementById('npPrice').value) * 1.5,
+        subscription_pricing: {
+          one_month: Number(document.getElementById('npPrice1M').value),
+          six_months: Number(document.getElementById('npPrice6M').value),
+          one_year: Number(document.getElementById('npPrice1Y').value)
+        }
+      };
+
       try {
         const res = await fetch('/api/admin/products', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
-          body: JSON.stringify({
-            name: document.getElementById('npTitle').value,
-            short_description: document.getElementById('npShort').value,
-            description: document.getElementById('npFull').value,
-            sale_price: Number(document.getElementById('npPrice').value),
-            original_price: Number(document.getElementById('npPrice').value) * 1.5,
-            delivery_type: document.getElementById('npDeliv').value
-          })
-        });
-        if (!res.ok) throw new Error((await res.json()).error);
-        showToast('Product added!');
-        document.getElementById('globalModal').classList.add('hidden');
-        renderAdminProductsStudio(document.getElementById('adminMainContent'));
-      } catch (err) { showToast(err.message, 'error'); }
-    }
-
-    function openProductInventoryModal(productId, productName, deliveryType) {
-      const modal = document.getElementById('globalModal');
-      const content = document.getElementById('globalModalContent');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-
-      let fields = '';
-      if (deliveryType === 'EMAIL_PASSWORD') {
-        fields = `
-          <input type="email" id="invEm" required placeholder="Account Email" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-          <input type="text" id="invPw" required placeholder="Account Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">
-        `;
-      } else if (deliveryType === 'LICENSE_KEY') {
-        fields = `<input type="text" id="invLk" required placeholder="License Key" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white font-mono">`;
-      } else {
-        fields = `<input type="url" id="invUrl" required placeholder="Product URL" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-white">`;
-      }
-
-      content.innerHTML = `
-        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400">✕</button>
-        <h3 class="text-base font-bold text-white mb-2">Attach Stock: ${productName}</h3>
-        <form onsubmit="submitInventoryStock(event, '${productId}', '${deliveryType}')" class="space-y-3 text-xs">
-          ${fields}
-          <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black uppercase">Attach Unit</button>
-        </form>
-      `;
-    }
-
-    async function submitInventoryStock(e, productId, deliveryType) {
-      e.preventDefault();
-      const payload = { delivery_type: deliveryType };
-      if (deliveryType === 'EMAIL_PASSWORD') {
-        payload.email = document.getElementById('invEm').value;
-        payload.password = document.getElementById('invPw').value;
-      } else if (deliveryType === 'LICENSE_KEY') {
-        payload.license_key = document.getElementById('invLk').value;
-      } else {
-        payload.delivery_url = document.getElementById('invUrl').value;
-      }
-
-      try {
-        const res = await fetch(`/api/admin/inventory/${productId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
           body: JSON.stringify(payload)
         });
         if (!res.ok) throw new Error((await res.json()).error);
-        showToast('Stock unit attached!');
+        showToast('Product created!');
         document.getElementById('globalModal').classList.add('hidden');
         renderAdminProductsStudio(document.getElementById('adminMainContent'));
       } catch (err) { showToast(err.message, 'error'); }
     }
 
+    async function openManageSlotsModal(productId, productName) {
+      const modal = document.getElementById('globalModal');
+      const content = document.getElementById('globalModalContent');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      content.innerHTML = '<div class="text-center py-8 text-slate-400 font-mono">Loading inventory slots...</div>';
+
+      try {
+        const res = await fetch(`/api/admin/products/${productId}/slots`, {
+          headers: { 'Authorization': `Bearer ${state.adminToken}` }
+        });
+        const slots = await res.json();
+
+        content.innerHTML = `
+          <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400">✕</button>
+          <h3 class="text-base font-black text-white mb-1">${productName}</h3>
+          <p class="text-xs text-slate-400 font-mono mb-4">Manage Credential Slots (${slots.length} Total)</p>
+
+          <!-- Add New Slot Form -->
+          <form onsubmit="submitNewSlot(event, '${productId}', '${productName}')" class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-2 mb-4 text-xs">
+            <span class="text-[10px] font-bold uppercase text-emerald-400">+ Add Account Slot</span>
+            <div class="grid grid-cols-3 gap-2">
+              <input type="text" id="slotLabel" placeholder="Label (e.g. Account #1)" required class="px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white">
+              <input type="email" id="slotEmail" placeholder="Email / Username" required class="px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white">
+              <input type="text" id="slotPass" placeholder="Password" required class="px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white">
+            </div>
+            <button type="submit" class="w-full py-2 rounded-xl bg-emerald-500 text-gray-950 font-bold uppercase text-[10px]">Attach Slot</button>
+          </form>
+
+          <!-- Slots List -->
+          <div class="space-y-2 max-h-60 overflow-y-auto custom-scroll">
+            ${slots.map(s => `
+              <div class="p-3 rounded-xl bg-surface-950 border border-admin-border flex justify-between items-center text-xs font-mono">
+                <div>
+                  <span class="font-bold text-white">${s.account_label}</span>
+                  <span class="text-slate-400 block text-[10px]">${s.email} | Pass: ${s.password}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 rounded text-[9px] ${s.status === 'AVAILABLE' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-indigo-500/10 text-indigo-400'}">${s.status}</span>
+                  <button onclick="deleteSlot('${s._id}', '${productId}', '${productName}')" class="text-rose-400 text-xs">✕</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } catch (err) { content.innerHTML = `<div class="text-center py-6 text-rose-400">${err.message}</div>`; }
+    }
+
+    async function submitNewSlot(e, productId, productName) {
+      e.preventDefault();
+      try {
+        const res = await fetch(`/api/admin/products/${productId}/slots`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
+          body: JSON.stringify({
+            account_label: document.getElementById('slotLabel').value,
+            email: document.getElementById('slotEmail').value,
+            password: document.getElementById('slotPass').value
+          })
+        });
+        if (!res.ok) throw new Error((await res.json()).error);
+        showToast('Slot attached!');
+        openManageSlotsModal(productId, productName);
+        renderAdminProductsStudio(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function deleteSlot(slotId, productId, productName) {
+      if (!confirm('Delete this account slot?')) return;
+      try {
+        await fetch(`/api/admin/slots/${slotId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.adminToken}` }
+        });
+        showToast('Slot deleted');
+        openManageSlotsModal(productId, productName);
+        renderAdminProductsStudio(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
     async function deleteAdminProduct(id) {
-      if (!confirm('Delete product?')) return;
+      if (!confirm('Delete product and all its slots?')) return;
       try {
         await fetch(`/api/admin/products/${id}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${state.adminToken}` }
         });
-        showToast('Product deleted');
+        showToast('Deleted');
         renderAdminProductsStudio(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function renderAdminPaymentSettings(container) {
+      const res = await fetch('/api/admin/payment-settings', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+      const s = await res.json();
+
+      container.innerHTML = `
+        <div class="max-w-2xl space-y-6">
+          <h2 class="text-lg font-black text-white">Payment Settings</h2>
+          <form onsubmit="saveAdminPaymentSettings(event)" class="space-y-4 text-xs">
+            <div class="admin-card rounded-3xl p-6 space-y-3">
+              <h3 class="font-bold text-emerald-400">UPI Settings</h3>
+              <input type="text" id="admUpiId" required value="${s.upi_id || ''}" placeholder="UPI ID" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
+              <input type="text" id="admUpiQr" required value="${s.upi_qr_url || ''}" placeholder="QR Code URL" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
+            </div>
+            <div class="admin-card rounded-3xl p-6 space-y-3">
+              <h3 class="font-bold text-teal-400">Crypto Settings</h3>
+              <input type="text" id="admCryptoWallet" required value="${s.crypto_wallet_address || ''}" placeholder="Wallet Address" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
+              <input type="text" id="admCryptoQr" required value="${s.crypto_qr_url || ''}" placeholder="QR Code URL" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
+            </div>
+            <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase">Save Settings</button>
+          </form>
+        </div>
+      `;
+    }
+
+    async function saveAdminPaymentSettings(e) {
+      e.preventDefault();
+      try {
+        const res = await fetch('/api/admin/payment-settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
+          body: JSON.stringify({
+            upi_id: document.getElementById('admUpiId').value,
+            upi_qr_url: document.getElementById('admUpiQr').value,
+            crypto_wallet_address: document.getElementById('admCryptoWallet').value,
+            crypto_qr_url: document.getElementById('admCryptoQr').value
+          })
+        });
+        if (!res.ok) throw new Error((await res.json()).error);
+        showToast('Payment settings saved!');
       } catch (err) { showToast(err.message, 'error'); }
     }
 
