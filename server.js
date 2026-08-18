@@ -3,41 +3,20 @@ const express = require('express');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 
 const app = express();
-app.use(express.json({ limit: '25mb' }));
-app.use(express.urlencoded({ extended: true, limit: '25mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
-
-// Ensure upload & storage directories exist
-const uploadDir = path.join(__dirname, 'public', 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Multer Storage Configuration
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_'));
-  }
-});
-const upload = multer({
-  storage,
-  limits: { fileSize: 15 * 1024 * 1024 } // 15MB
-});
 
 const JWT_SECRET = process.env.JWT_SECRET || 'nexus_digital_super_secret_jwt_2026_key';
 
 // ----------------------------------------------------
-// LIVE REAL-TIME PRESENCE & ACTIVITY TRACKER (IN-MEMORY)
+// REAL-TIME PRESENCE & ACTIVITY TRACKER
 // ----------------------------------------------------
-const activeSessions = new Map(); // sessionId -> { page, timestamp }
-const activityFeed = []; // Array of recent live events
+const activeSessions = new Map();
+const activityFeed = [];
 
 function recordActivity(type, text, meta = {}) {
   const item = {
@@ -51,7 +30,6 @@ function recordActivity(type, text, meta = {}) {
   if (activityFeed.length > 50) activityFeed.pop();
 }
 
-// Clean inactive sessions older than 35 seconds
 setInterval(() => {
   const now = Date.now();
   for (const [sessionId, data] of activeSessions.entries()) {
@@ -92,7 +70,6 @@ const InventoryItemSchema = new mongoose.Schema({
   delivery_url: { type: String, default: '' },
   license_key: { type: String, default: '' },
   custom_text: { type: String, default: '' },
-  file_reference: { type: String, default: '' },
   status: { type: String, enum: ['Available', 'Reserved', 'Sold', 'Disabled'], default: 'Available' },
   assigned_order_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', default: null },
   created_at: { type: Date, default: Date.now }
@@ -102,8 +79,6 @@ const ProductSchema = new mongoose.Schema({
   name: { type: String, required: true },
   short_description: { type: String, default: '' },
   description: { type: String, default: '' },
-  category: { type: String, default: 'Digital Goods' },
-  tags: [String],
   sku: { type: String, required: true, unique: true },
   original_price: { type: Number, required: true },
   sale_price: { type: Number, required: true },
@@ -114,10 +89,6 @@ const ProductSchema = new mongoose.Schema({
     enum: ['EMAIL_PASSWORD', 'MOBILE_PASSWORD', 'STANDARD_LINK', 'DOWNLOADABLE_FILE', 'LICENSE_KEY', 'CUSTOM_TEXT'], 
     required: true 
   },
-  features: [{ type: String }],
-  whats_included: [{ type: String }],
-  specifications: [{ label: String, value: String }],
-  faqs: [{ question: String, answer: String }],
   status: { type: String, enum: ['active', 'draft', 'archived', 'disabled'], default: 'active' },
   created_at: { type: Date, default: Date.now },
   sales_count: { type: Number, default: 0 }
@@ -165,7 +136,6 @@ const OrderSchema = new mongoose.Schema({
     name: String,
     price: Number,
     delivery_type: String,
-    // Sensitive delivery data: only attached or revealed upon transaction confirmation
     delivered_data: { type: mongoose.Schema.Types.Mixed, default: null }
   }],
   subtotal: { type: Number, required: true },
@@ -203,9 +173,6 @@ const Transaction = mongoose.model('Transaction', TransactionSchema);
 const Order = mongoose.model('Order', OrderSchema);
 const PaymentSettings = mongoose.model('PaymentSettings', PaymentSettingsSchema);
 
-// ----------------------------------------------------
-// DATABASE INITIAL SEEDING
-// ----------------------------------------------------
 async function initializeSystem() {
   try {
     const existingAdmin = await Admin.findOne({ username: 'Aryan' });
@@ -213,14 +180,10 @@ async function initializeSystem() {
       const salt = await bcrypt.genSalt(10);
       const hash = await bcrypt.hash('5669', salt);
       await Admin.create({ username: 'Aryan', password_hash: hash });
-      console.log('✓ Initialized SuperAdmin: Aryan / 5669');
     }
 
     const existingPaymentSettings = await PaymentSettings.findOne();
-    if (!existingPaymentSettings) {
-      await PaymentSettings.create({});
-      console.log('✓ Initialized Payment Settings (UPI & Crypto)');
-    }
+    if (!existingPaymentSettings) await PaymentSettings.create({});
 
     const existingCoupon = await Coupon.findOne({ code: 'SAVE20' });
     if (!existingCoupon) {
@@ -239,76 +202,24 @@ async function initializeSystem() {
       const netflix = await Product.create({
         name: 'Netflix 4K UHD 1-Month Private Profile',
         short_description: 'Dedicated PIN-protected UHD profile on genuine account.',
-        description: 'Enjoy Ultra HD 4K streaming across all your devices including Smart TVs, Phones, PCs, and Tablets. Private PIN lock ensures your profile stays private.',
-        category: 'Accounts',
-        tags: ['streaming', 'netflix', 'uhd', 'account', '4k'],
+        description: 'Enjoy Ultra HD 4K streaming across all your devices including Smart TVs, Phones, PCs, and Tablets.',
         sku: 'NFLX-4K-01',
         original_price: 799,
         sale_price: 199,
         discount_percentage: 75,
-        images: [
-          'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=1000&auto=format&fit=crop&q=80',
-          'https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?w=1000&auto=format&fit=crop&q=80'
-        ],
-        delivery_type: 'EMAIL_PASSWORD',
-        features: ['Ultra HD 4K Video Quality', 'Private PIN Lock Profile', 'Works on All Smart Devices', '30-Day Instant Replacement Warranty'],
-        whats_included: ['1x Private Profile Credentials', 'Exclusive PIN code', 'Quick Login Guide'],
-        specifications: [
-          { label: 'Quality', value: '4K HDR / Dolby Vision' },
-          { label: 'Duration', value: '30 Days' },
-          { label: 'Screen Limit', value: '1 Screen (Private Profile)' },
-          { label: 'Delivery', value: 'Instant Manual Approval' }
-        ],
-        faqs: [
-          { question: 'When do I get my credentials?', answer: 'Immediately after the admin confirms your payment screenshot.' }
-        ]
+        images: ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=1000&auto=format&fit=crop&q=80'],
+        delivery_type: 'EMAIL_PASSWORD'
       });
 
       await InventoryItem.create([
-        { product_id: netflix._id, delivery_type: 'EMAIL_PASSWORD', email: 'vip_stream01@nexus.io', password: 'VaultStream#2026', status: 'Available' },
-        { product_id: netflix._id, delivery_type: 'EMAIL_PASSWORD', email: 'vip_stream02@nexus.io', password: 'StreamBeast!889', status: 'Available' }
-      ]);
-
-      const winKey = await Product.create({
-        name: 'Windows 11 Pro Genuine OEM Key',
-        short_description: 'Lifetime activation for 1 PC with global Microsoft updates.',
-        description: 'Official OEM activation key for Microsoft Windows 11 Professional 64-bit/32-bit. Unlocks BitLocker encryption, Remote Desktop, and full enterprise security suite.',
-        category: 'License Keys',
-        tags: ['windows', 'microsoft', 'os', 'key', 'license'],
-        sku: 'WIN-11-PRO',
-        original_price: 3999,
-        sale_price: 499,
-        discount_percentage: 87,
-        images: [
-          'https://images.unsplash.com/photo-1629654297299-c8506221ca97?w=1000&auto=format&fit=crop&q=80',
-          'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=1000&auto=format&fit=crop&q=80'
-        ],
-        delivery_type: 'LICENSE_KEY',
-        features: ['Lifetime Permanent Activation', 'Online Direct Microsoft Activation', 'Global Multilingual Support', 'Full Security & Windows Updates'],
-        whats_included: ['1x 25-Digit License Key', 'Step-by-step Official Activation Guide'],
-        specifications: [
-          { label: 'Edition', value: 'Windows 11 Professional' },
-          { label: 'Architecture', value: '32/64 Bit Supported' },
-          { label: 'Validity', value: 'Lifetime / Permanent' }
-        ],
-        faqs: [
-          { question: 'Is this genuine?', answer: 'Yes, keys activate directly with Microsoft validation servers.' }
-        ]
-      });
-
-      await InventoryItem.create([
-        { product_id: winKey._id, delivery_type: 'LICENSE_KEY', license_key: 'W269N-WFGWX-YVC9B-4J6C9-T83GX', status: 'Available' },
-        { product_id: winKey._id, delivery_type: 'LICENSE_KEY', license_key: 'MH37W-N47XK-V7XM9-C7227-GCQG9', status: 'Available' }
+        { product_id: netflix._id, delivery_type: 'EMAIL_PASSWORD', email: 'vip_stream01@nexus.io', password: 'VaultStream#2026', status: 'Available' }
       ]);
     }
   } catch (err) {
-    console.error('Initialization error:', err.message);
+    console.error('Init error:', err.message);
   }
 }
 
-// ----------------------------------------------------
-// AUTHENTICATION MIDDLEWARES
-// ----------------------------------------------------
 function authCustomer(req, res, next) {
   const authHeader = req.headers['authorization'];
   if (!authHeader) return res.status(401).json({ error: 'Authentication required' });
@@ -319,7 +230,7 @@ function authCustomer(req, res, next) {
     req.user = decoded;
     next();
   } catch (err) {
-    return res.status(401).json({ error: 'Invalid or expired customer session' });
+    return res.status(401).json({ error: 'Invalid session' });
   }
 }
 
@@ -337,26 +248,14 @@ function authAdmin(req, res, next) {
   }
 }
 
-// ----------------------------------------------------
-// PRESENCE & HEARTBEAT API
-// ----------------------------------------------------
 app.post('/api/presence/heartbeat', (req, res) => {
   const { sessionId, page, action } = req.body;
   if (sessionId) {
-    activeSessions.set(sessionId, {
-      page: page || 'home',
-      timestamp: Date.now()
-    });
+    activeSessions.set(sessionId, { page: page || 'home', timestamp: Date.now() });
   }
-  if (action) {
-    recordActivity('visitor_action', action);
-  }
+  if (action) recordActivity('visitor_action', action);
   res.json({ status: 'ok' });
 });
-
-// ----------------------------------------------------
-// PUBLIC STORE APIS
-// ----------------------------------------------------
 
 app.get('/api/payment-methods', async (req, res) => {
   try {
@@ -369,24 +268,17 @@ app.get('/api/payment-methods', async (req, res) => {
 
 app.get('/api/products', async (req, res) => {
   try {
-    const { search, sort } = req.query;
+    const { search } = req.query;
     let query = { status: 'active' };
-
     if (search) {
       const regex = new RegExp(search, 'i');
       query.$or = [{ name: regex }, { description: regex }, { sku: regex }];
     }
-
-    let sortOption = { created_at: -1 };
-    if (sort === 'price_asc') sortOption = { sale_price: 1 };
-    if (sort === 'price_desc') sortOption = { sale_price: -1 };
-
-    const products = await Product.find(query).sort(sortOption);
+    const products = await Product.find(query).sort({ created_at: -1 });
     const withStock = await Promise.all(products.map(async (p) => {
       const stock = await InventoryItem.countDocuments({ product_id: p._id, status: 'Available' });
       return { ...p.toObject(), in_stock: stock > 0, stock_count: stock };
     }));
-
     res.json(withStock);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -398,8 +290,7 @@ app.get('/api/products/:id', async (req, res) => {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ error: 'Product not found' });
     const stock = await InventoryItem.countDocuments({ product_id: product._id, status: 'Available' });
-    const related = await Product.find({ _id: { $ne: product._id }, status: 'active' }).limit(4);
-    res.json({ ...product.toObject(), in_stock: stock > 0, stock_count: stock, related });
+    res.json({ ...product.toObject(), in_stock: stock > 0, stock_count: stock });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -408,50 +299,29 @@ app.get('/api/products/:id', async (req, res) => {
 app.post('/api/cart/validate-coupon', async (req, res) => {
   try {
     const { code, subtotal } = req.body;
-    if (!code) return res.status(400).json({ error: 'Coupon code required' });
-
     const coupon = await Coupon.findOne({ code: code.toUpperCase().trim(), status: 'active' });
     if (!coupon) return res.status(404).json({ error: 'Invalid coupon' });
+    if (subtotal < coupon.min_purchase) return res.status(400).json({ error: `Minimum purchase of ₹${coupon.min_purchase} required` });
 
-    if (subtotal < coupon.min_purchase) {
-      return res.status(400).json({ error: `Minimum purchase of ₹${coupon.min_purchase} required` });
-    }
-
-    let discount = coupon.discount_type === 'percentage' 
-      ? (subtotal * coupon.discount_value) / 100 
-      : coupon.discount_value;
-    
+    let discount = coupon.discount_type === 'percentage' ? (subtotal * coupon.discount_value) / 100 : coupon.discount_value;
     if (coupon.max_discount > 0 && discount > coupon.max_discount) discount = coupon.max_discount;
     discount = Math.min(discount, subtotal);
 
-    res.json({
-      valid: true,
-      code: coupon.code,
-      discount_amount: Math.round(discount),
-      final_total: Math.max(0, Math.round(subtotal - discount))
-    });
+    res.json({ valid: true, code: coupon.code, discount_amount: Math.round(discount), final_total: Math.max(0, Math.round(subtotal - discount)) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ----------------------------------------------------
-// CUSTOMER AUTH & TRANSACTIONS
-// ----------------------------------------------------
-
 app.post('/api/auth/customer/register', async (req, res) => {
   try {
     const { name, email, mobile, password } = req.body;
-    if (!name || !email || !password) return res.status(400).json({ error: 'All fields required' });
-
     const existing = await User.findOne({ email: email.toLowerCase().trim() });
     if (existing) return res.status(400).json({ error: 'Email already exists' });
 
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(password, salt);
     const user = await User.create({ name, email: email.toLowerCase().trim(), mobile: mobile || '', password_hash });
-
-    recordActivity('customer_registered', `New customer registered: ${user.name}`);
 
     const token = jwt.sign({ id: user._id, role: 'customer', email: user.email }, JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ token, user: { id: user._id, name: user.name, email: user.email, mobile: user.mobile } });
@@ -476,37 +346,24 @@ app.post('/api/auth/customer/login', async (req, res) => {
   }
 });
 
-// 1. Initiate Order & Create Transaction
 app.post('/api/checkout/initiate-order', authCustomer, async (req, res) => {
   try {
     const { items, payment_method, coupon_code } = req.body;
-    if (!items || !items.length) return res.status(400).json({ error: 'Cart is empty' });
-
     const user = await User.findById(req.user.id);
     let subtotal = 0;
     const orderItems = [];
 
     for (const item of items) {
       const p = await Product.findById(item.product_id);
-      if (!p || p.status !== 'active') throw new Error(`Product "${item.name}" is no longer available`);
       subtotal += p.sale_price;
-      orderItems.push({
-        product_id: p._id,
-        name: p.name,
-        price: p.sale_price,
-        delivery_type: p.delivery_type,
-        delivered_data: null // Sensitive credentials remain NULL until confirmed
-      });
+      orderItems.push({ product_id: p._id, name: p.name, price: p.sale_price, delivery_type: p.delivery_type, delivered_data: null });
     }
 
     let discountAmount = 0;
     if (coupon_code) {
       const coupon = await Coupon.findOne({ code: coupon_code.toUpperCase().trim(), status: 'active' });
       if (coupon && subtotal >= coupon.min_purchase) {
-        discountAmount = coupon.discount_type === 'percentage' 
-          ? (subtotal * coupon.discount_value) / 100 
-          : coupon.discount_value;
-        if (coupon.max_discount > 0 && discountAmount > coupon.max_discount) discountAmount = coupon.max_discount;
+        discountAmount = coupon.discount_type === 'percentage' ? (subtotal * coupon.discount_value) / 100 : coupon.discount_value;
       }
     }
 
@@ -523,7 +380,6 @@ app.post('/api/checkout/initiate-order', authCustomer, async (req, res) => {
       items: orderItems,
       subtotal,
       discount_amount: Math.round(discountAmount),
-      coupon_code: coupon_code || '',
       total_amount: totalAmount,
       payment_method,
       payment_status: 'Pending',
@@ -536,7 +392,6 @@ app.post('/api/checkout/initiate-order', authCustomer, async (req, res) => {
       user_id: user._id,
       customer_name: user.name,
       customer_email: user.email,
-      customer_mobile: user.mobile,
       amount: totalAmount,
       payment_method,
       status: 'PENDING_PAYMENT'
@@ -545,29 +400,23 @@ app.post('/api/checkout/initiate-order', authCustomer, async (req, res) => {
     order.transaction_id = transaction._id;
     await order.save();
 
-    recordActivity('order_initiated', `Customer ${user.name} started order #${orderNumber} for ₹${totalAmount} via ${payment_method}`);
-
-    res.status(201).json({
-      order,
-      transaction
-    });
-
+    recordActivity('order_initiated', `Customer ${user.name} started order #${orderNumber} for ₹${totalAmount}`);
+    res.status(201).json({ order, transaction });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// 2. Upload Payment Proof Screenshot
-app.post('/api/checkout/upload-proof', authCustomer, upload.single('screenshot'), async (req, res) => {
+// JSON Base64 Proof Upload: Saves straight into MongoDB without filesystem dependencies
+app.post('/api/checkout/upload-proof-json', authCustomer, async (req, res) => {
   try {
-    const { transaction_id } = req.body;
-    if (!req.file) return res.status(400).json({ error: 'Please upload an image file (JPG, PNG, WEBP)' });
+    const { transaction_id, screenshot_base64 } = req.body;
+    if (!screenshot_base64) return res.status(400).json({ error: 'Screenshot data required' });
 
     const txn = await Transaction.findOne({ txn_id: transaction_id, user_id: req.user.id });
     if (!txn) return res.status(404).json({ error: 'Transaction not found' });
 
-    const screenshotUrl = `/uploads/${req.file.filename}`;
-    txn.proof_screenshot = screenshotUrl;
+    txn.proof_screenshot = screenshot_base64;
     txn.status = 'PROCESSING';
     await txn.save();
 
@@ -576,26 +425,16 @@ app.post('/api/checkout/upload-proof', authCustomer, upload.single('screenshot')
       delivery_status: 'Processing'
     });
 
-    recordActivity('proof_uploaded', `Payment screenshot submitted for TXN: ${txn.txn_id} (₹${txn.amount})`);
-
-    res.json({
-      success: true,
-      message: 'Proof submitted. Payment is currently waiting for admin manual verification.',
-      transaction: txn
-    });
+    recordActivity('proof_uploaded', `Proof screenshot saved to MongoDB for TXN: ${txn.txn_id}`);
+    res.json({ success: true, message: 'Proof saved in MongoDB', transaction: txn });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 3. Customer Purchased Items (Masked until Confirmed)
 app.get('/api/customer/orders', authCustomer, async (req, res) => {
   try {
-    const orders = await Order.find({ user_id: req.user.id })
-      .populate('transaction_id')
-      .sort({ created_at: -1 });
-
-    // Ensure digital secrets are never exposed if payment is still Processing or Rejected
+    const orders = await Order.find({ user_id: req.user.id }).sort({ created_at: -1 });
     const sanitized = orders.map(order => {
       const isPaid = order.payment_status === 'Paid';
       const oObj = order.toObject();
@@ -604,7 +443,6 @@ app.get('/api/customer/orders', authCustomer, async (req, res) => {
       }
       return oObj;
     });
-
     res.json(sanitized);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -612,9 +450,8 @@ app.get('/api/customer/orders', authCustomer, async (req, res) => {
 });
 
 // ----------------------------------------------------
-// DEDICATED ADMIN CONTROL CENTER APIS
+// ADMIN CONTROL CENTER APIS
 // ----------------------------------------------------
-
 app.post('/api/admin/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -627,8 +464,6 @@ app.post('/api/admin/login', async (req, res) => {
     admin.last_login = new Date();
     await admin.save();
 
-    recordActivity('admin_login', `Admin user "${admin.username}" authenticated to Control Center`);
-
     const token = jwt.sign({ id: admin._id, username: admin.username, role: 'admin' }, JWT_SECRET, { expiresIn: '12h' });
     res.json({ token, username: admin.username });
   } catch (err) {
@@ -636,23 +471,16 @@ app.post('/api/admin/login', async (req, res) => {
   }
 });
 
-// Admin Live Presence & Activity Feed
 app.get('/api/admin/live-status', authAdmin, (req, res) => {
   const visitors = Array.from(activeSessions.values());
-  const productViewers = visitors.filter(v => v.page === 'product-details').length;
-  const checkoutUsers = visitors.filter(v => v.page === 'checkout').length;
-  const cartUsers = visitors.filter(v => v.page === 'cart').length;
-
   res.json({
     total_live_visitors: visitors.length,
-    product_viewers: productViewers,
-    checkout_users: checkoutUsers,
-    cart_users: cartUsers,
+    product_viewers: visitors.filter(v => v.page === 'product-details').length,
+    checkout_users: visitors.filter(v => v.page === 'checkout').length,
     recent_activity: activityFeed.slice(0, 15)
   });
 });
 
-// Admin Core Dashboard Statistics
 app.get('/api/admin/stats', authAdmin, async (req, res) => {
   try {
     const totalRevenueAgg = await Order.aggregate([
@@ -660,58 +488,54 @@ app.get('/api/admin/stats', authAdmin, async (req, res) => {
       { $group: { _id: null, total: { $sum: '$total_amount' } } }
     ]);
     const totalRevenue = totalRevenueAgg[0]?.total || 0;
-
-    const totalTransactions = await Transaction.countDocuments();
     const pendingPayments = await Transaction.countDocuments({ status: 'PROCESSING' });
     const confirmedPayments = await Transaction.countDocuments({ status: 'CONFIRMED' });
-    const totalProducts = await Product.countDocuments();
-    const totalCustomers = await User.countDocuments();
-
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayOrders = await Order.countDocuments({ created_at: { $gte: todayStart } });
 
-    res.json({
-      totalRevenue,
-      totalTransactions,
-      pendingPayments,
-      confirmedPayments,
-      totalProducts,
-      totalCustomers,
-      todayOrders
-    });
+    res.json({ totalRevenue, pendingPayments, confirmedPayments, todayOrders });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Admin Transactions Queue
+// Returns transactions list excluding heavy base64 proof payload for performance
 app.get('/api/admin/transactions', authAdmin, async (req, res) => {
   try {
-    const { status } = req.query;
-    let filter = {};
-    if (status && status !== 'ALL') filter.status = status;
-
-    const txns = await Transaction.find(filter).sort({ created_at: -1 });
-    res.json(txns);
+    const txns = await Transaction.find().select('-proof_screenshot').sort({ created_at: -1 });
+    // Attach indicator if screenshot exists
+    const withProofFlag = await Promise.all(txns.map(async (t) => {
+      const doc = await Transaction.findById(t._id).select('proof_screenshot');
+      return {
+        ...t.toObject(),
+        has_proof: !!(doc && doc.proof_screenshot)
+      };
+    }));
+    res.json(withProofFlag);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Admin Confirm Payment -> Unlocks Inventory & Credentials
+// Dedicated endpoint to load proof screenshot on demand
+app.get('/api/admin/transactions/:id/proof', authAdmin, async (req, res) => {
+  try {
+    const txn = await Transaction.findById(req.params.id).select('proof_screenshot txn_id');
+    if (!txn) return res.status(404).json({ error: 'Transaction not found' });
+    res.json({ proof_screenshot: txn.proof_screenshot, txn_id: txn.txn_id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/admin/transactions/:id/confirm', authAdmin, async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
     const txn = await Transaction.findById(req.params.id).session(session);
-    if (!txn) throw new Error('Transaction not found');
-    if (txn.status === 'CONFIRMED') throw new Error('Transaction already confirmed');
-
     const order = await Order.findById(txn.order_id).session(session);
-    if (!order) throw new Error('Associated order not found');
 
-    // Deliver inventory credentials to each item
     for (let i = 0; i < order.items.length; i++) {
       const item = order.items[i];
       const inventory = await InventoryItem.findOneAndUpdate(
@@ -726,17 +550,14 @@ app.post('/api/admin/transactions/:id/confirm', authAdmin, async (req, res) => {
           payload = { email: inventory.email, password: inventory.password };
         } else if (inventory.delivery_type === 'LICENSE_KEY') {
           payload = { license_key: inventory.license_key };
-        } else if (inventory.delivery_type === 'STANDARD_LINK') {
-          payload = { url: inventory.delivery_url };
         } else {
-          payload = { custom_text: inventory.custom_text };
+          payload = { url: inventory.delivery_url };
         }
       } else {
-        payload = { custom_text: 'Admin confirmed payment. Contact support for direct credential delivery.' };
+        payload = { custom_text: 'Payment verified. Credentials assigned.' };
       }
 
       order.items[i].delivered_data = payload;
-      await Product.findByIdAndUpdate(item.product_id, { $inc: { sales_count: 1 } }).session(session);
     }
 
     txn.status = 'CONFIRMED';
@@ -750,10 +571,7 @@ app.post('/api/admin/transactions/:id/confirm', authAdmin, async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    recordActivity('payment_confirmed', `Admin confirmed payment for TXN: ${txn.txn_id} (₹${txn.amount})`);
-
-    res.json({ success: true, message: 'Payment confirmed and digital goods unlocked for customer.' });
-
+    res.json({ success: true });
   } catch (err) {
     await session.abortTransaction();
     session.endSession();
@@ -761,15 +579,12 @@ app.post('/api/admin/transactions/:id/confirm', authAdmin, async (req, res) => {
   }
 });
 
-// Admin Reject Payment
 app.post('/api/admin/transactions/:id/reject', authAdmin, async (req, res) => {
   try {
     const { reason } = req.body;
     const txn = await Transaction.findById(req.params.id);
-    if (!txn) return res.status(404).json({ error: 'Transaction not found' });
-
     txn.status = 'REJECTED';
-    txn.rejection_reason = reason || 'Payment screenshot invalid or amount mismatch.';
+    txn.rejection_reason = reason || 'Payment screenshot invalid.';
     txn.verified_at = new Date();
     await txn.save();
 
@@ -778,15 +593,12 @@ app.post('/api/admin/transactions/:id/reject', authAdmin, async (req, res) => {
       delivery_status: 'Failed'
     });
 
-    recordActivity('payment_rejected', `Admin rejected payment for TXN: ${txn.txn_id} (Reason: ${txn.rejection_reason})`);
-
-    res.json({ success: true, message: 'Transaction marked as rejected.' });
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Admin Payment Settings Management
 app.get('/api/admin/payment-settings', authAdmin, async (req, res) => {
   try {
     const settings = await PaymentSettings.findOne() || {};
@@ -802,14 +614,12 @@ app.post('/api/admin/payment-settings', authAdmin, async (req, res) => {
     if (!settings) settings = new PaymentSettings(req.body);
     else Object.assign(settings, req.body);
     await settings.save();
-    recordActivity('settings_updated', 'Payment settings updated by Admin');
     res.json(settings);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// Admin Products CRUD & Inventory
 app.get('/api/admin/products', authAdmin, async (req, res) => {
   try {
     const products = await Product.find().sort({ created_at: -1 });
@@ -825,52 +635,14 @@ app.get('/api/admin/products', authAdmin, async (req, res) => {
 
 app.post('/api/admin/products', authAdmin, async (req, res) => {
   try {
-    const { name, short_description, description, original_price, sale_price, delivery_type, images, sku } = req.body;
-    const orig = Number(original_price) || Number(sale_price) || 0;
-    const sale = Number(sale_price) || 0;
-    const disc = orig > 0 ? Math.round(((orig - sale) / orig) * 100) : 0;
-
     const product = await Product.create({
-      name,
-      short_description,
-      description,
-      sku: sku || 'SKU-' + Date.now(),
-      original_price: orig,
-      sale_price: sale,
-      discount_percentage: disc,
-      images: images || ['https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800'],
-      delivery_type
+      ...req.body,
+      sku: req.body.sku || 'SKU-' + Date.now(),
+      images: ['https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800']
     });
     res.status(201).json(product);
   } catch (err) {
     res.status(400).json({ error: err.message });
-  }
-});
-
-app.put('/api/admin/products/:id', authAdmin, async (req, res) => {
-  try {
-    const { name, short_description, description, original_price, sale_price, delivery_type, images, sku, status } = req.body;
-    const orig = Number(original_price) || Number(sale_price) || 0;
-    const sale = Number(sale_price) || 0;
-    const disc = orig > 0 ? Math.round(((orig - sale) / orig) * 100) : 0;
-
-    const p = await Product.findByIdAndUpdate(req.params.id, {
-      name, short_description, description, original_price: orig, sale_price: sale,
-      discount_percentage: disc, delivery_type, images, sku, status
-    }, { new: true });
-    res.json(p);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-app.delete('/api/admin/products/:id', authAdmin, async (req, res) => {
-  try {
-    await Product.findByIdAndDelete(req.params.id);
-    await InventoryItem.deleteMany({ product_id: req.params.id });
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
 });
 
@@ -887,12 +659,22 @@ app.post('/api/admin/inventory/:productId', authAdmin, async (req, res) => {
   }
 });
 
+app.delete('/api/admin/products/:id', authAdmin, async (req, res) => {
+  try {
+    await Product.findByIdAndDelete(req.params.id);
+    await InventoryItem.deleteMany({ product_id: req.params.id });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // ----------------------------------------------------
-// START SERVER
+// DATABASE LAUNCH
 // ----------------------------------------------------
 const MONGODB_URI = process.env.MONGODB_URI;
 mongoose.connect(MONGODB_URI)

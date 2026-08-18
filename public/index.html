@@ -70,13 +70,8 @@
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
-  <!-- Toast Notification Hub -->
   <div id="toastHub" class="fixed top-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
-
-  <!-- Global Backdrop Overlay for Mobile Drawers -->
   <div id="appBackdrop" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden transition-opacity"></div>
-
-  <!-- Main Viewport Canvas -->
   <div id="mainViewport" class="flex flex-1 min-h-screen"></div>
 
   <!-- Global Modal for Inspection & Proof -->
@@ -145,7 +140,6 @@
       }
     }
 
-    // Heartbeat Presence Monitor
     function sendHeartbeat(action = '') {
       fetch('/api/presence/heartbeat', {
         method: 'POST',
@@ -159,7 +153,6 @@
     }
     setInterval(sendHeartbeat, 15000);
 
-    // Global Router
     function navigate(view, params = {}) {
       state.currentView = view;
       closeAllDrawers();
@@ -184,7 +177,6 @@
       viewport.innerHTML = `
         <div class="flex flex-1 min-h-screen relative w-full bg-surface-950">
           
-          <!-- Store Mobile / Desktop Sidebar -->
           <aside id="customerSidebar" class="fixed lg:static top-0 bottom-0 left-0 w-64 bg-surface-900 border-r border-white/5 z-50 flex flex-col justify-between transition-transform duration-300 -translate-x-full lg:translate-x-0">
             <div>
               <div class="p-6 border-b border-white/5 flex items-center justify-between">
@@ -217,7 +209,6 @@
             </div>
           </aside>
 
-          <!-- Main Store Body -->
           <div class="flex-1 flex flex-col min-w-0">
             <header class="sticky top-0 z-30 glass border-b border-white/5 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
               <div class="flex items-center gap-3">
@@ -343,11 +334,6 @@
               <div class="h-72 sm:h-96 rounded-3xl overflow-hidden glass border border-white/10 relative">
                 <img id="storeMainImg" src="${mainImage}" class="w-full h-full object-cover">
               </div>
-              ${p.images && p.images.length > 1 ? `
-                <div class="flex gap-3">
-                  ${p.images.map(img => `<img onclick="document.getElementById('storeMainImg').src='${img}'" src="${img}" class="w-20 h-20 rounded-2xl object-cover glass cursor-pointer border border-white/10 hover:border-emerald-400">`).join('')}
-                </div>
-              ` : ''}
             </div>
             <div class="lg:col-span-5 space-y-6">
               <div>
@@ -427,7 +413,7 @@
     }
 
     // =========================================================================
-    // STORE CHECKOUT & PAYMENT FLOW
+    // CHECKOUT & CLIENT-SIDE BASE64 FILE CONVERTER
     // =========================================================================
     async function renderStoreCheckout(container) {
       if (!state.token) return renderCustomerAuthPrompt(container, 'checkout');
@@ -446,7 +432,6 @@
 
           <div id="checkoutStep1" class="grid grid-cols-1 md:grid-cols-12 gap-8">
             <div class="md:col-span-7 space-y-4">
-              
               <div onclick="selectPaymentMethod('UPI')" id="methodCardUPI" class="glass rounded-3xl p-6 cursor-pointer border-2 border-emerald-500/80 space-y-2">
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-3">
@@ -607,7 +592,7 @@
 
             <form onsubmit="submitPaymentProof(event, '${txn.txn_id}')" class="space-y-4 pt-4 border-t border-white/5">
               <label class="text-xs font-bold text-white block">Upload Payment Proof Screenshot (JPG, PNG, WEBP)</label>
-              <input type="file" id="proofFileInput" accept="image/png, image/jpeg, image/webp" required class="w-full text-xs text-slate-400 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20">
+              <input type="file" id="proofFileInput" accept="image/*" required class="w-full text-xs text-slate-400 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20">
               
               <button type="submit" id="submitProofBtn" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider">
                 Submit Payment Proof for Verification
@@ -622,6 +607,16 @@
       }
     }
 
+    // Convert file to Base64 before sending to server
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+      });
+    }
+
     async function submitPaymentProof(e, txnId) {
       e.preventDefault();
       const fileInput = document.getElementById('proofFileInput');
@@ -629,17 +624,21 @@
 
       const btn = document.getElementById('submitProofBtn');
       btn.disabled = true;
-      btn.textContent = 'Uploading Proof...';
-
-      const formData = new FormData();
-      formData.append('transaction_id', txnId);
-      formData.append('screenshot', fileInput.files[0]);
+      btn.textContent = 'Encoding & Uploading Proof...';
 
       try {
-        const res = await fetch('/api/checkout/upload-proof', {
+        const base64Data = await fileToBase64(fileInput.files[0]);
+
+        const res = await fetch('/api/checkout/upload-proof-json', {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${state.token}` },
-          body: formData
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.token}`
+          },
+          body: JSON.stringify({
+            transaction_id: txnId,
+            screenshot_base64: base64Data
+          })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
@@ -741,7 +740,7 @@
         return `
           <div class="p-3 rounded-xl bg-surface-900 text-xs font-mono text-emerald-400 flex justify-between">
             <span class="select-all font-bold">Key: ${d.license_key}</span>
-            <button onclick="navigator.clipboard.writeText('${d.license_key}'); showToast('Key copied!')" class="text-emerald-400 font-bold">Copy Key</button>
+            <button onclick="navigator.clipboard.writeText('${d.license_key}'); showToast('Key copied!')" class="text-emerald-400 font-bold">Copy</button>
           </div>
         `;
       } else if (item.delivery_type === 'STANDARD_LINK') {
@@ -835,7 +834,7 @@
     }
 
     // =========================================================================
-    // DEDICATED SAAS ADMIN CONTROL CENTER (NO BLUR OVERLAY BUG)
+    // DEDICATED SAAS ADMIN CONTROL CENTER
     // =========================================================================
     function renderAdminLogin(viewport) {
       viewport.innerHTML = `
@@ -886,7 +885,6 @@
       viewport.innerHTML = `
         <div class="flex flex-1 min-h-screen w-full bg-admin-bg font-sans text-slate-200 relative">
           
-          <!-- Admin Sidebar (Responsive) -->
           <aside id="adminSidebar" class="fixed lg:static top-0 bottom-0 left-0 w-64 bg-admin-sidebar border-r border-admin-border flex flex-col justify-between z-50 transition-transform duration-300 -translate-x-full lg:translate-x-0">
             <div>
               <div class="p-6 border-b border-admin-border flex items-center justify-between">
@@ -914,7 +912,6 @@
             </div>
           </aside>
 
-          <!-- Main Admin Body -->
           <div class="flex-1 flex flex-col min-w-0">
             <header class="h-16 border-b border-admin-border bg-admin-sidebar/50 px-4 sm:px-8 flex items-center justify-between">
               <div class="flex items-center gap-3">
@@ -970,7 +967,6 @@
 
       container.innerHTML = `
         <div class="space-y-6">
-          
           <div class="admin-card rounded-3xl p-6 border border-emerald-500/30 bg-gradient-to-r from-emerald-950/20 to-admin-card">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div class="flex items-center gap-3">
@@ -994,19 +990,6 @@
             <div class="admin-card rounded-2xl p-5"><span class="text-[10px] text-slate-500 font-mono uppercase">Confirmed Payments</span><div class="text-2xl font-black text-white font-mono">${stats.confirmedPayments}</div></div>
             <div class="admin-card rounded-2xl p-5"><span class="text-[10px] text-slate-500 font-mono uppercase">Today's Orders</span><div class="text-2xl font-black text-white font-mono">${stats.todayOrders}</div></div>
           </div>
-
-          <div class="admin-card rounded-3xl p-6 space-y-4">
-            <h3 class="text-xs font-bold uppercase text-slate-400 font-mono">Live Activity Stream</h3>
-            <div class="space-y-2 max-h-60 overflow-y-auto custom-scroll">
-              ${(live.recent_activity || []).map(a => `
-                <div class="p-3 rounded-xl bg-surface-950/80 border border-admin-border text-xs flex justify-between items-center">
-                  <span class="text-slate-300">${a.text}</span>
-                  <span class="font-mono text-[10px] text-slate-500">${new Date(a.created_at).toLocaleTimeString()}</span>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-
         </div>
       `;
     }
@@ -1053,8 +1036,8 @@
                       </td>
                       <td class="py-3.5">
                         ${t.proof_screenshot ? `
-                          <button onclick="viewPaymentProofModal('${t.proof_screenshot}', '${t.txn_id}')" class="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-[11px]">
-                            🔍 View
+                          <button onclick="viewProofModal('${t._id}', '${t.txn_id}')" class="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-bold text-[11px]">
+                            🔍 View Proof
                           </button>
                         ` : '<span class="text-slate-500">No proof</span>'}
                       </td>
@@ -1074,19 +1057,35 @@
       `;
     }
 
-    function viewPaymentProofModal(imgUrl, txnId) {
+    async function viewProofModal(txnDbId, txnId) {
       const modal = document.getElementById('globalModal');
       const content = document.getElementById('globalModalContent');
       modal.classList.remove('hidden');
       modal.classList.add('flex');
 
-      content.innerHTML = `
-        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400">✕</button>
-        <h3 class="text-base font-bold text-white mb-2">Payment Proof Screenshot (${txnId})</h3>
-        <div class="rounded-2xl overflow-hidden glass max-h-[70vh] flex items-center justify-center bg-black">
-          <img src="${imgUrl}" class="max-h-[68vh] object-contain">
-        </div>
-      `;
+      content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono">Fetching screenshot from MongoDB Atlas...</div>';
+
+      try {
+        const res = await fetch(`/api/admin/transactions/${txnDbId}/proof`, {
+          headers: { 'Authorization': `Bearer ${state.adminToken}` }
+        });
+        const data = await res.json();
+
+        if (!data.proof_screenshot) {
+          content.innerHTML = '<div class="text-center py-8 text-rose-400">No screenshot data found.</div>';
+          return;
+        }
+
+        content.innerHTML = `
+          <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+          <h3 class="text-base font-bold text-white mb-3 font-mono">Payment Proof Screenshot (${txnId})</h3>
+          <div class="rounded-2xl overflow-hidden glass max-h-[75vh] flex items-center justify-center bg-black/90 p-2">
+            <img src="${data.proof_screenshot}" class="max-h-[70vh] w-auto object-contain rounded-xl shadow-2xl">
+          </div>
+        `;
+      } catch (err) {
+        content.innerHTML = `<div class="text-center py-8 text-rose-400">Error: ${err.message}</div>`;
+      }
     }
 
     async function confirmTransaction(id) {
