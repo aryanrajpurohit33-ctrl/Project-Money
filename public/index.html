@@ -171,12 +171,11 @@
     }
 
     // =========================================================================
-    // STOREFRONT
+    // CUSTOMER STOREFRONT LAYOUT
     // =========================================================================
     function renderStorefrontLayout(viewport, view, params) {
       viewport.innerHTML = `
         <div class="flex flex-1 min-h-screen relative w-full bg-surface-950">
-          
           <aside id="customerSidebar" class="fixed lg:static top-0 bottom-0 left-0 w-64 bg-surface-900 border-r border-white/5 z-50 flex flex-col justify-between transition-transform duration-300 -translate-x-full lg:translate-x-0">
             <div>
               <div class="p-6 border-b border-white/5 flex items-center justify-between">
@@ -230,7 +229,6 @@
 
             <main id="storeContent" class="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-8"></main>
           </div>
-
         </div>
       `;
 
@@ -413,7 +411,7 @@
     }
 
     // =========================================================================
-    // CHECKOUT & CLIENT-SIDE IMAGE COMPRESSION ENGINE
+    // CHECKOUT & CLIENT IMAGE COMPRESSOR
     // =========================================================================
     async function renderStoreCheckout(container) {
       if (!state.token) return renderCustomerAuthPrompt(container, 'checkout');
@@ -607,7 +605,6 @@
       }
     }
 
-    // High-performance canvas compressor (Converts heavy 8MB phone screenshots to ultra-crisp ~200KB WebP)
     function compressImageFile(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -639,7 +636,6 @@
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
 
-            // Compress to standard JPEG with 0.82 quality
             const compressedBase64 = canvas.toDataURL('image/jpeg', 0.82);
             resolve(compressedBase64);
           };
@@ -866,7 +862,7 @@
     }
 
     // =========================================================================
-    // DEDICATED SAAS ADMIN CONTROL CENTER
+    // DEDICATED SAAS ADMIN CONTROL CENTER & SYSTEM MONITOR
     // =========================================================================
     function renderAdminLogin(viewport) {
       viewport.innerHTML = `
@@ -916,7 +912,6 @@
     function renderAdminSaaSLayout(viewport) {
       viewport.innerHTML = `
         <div class="flex flex-1 min-h-screen w-full bg-admin-bg font-sans text-slate-200 relative">
-          
           <aside id="adminSidebar" class="fixed lg:static top-0 bottom-0 left-0 w-64 bg-admin-sidebar border-r border-admin-border flex flex-col justify-between z-50 transition-transform duration-300 -translate-x-full lg:translate-x-0">
             <div>
               <div class="p-6 border-b border-admin-border flex items-center justify-between">
@@ -935,6 +930,7 @@
                 </button>
                 <button onclick="switchAdminSection('products')" id="adnav-products" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🛍 <span>Product Studio</span></button>
                 <button onclick="switchAdminSection('payment-settings')" id="adnav-payment-settings" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">💰 <span>Payment Gateway</span></button>
+                <button onclick="switchAdminSection('system-monitor')" id="adnav-system-monitor" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all border border-emerald-500/20 bg-emerald-500/5">🖥️ <span>System & Infrastructure</span></button>
               </nav>
             </div>
 
@@ -960,7 +956,6 @@
 
             <main id="adminMainContent" class="flex-1 p-4 sm:p-8 space-y-8 max-w-7xl w-full mx-auto"></main>
           </div>
-
         </div>
       `;
 
@@ -982,6 +977,7 @@
         case 'transactions': renderAdminTransactions(content); break;
         case 'products': renderAdminProductsStudio(content); break;
         case 'payment-settings': renderAdminPaymentSettings(content); break;
+        case 'system-monitor': renderAdminSystemMonitor(content); break;
       }
     }
 
@@ -1152,6 +1148,226 @@
         showToast('Transaction rejected');
         renderAdminTransactions(document.getElementById('adminMainContent'));
       } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    // =========================================================================
+    // SYSTEM & INFRASTRUCTURE MONITOR
+    // =========================================================================
+    async function renderAdminSystemMonitor(container) {
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Running live infrastructure diagnostics & MongoDB ping...</div>';
+
+      try {
+        const res = await fetch('/api/admin/system/infrastructure', {
+          headers: { 'Authorization': `Bearer ${state.adminToken}` }
+        });
+        const data = await res.json();
+
+        container.innerHTML = `
+          <div class="space-y-8 pb-12 font-mono">
+            
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h1 class="text-xl font-black text-white font-sans">System & Infrastructure Monitor</h1>
+                <p class="text-xs text-slate-400">Live hardware profiling, database cluster metrics & runtime diagnostics</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="runSystemHealthCheck()" class="px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold hover:bg-emerald-500/20 transition-all">
+                  🩺 Run Full Health Check
+                </button>
+                <button onclick="switchAdminSection('system-monitor')" class="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold">
+                  ↻ Refresh
+                </button>
+              </div>
+            </div>
+
+            <!-- Core Infrastructure KPI Row -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              
+              <!-- RAM / Service Memory -->
+              <div class="admin-card rounded-2xl p-5 space-y-2">
+                <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
+                  <span>Service Memory (RSS)</span>
+                  <span class="text-emerald-400">● Normal</span>
+                </div>
+                <div class="text-2xl font-black text-white">${data.server.service_memory_rss_mb} MB</div>
+                <div class="w-full bg-surface-950 rounded-full h-1.5 overflow-hidden">
+                  <div class="bg-emerald-500 h-full rounded-full" style="width: ${Math.min(100, Math.round((data.server.service_memory_rss_mb / 512) * 100))}%"></div>
+                </div>
+                <div class="flex justify-between text-[9px] text-slate-500">
+                  <span>Heap: ${data.server.heap_used_mb}MB</span>
+                  <span>Container: ${data.server.os_mem_percent}% used</span>
+                </div>
+              </div>
+
+              <!-- Database Connection & Latency -->
+              <div class="admin-card rounded-2xl p-5 space-y-2">
+                <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
+                  <span>MongoDB Atlas Ping</span>
+                  <span class="text-emerald-400">● Connected</span>
+                </div>
+                <div class="text-2xl font-black text-emerald-400">${data.database.ping_latency_ms} ms</div>
+                <div class="w-full bg-surface-950 rounded-full h-1.5 overflow-hidden">
+                  <div class="bg-emerald-500 h-full rounded-full" style="width: ${Math.min(100, data.database.ping_latency_ms)}%"></div>
+                </div>
+                <div class="flex justify-between text-[9px] text-slate-500">
+                  <span>Collections: ${data.database.collections_count}</span>
+                  <span>Storage: ${data.database.storage_size_mb} MB</span>
+                </div>
+              </div>
+
+              <!-- Process Uptime -->
+              <div class="admin-card rounded-2xl p-5 space-y-2">
+                <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
+                  <span>Backend Uptime</span>
+                  <span class="text-emerald-400">● Live</span>
+                </div>
+                <div class="text-lg font-black text-white mt-1">${data.server.uptime_formatted}</div>
+                <div class="text-[9px] text-slate-500">Continuous uptime without restart</div>
+              </div>
+
+              <!-- Average API Latency & Error Rate -->
+              <div class="admin-card rounded-2xl p-5 space-y-2">
+                <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
+                  <span>Avg Latency / Errors</span>
+                  <span class="${data.server.error_rate_percent > 5 ? 'text-rose-400' : 'text-emerald-400'}">● ${data.server.error_rate_percent}% Err</span>
+                </div>
+                <div class="text-2xl font-black text-white">${data.server.avg_response_time_ms} ms</div>
+                <div class="text-[9px] text-slate-500">Sampled across ${data.server.request_count_tracked} live requests</div>
+              </div>
+
+            </div>
+
+            <!-- Hosting & Environment Container -->
+            <div class="admin-card rounded-3xl p-6 space-y-4">
+              <h3 class="text-xs font-bold uppercase text-slate-400">Hosting & Runtime Environment</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-1">
+                  <span class="text-[10px] text-slate-500 uppercase block">Hosting Environment</span>
+                  <span class="text-white font-bold">${data.server.hosting.provider}</span>
+                </div>
+                <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-1">
+                  <span class="text-[10px] text-slate-500 uppercase block">Node.js Engine</span>
+                  <span class="text-white font-bold">${data.server.hosting.node_version} (${data.server.hosting.platform})</span>
+                </div>
+                <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-1">
+                  <span class="text-[10px] text-slate-500 uppercase block">Hosting Plan Memory Limit</span>
+                  <span class="text-slate-400 italic">Metric unavailable from provider</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Database Collections Table -->
+            <div class="admin-card rounded-3xl p-6 space-y-4">
+              <div class="flex justify-between items-center">
+                <h3 class="text-xs font-bold uppercase text-slate-400">MongoDB Collections Overview</h3>
+                <span class="text-[10px] text-emerald-400 font-mono">Data Size: ${data.database.data_size_mb} MB | Indexes: ${data.database.indexes_size_mb} MB</span>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                  <thead>
+                    <tr class="border-b border-admin-border text-slate-500">
+                      <th class="pb-2">Collection Name</th>
+                      <th class="pb-2">Document Count</th>
+                      <th class="pb-2 text-right">Cluster Status</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-admin-border">
+                    ${data.database.collections.map(c => `
+                      <tr>
+                        <td class="py-3 text-white font-bold">${c.name}</td>
+                        <td class="py-3 text-slate-300 font-bold">${c.count} records</td>
+                        <td class="py-3 text-right text-emerald-400">🟢 ${c.status}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Recent API Endpoints Profiler -->
+            <div class="admin-card rounded-3xl p-6 space-y-4">
+              <h3 class="text-xs font-bold uppercase text-slate-400">Recent API Requests & Latency Profiler</h3>
+              <div class="space-y-2">
+                ${data.recent_api_metrics.map(req => `
+                  <div class="p-3 rounded-2xl bg-surface-950 border border-admin-border text-xs flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                      <span class="px-2 py-0.5 rounded text-[10px] font-bold ${req.method === 'POST' ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'}">${req.method}</span>
+                      <span class="text-white">${req.endpoint}</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                      <span class="font-bold ${req.statusCode >= 400 ? 'text-rose-400' : 'text-emerald-400'}">${req.statusCode}</span>
+                      <span class="text-slate-400">${req.responseTime} ms</span>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+          </div>
+        `;
+      } catch (err) {
+        container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">Failed to load system diagnostics: ${err.message}</div>`;
+      }
+    }
+
+    async function runSystemHealthCheck() {
+      const modal = document.getElementById('globalModal');
+      const content = document.getElementById('globalModalContent');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono animate-pulse">Running active end-to-end subsystem health checks...</div>';
+
+      try {
+        const res = await fetch('/api/admin/system/health-check', {
+          headers: { 'Authorization': `Bearer ${state.adminToken}` }
+        });
+        const data = await res.json();
+        const c = data.checks;
+
+        content.innerHTML = `
+          <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+          <div class="space-y-5 font-mono">
+            <div>
+              <h3 class="text-base font-bold text-white font-sans">Full Subsystem Health Results</h3>
+              <p class="text-xs text-slate-400">Timestamp: ${new Date(data.timestamp).toLocaleTimeString()}</p>
+            </div>
+
+            <div class="space-y-2.5 text-xs">
+              <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
+                <span>Frontend Layer</span>
+                <span class="text-emerald-400 font-bold">🟢 ${c.frontend.status} (${c.frontend.latency_ms}ms)</span>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
+                <span>Backend Express Engine</span>
+                <span class="text-emerald-400 font-bold">🟢 ${c.backend.status} (${c.backend.uptime_sec}s uptime)</span>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
+                <span>MongoDB Atlas Cluster</span>
+                <span class="${c.database.status === 'Connected' ? 'text-emerald-400' : 'text-rose-400'} font-bold">
+                  ${c.database.status === 'Connected' ? '🟢 Connected (' + c.database.latency_ms + 'ms ping)' : '🔴 ' + c.database.status}
+                </span>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
+                <span>JWT Authentication & Encryption</span>
+                <span class="text-emerald-400 font-bold">🟢 Operational (${c.auth_service.algorithm})</span>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
+                <span>Digital Delivery Stock Queue</span>
+                <span class="${c.digital_delivery.stock_ready ? 'text-emerald-400' : 'text-amber-400'} font-bold">
+                  ${c.digital_delivery.stock_ready ? '🟢 Ready (' + c.digital_delivery.available_stock + ' keys in stock)' : '🟡 Stock Low (0 units)'}
+                </span>
+              </div>
+            </div>
+
+            <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="w-full py-3.5 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider font-sans">
+              Done
+            </button>
+          </div>
+        `;
+      } catch (err) {
+        content.innerHTML = `<div class="text-center py-8 text-rose-400 font-mono">Health Check Error: ${err.message}</div>`;
+      }
     }
 
     async function renderAdminPaymentSettings(container) {
