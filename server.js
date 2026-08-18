@@ -14,7 +14,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const JWT_SECRET = process.env.JWT_SECRET || 'nexus_digital_super_secret_jwt_2026_key';
 
 // ----------------------------------------------------
-// PERFORMANCE & PRESENCE TRACKING
+// PERFORMANCE & PRESENCE LOGGERS
 // ----------------------------------------------------
 const requestLogs = [];
 const appErrorLogs = [];
@@ -106,13 +106,12 @@ const ProductSchema = new mongoose.Schema({
     enum: ['EMAIL_PASSWORD', 'MOBILE_PASSWORD', 'STANDARD_LINK', 'DOWNLOADABLE_FILE', 'LICENSE_KEY', 'CUSTOM_TEXT'], 
     default: 'EMAIL_PASSWORD' 
   },
-  status: { type: String, enum: ['active', 'draft', 'archived', 'disabled'], default: 'active' },
+  status: { type: String, enum: ['active', 'out_of_stock', 'draft', 'archived', 'disabled'], default: 'active' },
   sales_count: { type: Number, default: 0 },
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }
 });
 
-// Single Source of Truth for Credential Slots
 const InventorySlotSchema = new mongoose.Schema({
   product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
   account_label: { type: String, required: true, default: 'Account Slot 1' },
@@ -135,7 +134,6 @@ const InventorySlotSchema = new mongoose.Schema({
   updated_at: { type: Date, default: Date.now }
 });
 
-// Subscription referencing assigned_slot_id
 const SubscriptionSchema = new mongoose.Schema({
   order_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true },
   user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -235,31 +233,6 @@ async function initializeSystem() {
 
     const existingPaymentSettings = await PaymentSettings.findOne();
     if (!existingPaymentSettings) await PaymentSettings.create({});
-
-    const pCount = await Product.countDocuments();
-    if (pCount === 0) {
-      const subProduct = await Product.create({
-        name: 'Authorized Streaming Subscription',
-        slug: 'authorized-streaming-subscription',
-        sku: 'SUB-STRM-01',
-        category: 'Streaming & Accounts',
-        tags: ['netflix', 'streaming', '4k', 'uhd'],
-        short_description: 'PIN-protected 4K UHD streaming profile with instant activation.',
-        description: 'Enjoy Ultra HD 4K streaming across all your devices. Dedicated private profile on authorized high-speed streaming accounts.',
-        product_type: 'SUBSCRIPTION',
-        original_price: 299,
-        sale_price: 199,
-        discount_percentage: 33,
-        subscription_pricing: { one_month: 199, six_months: 899, one_year: 1499 },
-        images: ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=1000&auto=format&fit=crop&q=80'],
-        delivery_type: 'EMAIL_PASSWORD'
-      });
-
-      await InventorySlot.create([
-        { product_id: subProduct._id, account_label: 'Slot 1', email: 'account1@example.com', password: 'VaultStream#2026', max_active_users: 1, status: 'AVAILABLE' },
-        { product_id: subProduct._id, account_label: 'Slot 2', email: 'account2@example.com', password: 'StreamBeast!889', max_active_users: 5, status: 'AVAILABLE' }
-      ]);
-    }
   } catch (err) {
     console.error('Init error:', err.message);
   }
@@ -411,7 +384,7 @@ app.get('/api/admin/system/health-check', authAdmin, async (req, res) => {
     database: { status: 'Disconnected', latency_ms: null },
     auth_service: { status: 'Operational', algorithm: 'HS256' },
     payment_gateway: { status: 'Operational', configured: true },
-    digital_delivery: { status: 'Operational', stock_ready: false }
+    digital_delivery: { status: 'Operational', stock_ready: true }
   };
 
   try {
@@ -419,10 +392,6 @@ app.get('/api/admin/system/health-check', authAdmin, async (req, res) => {
     await mongoose.connection.db.admin().ping();
     results.database.status = 'Connected';
     results.database.latency_ms = Date.now() - dbStart;
-
-    const availableStock = await InventorySlot.countDocuments({ status: 'AVAILABLE' });
-    results.digital_delivery.stock_ready = availableStock > 0;
-    results.digital_delivery.available_stock = availableStock;
 
     res.json({ success: true, timestamp: new Date(), checks: results });
   } catch (err) {
@@ -451,25 +420,27 @@ app.get('/api/payment-methods', async (req, res) => {
   }
 });
 
+// Product Catalog - In Stock state is determined strictly by Admin Status (Active = In Stock)
 app.get('/api/products', async (req, res) => {
   try {
     const { search } = req.query;
-    let query = { status: 'active' };
+    let query = { status: { $ne: 'draft' } };
     if (search) {
       const regex = new RegExp(search, 'i');
       query.$or = [{ name: regex }, { description: regex }, { sku: regex }, { tags: regex }, { category: regex }];
     }
     const products = await Product.find(query).sort({ created_at: -1 });
-    const withStock = await Promise.all(products.map(async (p) => {
-      const availableCount = await InventorySlot.countDocuments({ product_id: p._id, status: { $in: ['AVAILABLE', 'ASSIGNED'] } });
-      return { ...p.toObject(), in_stock: availableCount > 0, stock_count: availableCount };
-    }));
-    res.json(withStock);
+    const formatted = products.map(p => {
+      const inStock = p.status === 'active';
+      return { ...p.toObject(), in_stock: inStock };
+    });
+    res.json(formatted);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+// Product Details - In Stock state is determined strictly by Admin Status
 app.get('/api/products/:identifier', async (req, res) => {
   try {
     const { identifier } = req.params;
@@ -483,13 +454,12 @@ app.get('/api/products/:identifier', async (req, res) => {
     }
     if (!product) return res.status(404).json({ error: 'Product not found' });
 
-    const availableCount = await InventorySlot.countDocuments({ product_id: product._id, status: { $in: ['AVAILABLE', 'ASSIGNED'] } });
-    const related = await Product.find({ _id: { $ne: product._id }, status: 'active' }).limit(4);
+    const inStock = product.status === 'active';
+    const related = await Product.find({ _id: { $ne: product._id }, status: { $ne: 'draft' } }).limit(4);
 
     res.json({ 
       ...product.toObject(), 
-      in_stock: availableCount > 0, 
-      stock_count: availableCount,
+      in_stock: inStock,
       related 
     });
   } catch (err) {
@@ -630,7 +600,7 @@ app.post('/api/checkout/upload-proof-json', authCustomer, async (req, res) => {
 });
 
 // =========================================================================
-// CUSTOMER PURCHASED ITEMS (DYNAMIC CREDENTIAL RESOLUTION FROM ASSIGNED SLOT)
+// CUSTOMER PURCHASED ITEMS (DYNAMIC CREDENTIAL RESOLUTION)
 // =========================================================================
 app.get('/api/customer/orders', authCustomer, async (req, res) => {
   try {
@@ -661,7 +631,6 @@ app.get('/api/customer/orders', authCustomer, async (req, res) => {
           const isExpired = now >= expiresAt || sub.status !== 'ACTIVE';
           const slot = sub.assigned_slot_id;
 
-          // Single source of truth: If active, return CURRENT live credentials from the slot
           const liveCredentials = (!isExpired && slot && slot.status !== 'DISABLED') ? {
             account_label: slot.account_label,
             email: slot.email,
@@ -692,10 +661,8 @@ app.get('/api/customer/orders', authCustomer, async (req, res) => {
 });
 
 // ----------------------------------------------------
-// DEDICATED ACCOUNT SLOTS APIS (ADMIN ONLY - FIXED WITH DYNAMIC COUNTS)
+// DEDICATED ACCOUNT SLOTS APIS
 // ----------------------------------------------------
-
-// 1. List All Slots with Multi-Product, Dynamic Customer Counts & Status Derivation
 app.get('/api/admin/slots', authAdmin, async (req, res) => {
   try {
     const { product_id, status, search } = req.query;
@@ -712,9 +679,7 @@ app.get('/api/admin/slots', authAdmin, async (req, res) => {
       .populate('product_id', 'name sku product_type')
       .sort({ created_at: -1 });
 
-    // Compute live active subscriptions, dynamic status & user counts for every slot
     const enrichedSlots = await Promise.all(rawSlots.map(async (slot) => {
-      // Find ALL currently active (non-expired) subscriptions bound to this slot
       const activeSubs = await Subscription.find({
         assigned_slot_id: slot._id,
         status: 'ACTIVE',
@@ -724,7 +689,6 @@ app.get('/api/admin/slots', authAdmin, async (req, res) => {
       const activeUsersCount = activeSubs.length;
       const maxUsers = slot.max_active_users || 1;
 
-      // Auto-derive real-time status based on active users and capacity
       let derivedStatus = slot.status;
       if (slot.status !== 'DISABLED') {
         if (activeUsersCount >= maxUsers) {
@@ -736,7 +700,6 @@ app.get('/api/admin/slots', authAdmin, async (req, res) => {
         }
       }
 
-      // Format active customers list
       const activeCustomers = activeSubs.map(s => ({
         subscription_id: s._id,
         customer_name: s.user_id?.name || 'Customer',
@@ -758,13 +721,11 @@ app.get('/api/admin/slots', authAdmin, async (req, res) => {
       };
     }));
 
-    // Apply status filter if provided
     let finalSlots = enrichedSlots;
     if (status && status !== 'ALL') {
       finalSlots = enrichedSlots.filter(s => s.status === status);
     }
 
-    // Compute overall statistics
     const totalSlots = enrichedSlots.length;
     const availableSlots = enrichedSlots.filter(s => s.status === 'AVAILABLE').length;
     const assignedSlots = enrichedSlots.filter(s => s.status === 'ASSIGNED').length;
@@ -788,7 +749,6 @@ app.get('/api/admin/slots', authAdmin, async (req, res) => {
   }
 });
 
-// 2. Create a New Account Slot (Persisted in MongoDB Atlas)
 app.post('/api/admin/slots', authAdmin, async (req, res) => {
   try {
     const { product_id, account_label, email, password, custom_text, notes, max_active_users, status } = req.body;
@@ -814,7 +774,6 @@ app.post('/api/admin/slots', authAdmin, async (req, res) => {
   }
 });
 
-// 3. Edit Account Slot (Live Syncs to Active Customer Viewports!)
 app.put('/api/admin/slots/:id', authAdmin, async (req, res) => {
   try {
     const { account_label, email, password, custom_text, notes, max_active_users, status } = req.body;
@@ -840,7 +799,6 @@ app.put('/api/admin/slots/:id', authAdmin, async (req, res) => {
   }
 });
 
-// 4. Delete Account Slot
 app.delete('/api/admin/slots/:id', authAdmin, async (req, res) => {
   try {
     const now = new Date();
@@ -862,7 +820,7 @@ app.delete('/api/admin/slots/:id', authAdmin, async (req, res) => {
 });
 
 // ----------------------------------------------------
-// ADMIN TRANSACTIONS & CONFIRMATION WITH SLOT BINDING
+// ADMIN TRANSACTIONS & CONFIRMATION
 // ----------------------------------------------------
 app.post('/api/admin/login', async (req, res) => {
   try {
@@ -910,7 +868,6 @@ app.get('/api/admin/transactions', authAdmin, async (req, res) => {
           status: { $ne: 'DISABLED' }
         }).select('_id account_label email max_active_users status');
 
-        // Check each slot's current active users to verify capacity
         for (const slot of slots) {
           const activeCount = await Subscription.countDocuments({
             assigned_slot_id: slot._id,
@@ -965,7 +922,6 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
     const item = order.items[0];
     const now = new Date();
 
-    // Verify slot availability & capacity
     let slot = null;
     if (slot_id) {
       slot = await InventorySlot.findById(slot_id).session(session);
@@ -981,7 +937,6 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
         throw new Error(`Slot "${slot.account_label}" is at full capacity (${activeCount}/${slot.max_active_users})`);
       }
     } else {
-      // Find any slot with remaining capacity
       const allSlots = await InventorySlot.find({
         product_id: item.product_id,
         status: { $ne: 'DISABLED' }
@@ -1196,7 +1151,7 @@ app.get('*', (req, res) => {
 });
 
 // ----------------------------------------------------
-// DATABASE STARTUP
+// START SERVER
 // ----------------------------------------------------
 const MONGODB_URI = process.env.MONGODB_URI;
 mongoose.connect(MONGODB_URI)

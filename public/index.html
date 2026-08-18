@@ -72,7 +72,7 @@
   <div id="appBackdrop" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden transition-opacity"></div>
   <div id="mainViewport" class="flex flex-1 min-h-screen"></div>
 
-  <!-- Global Modal for Inspection & Edit Forms -->
+  <!-- Global Modal for Inspection & Studio Edit Forms -->
   <div id="globalModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
     <div class="glass max-w-3xl w-full rounded-3xl p-6 relative max-h-[90vh] overflow-y-auto custom-scroll" id="globalModalContent"></div>
   </div>
@@ -244,40 +244,49 @@
         <div class="space-y-6">
           <div>
             <h1 class="text-xl font-black text-white">${filters.title || 'Digital Products & Subscriptions'}</h1>
-            <p class="text-xs text-slate-400">${products.length} products available for instant fulfillment</p>
+            <p class="text-xs text-slate-400">${products.length} products available</p>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            ${products.map(p => `
-              <div class="glass-card rounded-3xl overflow-hidden flex flex-col justify-between border border-white/5 relative group cursor-pointer" onclick="navigate('product-details', { id: '${p._id}' })">
-                <span class="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full ${p.product_type === 'SUBSCRIPTION' ? 'bg-indigo-500' : 'bg-emerald-500'} text-white font-black text-[10px] uppercase">
-                  ${p.product_type === 'SUBSCRIPTION' ? '🔄 Subscription' : '⚡ One-Time'}
-                </span>
+            ${products.map(p => {
+              const savings = p.original_price > p.sale_price ? p.original_price - p.sale_price : 0;
+              return `
+                <div class="glass-card rounded-3xl overflow-hidden flex flex-col justify-between border border-white/5 relative group cursor-pointer" onclick="navigate('product-details', { id: '${p._id}' })">
+                  ${p.discount_percentage > 0 ? `
+                    <span class="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full bg-rose-500 text-white font-black text-[10px] uppercase">
+                      ${p.discount_percentage}% OFF
+                    </span>
+                  ` : ''}
+                  <span class="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-full bg-surface-950/80 border border-white/10 text-emerald-400 font-bold text-[9px] uppercase">
+                    ${p.product_type === 'SUBSCRIPTION' ? '🔄 Subscription' : '⚡ One-Time'}
+                  </span>
 
-                <div>
-                  <div class="h-48 w-full overflow-hidden bg-surface-900">
-                    <img src="${p.images && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                  </div>
-                  <div class="p-5 space-y-2">
-                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">${p.category || 'Digital Good'}</span>
-                    <h3 class="text-sm font-bold text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">${p.name}</h3>
-                    <p class="text-xs text-slate-400 line-clamp-2">${p.short_description || p.description}</p>
-                  </div>
-                </div>
-
-                <div class="px-5 pb-5 pt-2 flex items-center justify-between border-t border-white/5" onclick="event.stopPropagation()">
                   <div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-base font-black text-white">₹${p.sale_price}</span>
-                      ${p.original_price > p.sale_price ? `<span class="text-xs text-slate-500 line-through">₹${p.original_price}</span>` : ''}
+                    <div class="h-48 w-full overflow-hidden bg-surface-900">
+                      <img src="${p.images && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                    </div>
+                    <div class="p-5 space-y-2">
+                      <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">${p.category || 'Digital Good'}</span>
+                      <h3 class="text-sm font-bold text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">${p.name}</h3>
+                      <p class="text-xs text-slate-400 line-clamp-2">${p.short_description || p.description}</p>
                     </div>
                   </div>
-                  <button onclick="navigate('product-details', { id: '${p._id}' })" class="px-4 py-2 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95">
-                    View Details
-                  </button>
+
+                  <div class="px-5 pb-5 pt-2 flex items-center justify-between border-t border-white/5" onclick="event.stopPropagation()">
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span class="text-base font-black text-white">₹${p.sale_price}</span>
+                        ${p.original_price > p.sale_price ? `<span class="text-xs text-slate-500 line-through">₹${p.original_price}</span>` : ''}
+                      </div>
+                      ${savings > 0 ? `<span class="text-[10px] text-emerald-400 font-bold block">Save ₹${savings}</span>` : ''}
+                    </div>
+                    <button onclick="navigate('product-details', { id: '${p._id}' })" class="px-4 py-2 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95">
+                      View Details
+                    </button>
+                  </div>
                 </div>
-              </div>
-            `).join('')}
+              `;
+            }).join('')}
           </div>
         </div>
       `;
@@ -301,7 +310,8 @@
       selectedSubDuration = '1_MONTH';
       currentSelectedPrice = p.product_type === 'SUBSCRIPTION' ? (p.subscription_pricing?.one_month || p.sale_price) : p.sale_price;
       const imagesList = p.images && p.images.length ? p.images : ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'];
-      const savings = p.original_price > p.sale_price ? p.original_price - p.sale_price : 0;
+      const savings = p.original_price > currentSelectedPrice ? p.original_price - currentSelectedPrice : 0;
+      const isAvailable = p.in_stock;
 
       container.innerHTML = `
         <div class="space-y-12">
@@ -366,19 +376,19 @@
               <div class="p-5 rounded-3xl glass border border-white/5 space-y-1">
                 <div class="flex items-center gap-3">
                   <span class="text-3xl font-black text-white" id="displayActivePrice">₹${currentSelectedPrice}</span>
-                  ${p.original_price > p.sale_price ? `<span class="text-sm text-slate-500 line-through">₹${p.original_price}</span>` : ''}
-                  ${savings > 0 ? `<span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold">You Save ₹${savings}</span>` : ''}
+                  ${p.original_price > currentSelectedPrice ? `<span class="text-sm text-slate-500 line-through">₹${p.original_price}</span>` : ''}
+                  ${savings > 0 ? `<span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold" id="detailSavingsBadge">You Save ₹${savings}</span>` : ''}
                 </div>
-                <span class="text-xs ${p.in_stock ? 'text-emerald-400' : 'text-rose-400'} font-bold block pt-1">
-                  ${p.in_stock ? `● Available in Stock (${p.stock_count} slots ready)` : '✕ Out of Stock'}
+                <span class="text-xs ${isAvailable ? 'text-emerald-400' : 'text-rose-400'} font-bold block pt-1">
+                  ${isAvailable ? '● Available' : '✕ Out of Stock'}
                 </span>
               </div>
 
               <div class="space-y-3">
-                <button onclick="buyNowStore('${p._id}', '${p.name.replace(/'/g, "\\'")}', '${p.product_type}')" ${!p.in_stock ? 'disabled' : ''} class="w-full py-4 rounded-2xl ${p.in_stock ? 'bg-emerald-500 text-gray-950 font-black' : 'bg-gray-800 text-gray-500 cursor-not-allowed'} text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-                  ${p.in_stock ? '⚡ Buy Now & Pay (UPI / Crypto)' : 'Currently Out of Stock'}
+                <button onclick="buyNowStore('${p._id}', '${p.name.replace(/'/g, "\\'")}', '${p.product_type}')" ${!isAvailable ? 'disabled' : ''} class="w-full py-4 rounded-2xl ${isAvailable ? 'bg-emerald-500 text-gray-950 font-black' : 'bg-gray-800 text-gray-500 cursor-not-allowed'} text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+                  ${isAvailable ? '⚡ Buy Now & Pay (UPI / Crypto)' : 'Currently Out of Stock'}
                 </button>
-                <button onclick="addToCart('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${currentSelectedPrice}, '${imagesList[0]}', '${p.delivery_type}')" ${!p.in_stock ? 'disabled' : ''} class="w-full py-4 rounded-2xl glass hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all">
+                <button onclick="addToCart('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${currentSelectedPrice}, '${imagesList[0]}', '${p.delivery_type}')" ${!isAvailable ? 'disabled' : ''} class="w-full py-4 rounded-2xl glass hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all">
                   Add to Cart
                 </button>
               </div>
@@ -729,7 +739,7 @@
     }
 
     // =========================================================================
-    // CUSTOMER PURCHASED ITEMS (RETRIEVES LIVE CREDENTIALS FROM ASSIGNED SLOT)
+    // CUSTOMER PURCHASED ITEMS (LIVE CREDENTIALS)
     // =========================================================================
     async function renderStoreOrders(container) {
       if (!state.token) return renderCustomerAuthPrompt(container, 'orders');
@@ -921,6 +931,11 @@
       navigate('home');
     }
 
+    function handleStoreSearch(val) {
+      if (!val.trim()) return renderStoreProducts(document.getElementById('storeContent'));
+      renderStoreProducts(document.getElementById('storeContent'), { search: val, title: `Search results for "${val}"` });
+    }
+
     // =========================================================================
     // DEDICATED SAAS ADMIN CONTROL CENTER
     // =========================================================================
@@ -991,7 +1006,7 @@
                 <button onclick="switchAdminSection('slots')" id="adnav-slots" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all border border-emerald-500/20 bg-emerald-500/5">🔑 <span>Account Slots</span></button>
                 <button onclick="switchAdminSection('products')" id="adnav-products" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🛍 <span>Product Studio</span></button>
                 <button onclick="switchAdminSection('payment-settings')" id="adnav-payment-settings" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">💰 <span>Payment Gateway</span></button>
-                <button onclick="switchAdminSection('system-monitor')" id="adnav-system-monitor" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all border border-emerald-500/20 bg-emerald-500/5">🖥️ <span>System & Infrastructure</span></button>
+                <button onclick="switchAdminSection('system-monitor')" id="adnav-system-monitor" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🖥️ <span>System & Infrastructure</span></button>
               </nav>
             </div>
 
@@ -1062,7 +1077,7 @@
     }
 
     // =========================================================================
-    // DEDICATED ACCOUNT SLOTS PAGE (FIXED DISPLAY, ASSIGNMENTS & ACCURATE COUNTS)
+    // DEDICATED ACCOUNT SLOTS PAGE
     // =========================================================================
     async function renderAdminAccountSlots(container) {
       container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading Account Slots suite from MongoDB Atlas...</div>';
@@ -1188,7 +1203,6 @@
       }
     }
 
-    // Modal to Add / Edit Slot
     async function openSlotFormModal(slotId, currentStatus) {
       const isNew = slotId === 'new';
       const modal = document.getElementById('globalModal');
@@ -1239,7 +1253,7 @@
 
             <div>
               <label class="text-slate-400 block mb-1">Slot Label / Name</label>
-              <input type="text" id="slotFormLabel" required value="${slotData.account_label || ''}" placeholder="e.g. Slot 1 (Private UHD)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
+              <input type="text" id="slotFormLabel" required value="${slotData.account_label || ''}" placeholder="e.g. Slot 1" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
             </div>
 
             <div>
@@ -1316,7 +1330,6 @@
       }
     }
 
-    // Modal to View Slot Details & Active Customer Drilldown
     function openSlotDetailsModal(slotId) {
       const slot = state.loadedSlots.find(s => s._id === slotId);
       if (!slot) return;
@@ -1334,7 +1347,6 @@
             <h2 class="text-lg font-black text-white font-sans">${slot.account_label}</h2>
           </div>
 
-          <!-- Credentials Card -->
           <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-2">
             <div class="flex justify-between items-center pb-2 border-b border-admin-border">
               <span class="text-slate-500">Live Status:</span>
@@ -1358,7 +1370,6 @@
             </div>
           </div>
 
-          <!-- Active Customers List -->
           <div class="space-y-3">
             <h3 class="text-xs font-bold text-white font-sans uppercase">Currently Active Assigned Customers (${slot.active_customers?.length || 0})</h3>
             <div class="space-y-2 max-h-48 overflow-y-auto custom-scroll">
@@ -1379,7 +1390,6 @@
             </div>
           </div>
 
-          <!-- Historical Tenant Record -->
           <div class="space-y-3">
             <h3 class="text-xs font-bold text-slate-400 font-sans uppercase">Historical Tenants (${slot.assignment_history?.length || 0})</h3>
             <div class="space-y-1.5 max-h-36 overflow-y-auto custom-scroll">
@@ -1584,7 +1594,7 @@
           <div class="flex justify-between items-center">
             <div>
               <h2 class="text-lg font-black text-white font-sans">Master Product Studio</h2>
-              <p class="text-xs text-slate-400">Total control over pricing, real-time discounts, multi-images, specs & features</p>
+              <p class="text-xs text-slate-400">Total control over pricing, real-time discounts, status & features</p>
             </div>
             <button onclick="openProductStudioModal('new')" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase font-sans shadow-lg shadow-emerald-500/20">
               + Add New Product
@@ -1601,8 +1611,8 @@
                     <th class="pb-2">Type</th>
                     <th class="pb-2">Original Price</th>
                     <th class="pb-2">Selling Price</th>
-                    <th class="pb-2">Discount</th>
-                    <th class="pb-2">Stock Slots</th>
+                    <th class="pb-2">Status</th>
+                    <th class="pb-2">Slots Count</th>
                     <th class="pb-2 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -1624,13 +1634,15 @@
                       <td class="py-3 text-slate-400 line-through">₹${p.original_price}</td>
                       <td class="py-3 text-emerald-400 font-bold">₹${p.sale_price}</td>
                       <td class="py-3">
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${p.discount_percentage > 0 ? 'bg-rose-500/10 text-rose-400' : 'text-slate-500'}">
-                          ${p.discount_percentage > 0 ? p.discount_percentage + '% OFF' : 'None'}
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          p.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' :
+                          p.status === 'out_of_stock' ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-500/10 text-slate-400'
+                        }">
+                          ${p.status === 'active' ? '● In Stock' : (p.status === 'out_of_stock' ? '✕ Out of Stock' : p.status)}
                         </span>
                       </td>
                       <td class="py-3">
-                        <span class="text-emerald-400 font-bold">${p.available_slots || 0} Available</span>
-                        <span class="text-slate-500"> / ${p.total_slots || 0} Total</span>
+                        <span class="text-slate-300 font-bold">${p.total_slots || 0} Slots</span>
                       </td>
                       <td class="py-3 text-right space-x-2">
                         <button onclick="navigate('product-details', { id: '${p._id}' })" class="text-slate-400 hover:text-white">👁 View</button>
@@ -1688,8 +1700,8 @@
         <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
         <div class="space-y-6 text-xs font-mono">
           <div>
-            <h2 class="text-base font-black text-white font-sans">${isNew ? 'Create New Master Product' : `Edit Product Studio: ${p.name}`}</h2>
-            <p class="text-xs text-slate-400 font-sans">Edit prices, real-time discounts, multi-images, features, and specifications</p>
+            <h2 class="text-base font-black text-white font-sans">${isNew ? 'Create New Master Product' : `Edit Product: ${p.name}`}</h2>
+            <p class="text-xs text-slate-400 font-sans">Set prices, availability status (In Stock / Out of Stock), and features</p>
           </div>
 
           <form onsubmit="handleMasterProductSubmit(event, '${productId}')" class="space-y-6">
@@ -1702,7 +1714,7 @@
                   <input type="text" id="studioName" required value="${p.name || ''}" placeholder="Product Title" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white font-bold">
                 </div>
                 <div>
-                  <label class="text-slate-400 block mb-0.5">Short Tagline (Card & Header)</label>
+                  <label class="text-slate-400 block mb-0.5">Short Tagline</label>
                   <input type="text" id="studioShortDesc" value="${p.short_description || ''}" placeholder="Short Tagline Description" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
                 </div>
                 <div class="grid grid-cols-2 gap-2">
@@ -1735,7 +1747,7 @@
             </div>
 
             <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
-              <span class="text-[10px] text-emerald-400 font-bold uppercase block font-sans">3. Pricing & Discount Engine</span>
+              <span class="text-[10px] text-emerald-400 font-bold uppercase block font-sans">3. Pricing & Stock Availability</span>
               
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                 <div>
@@ -1747,11 +1759,13 @@
                   <input type="number" id="studioSalePrice" oninput="calculateStudioDiscount()" value="${p.sale_price || 499}" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-emerald-400 font-bold">
                 </div>
                 <div>
-                  <label class="text-slate-400 block mb-0.5">Discount Preview</label>
-                  <div id="studioDiscountBadge" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-emerald-400 font-bold flex items-center justify-between">
-                    <span id="studioDiscPercent">${p.discount_percentage || 0}% OFF</span>
-                    <span id="studioSavingsText" class="text-[10px] text-slate-400">Save ₹${(p.original_price || 0) - (p.sale_price || 0)}</span>
-                  </div>
+                  <label class="text-slate-400 block mb-0.5">Stock Status Setting</label>
+                  <select id="studioStatus" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-emerald-400 font-bold">
+                    <option value="active" ${p.status === 'active' ? 'selected' : ''}>🟢 In Stock (Available for Purchase)</option>
+                    <option value="out_of_stock" ${p.status === 'out_of_stock' ? 'selected' : ''}>🔴 Out of Stock</option>
+                    <option value="draft" ${p.status === 'draft' ? 'selected' : ''}>Draft</option>
+                    <option value="disabled" ${p.status === 'disabled' ? 'selected' : ''}>Disabled</option>
+                  </select>
                 </div>
               </div>
 
@@ -1812,29 +1826,6 @@
               </div>
             </div>
 
-            <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
-              <span class="text-[10px] text-emerald-400 font-bold uppercase block font-sans">8. Delivery Configuration</span>
-              <div class="grid grid-cols-2 gap-2">
-                <div>
-                  <label class="text-slate-400 block mb-0.5">Delivery Method</label>
-                  <select id="studioDelivType" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
-                    <option value="EMAIL_PASSWORD" ${p.delivery_type === 'EMAIL_PASSWORD' ? 'selected' : ''}>Email + Password</option>
-                    <option value="LICENSE_KEY" ${p.delivery_type === 'LICENSE_KEY' ? 'selected' : ''}>License Key</option>
-                    <option value="STANDARD_LINK" ${p.delivery_type === 'STANDARD_LINK' ? 'selected' : ''}>Standard URL Link</option>
-                    <option value="CUSTOM_TEXT" ${p.delivery_type === 'CUSTOM_TEXT' ? 'selected' : ''}>Custom Text / Instructions</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="text-slate-400 block mb-0.5">Status</label>
-                  <select id="studioStatus" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
-                    <option value="active" ${p.status === 'active' ? 'selected' : ''}>Active / Live in Store</option>
-                    <option value="draft" ${p.status === 'draft' ? 'selected' : ''}>Draft</option>
-                    <option value="disabled" ${p.status === 'disabled' ? 'selected' : ''}>Disabled</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
             <div class="flex flex-col sm:flex-row gap-3 pt-2">
               <button type="submit" class="flex-1 py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
                 ${isNew ? 'Create & Publish Product' : 'Save Changes to Database'}
@@ -1864,10 +1855,6 @@
       const orig = Number(document.getElementById('studioOrigPrice').value) || 0;
       const sale = Number(document.getElementById('studioSalePrice').value) || 0;
       const disc = orig > sale ? Math.round(((orig - sale) / orig) * 100) : 0;
-      const savings = Math.max(0, orig - sale);
-
-      document.getElementById('studioDiscPercent').textContent = `${disc}% OFF`;
-      document.getElementById('studioSavingsText').textContent = `Save ₹${savings}`;
     }
 
     function toggleStudioType(val) {
@@ -1922,7 +1909,6 @@
         features: document.getElementById('studioFeatures').value.split('\n').map(s => s.trim()).filter(Boolean),
         whats_included: document.getElementById('studioIncluded').value.split('\n').map(s => s.trim()).filter(Boolean),
         specifications: specs,
-        delivery_type: document.getElementById('studioDelivType').value,
         status: document.getElementById('studioStatus').value
       };
 
@@ -1970,7 +1956,7 @@
     }
 
     // =========================================================================
-    // ADMIN PAYMENT SETTINGS (WITH DIRECT QR UPLOAD)
+    // ADMIN PAYMENT SETTINGS
     // =========================================================================
     async function renderAdminPaymentSettings(container) {
       container.innerHTML = '<div class="text-center py-12 text-slate-500 font-mono">Loading payment configurations...</div>';
@@ -2232,9 +2218,7 @@
               </div>
               <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
                 <span>Digital Delivery Stock Queue</span>
-                <span class="${c.digital_delivery.stock_ready ? 'text-emerald-400' : 'text-amber-400'} font-bold">
-                  ${c.digital_delivery.stock_ready ? '🟢 Ready (' + c.digital_delivery.available_stock + ' slots in stock)' : '🟡 Stock Low (0 units)'}
-                </span>
+                <span class="text-emerald-400 font-bold">🟢 Ready</span>
               </div>
             </div>
 
