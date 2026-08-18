@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Project Money — Dashboard</title>
+  <title>Project Money — Personal Finance</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,11 +25,6 @@
               400: '#4ade80',
               500: '#10b981',
               600: '#059669',
-            },
-            surface: {
-              card: 'rgba(11, 19, 32, 0.72)',
-              input: 'rgba(7, 13, 22, 0.65)',
-              border: 'rgba(255, 255, 255, 0.07)'
             }
           }
         }
@@ -48,13 +43,16 @@
       color: #f8fafc;
       font-family: 'Plus Jakarta Sans', sans-serif;
       overflow-x: hidden;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
     }
 
-    /* Ambient Background Atmosphere */
+    /* Ambient Dynamic Orbs */
     .ambient-orb {
       position: fixed;
       border-radius: 50%;
-      filter: blur(100px);
+      filter: blur(110px);
       pointer-events: none;
       will-change: transform, opacity;
       z-index: 0;
@@ -62,17 +60,17 @@
     }
     .orb-primary {
       top: -10%;
-      left: 10%;
-      width: 420px;
-      height: 420px;
-      background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.03) 55%, transparent 70%);
+      left: 15%;
+      width: 440px;
+      height: 440px;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.02) 55%, transparent 70%);
     }
     .orb-secondary {
       bottom: 5%;
-      right: 5%;
+      right: 10%;
       width: 480px;
       height: 480px;
-      background: radial-gradient(circle, rgba(14, 165, 233, 0.07) 0%, rgba(16, 185, 129, 0.02) 60%, transparent 75%);
+      background: radial-gradient(circle, rgba(14, 165, 233, 0.08) 0%, rgba(16, 185, 129, 0.02) 60%, transparent 75%);
       animation-delay: -8s;
     }
 
@@ -82,7 +80,7 @@
       100% { transform: translate3d(-25px, 35px, 0) scale(0.95); opacity: 0.75; }
     }
 
-    /* Glassmorphism Card System */
+    /* Glassmorphism System */
     .fintech-card {
       background: linear-gradient(165deg, rgba(16, 26, 42, 0.75) 0%, rgba(8, 14, 24, 0.85) 100%);
       backdrop-filter: blur(28px);
@@ -92,30 +90,19 @@
         0 20px 40px -15px rgba(0, 0, 0, 0.7),
         0 0 0 1px rgba(255, 255, 255, 0.03) inset,
         0 1px 0 0 rgba(255, 255, 255, 0.1) inset;
-      transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .fintech-card:hover {
-      border-color: rgba(16, 185, 129, 0.2);
+      border-color: rgba(16, 185, 129, 0.22);
     }
 
-    /* Hero Balance Card Glow */
     .hero-balance-card {
       background: linear-gradient(145deg, rgba(18, 38, 35, 0.85) 0%, rgba(9, 18, 28, 0.92) 100%);
       position: relative;
       overflow: hidden;
     }
-    .hero-balance-card::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: radial-gradient(circle at 50% 30%, rgba(16, 185, 129, 0.15), transparent 60%);
-      pointer-events: none;
-    }
 
-    /* Interactive Action Buttons */
+    /* Buttons */
     .btn-action {
       background: linear-gradient(180deg, #10b981 0%, #059669 100%);
       box-shadow: 0 10px 24px -6px rgba(16, 185, 129, 0.4), 0 1px 0 0 rgba(255, 255, 255, 0.3) inset;
@@ -125,48 +112,20 @@
       transform: scale(0.97);
     }
 
-    /* Chart Canvas and SVG Path Animation */
-    .chart-path {
-      stroke-dasharray: 1000;
-      stroke-dashoffset: 1000;
-      animation: drawChart 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      animation-delay: 0.3s;
-    }
-    @keyframes drawChart {
-      to { stroke-dashoffset: 0; }
-    }
-
-    .chart-area {
+    /* Views */
+    .app-view {
+      display: none;
       opacity: 0;
-      animation: fadeInArea 1.2s ease forwards;
-      animation-delay: 0.6s;
+      transform: translateY(8px);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    @keyframes fadeInArea {
-      to { opacity: 0.18; }
-    }
-
-    /* Staggered Orchestration */
-    .dash-stagger {
-      opacity: 0;
-      transform: translate3d(0, 18px, 0);
-      transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-      will-change: opacity, transform;
-    }
-    .dash-visible {
+    .app-view.active {
+      display: block;
       opacity: 1;
-      transform: translate3d(0, 0, 0);
+      transform: translateY(0);
     }
 
-    /* Custom Scrollbar for Drawer Panels */
-    .custom-scroll::-webkit-scrollbar {
-      width: 4px;
-    }
-    .custom-scroll::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 4px;
-    }
-
-    /* Bottom Navigation Active Glow */
+    /* Bottom Navigation Glow */
     .nav-active {
       color: #34d399 !important;
     }
@@ -181,91 +140,85 @@
       box-shadow: 0 0 10px #10b981;
     }
 
-    /* Modals & Drawers */
+    /* Modal Animation */
     .modal-backdrop {
-      background: rgba(3, 7, 18, 0.78);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      background: rgba(2, 6, 14, 0.78);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
     }
-    .drawer-panel {
-      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Floating Speed Dial Action Buttons */
+    .speed-dial-btn {
+      transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.24s ease;
     }
   </style>
 </head>
-<body class="min-h-screen relative selection:bg-brand-500 selection:text-black pb-28 md:pb-8">
+<body class="selection:bg-brand-500 selection:text-black pb-28 md:pb-8">
 
-  <!-- Atmosphere -->
+  <!-- Background Orbs -->
   <div class="ambient-orb orb-primary"></div>
   <div class="ambient-orb orb-secondary"></div>
   <div class="fixed inset-0 bg-[radial-gradient(#ffffff08_1px,transparent_1px)] [background-size:28px_28px] pointer-events-none opacity-40 z-0"></div>
 
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 max-w-sm pointer-events-none"></div>
+
   <!-- ========================================================== -->
-  <!-- 1. LOGIN SCREEN (Preserved & Connected) -->
+  <!-- 1. LOGIN SCREEN -->
   <!-- ========================================================== -->
   <div id="loginScreenWrapper" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#04080F] transition-all duration-500">
     <main class="w-full max-w-[390px] relative z-10">
       <div id="loginCard" class="fintech-card rounded-[22px] px-6 py-7 sm:px-8 sm:py-8">
-        
         <div class="flex flex-col items-center text-center mb-6">
           <div class="w-[52px] h-[52px] rounded-[15px] bg-[#070D16] border border-emerald-400/50 flex items-center justify-center mb-3 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-            <svg class="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-            </svg>
+            <svg class="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
           </div>
           <h1 class="text-[22px] font-bold tracking-tight text-white leading-tight">Project Money</h1>
           <p class="text-[12px] font-medium text-slate-400 mt-1">Sign in to your control center</p>
         </div>
 
-        <div id="loginErrorAlert" class="hidden mb-4 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-2.5 text-[11.5px] text-red-400">
-          <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <span>Invalid credentials. Use aryan / 123</span>
-        </div>
-
         <form onsubmit="handleAppLogin(event)" class="space-y-3.5">
-          <div class="space-y-1.5">
-            <label class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 pl-0.5">Username</label>
-            <input type="text" id="loginUser" value="aryan" required class="w-full bg-[#060B13]/80 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400/70 transition-all">
+          <div>
+            <label class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 mb-1">Username</label>
+            <input type="text" id="loginUser" value="aryan" required class="w-full bg-[#060B13]/80 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400 transition-all">
           </div>
-          <div class="space-y-1.5">
-            <label class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 pl-0.5">Password</label>
-            <input type="password" id="loginPass" value="123" required class="w-full bg-[#060B13]/80 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400/70 transition-all">
+          <div>
+            <label class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 mb-1">Password</label>
+            <input type="password" id="loginPass" value="123" required class="w-full bg-[#060B13]/80 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400 transition-all">
           </div>
-          <button type="submit" id="loginSubmitBtn" class="btn-action w-full py-2.5 px-4 text-gray-950 font-bold text-sm rounded-xl mt-2 flex items-center justify-center gap-2">
+          <button type="submit" id="loginSubmitBtn" class="btn-action w-full py-2.5 px-4 text-gray-950 font-bold text-sm rounded-xl mt-2">
             <span>Sign In</span>
           </button>
         </form>
-        <p class="text-center text-[11px] text-slate-500 mt-4 font-mono">Demo Credentials: aryan / 123</p>
+        <p class="text-center text-[11px] text-slate-500 mt-4 font-mono">Demo: aryan / 123</p>
       </div>
     </main>
   </div>
 
   <!-- ========================================================== -->
-  <!-- 2. MAIN DASHBOARD / HOME PAGE -->
+  <!-- 2. DESKTOP & MOBILE MAIN APP CONTAINER -->
   <!-- ========================================================== -->
-  <div id="mainDashboard" class="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-8 opacity-0 transition-opacity duration-700">
+  <div id="mainApp" class="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-8 hidden">
     
     <!-- Top Header -->
-    <header class="dash-stagger flex items-center justify-between mb-6 pb-2">
+    <header class="flex items-center justify-between mb-6 pb-2">
       <div>
         <div class="flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
           <span id="greetingText" class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Good Morning</span>
         </div>
-        <h1 class="text-xl sm:text-2xl font-bold text-white tracking-tight mt-0.5">Aryan</h1>
+        <h1 id="userHeaderName" class="text-xl sm:text-2xl font-bold text-white tracking-tight mt-0.5">Aryan</h1>
       </div>
 
       <div class="flex items-center gap-2.5">
-        <!-- Notification Bell -->
-        <button onclick="openPanel('notificationPanel')" class="relative p-2.5 rounded-xl bg-slate-900/80 border border-white/10 hover:border-emerald-400/40 text-slate-300 hover:text-white transition-all active:scale-95" aria-label="Notifications">
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-          </svg>
-          <span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981]"></span>
+        <!-- Notification Button -->
+        <button onclick="toggleNotificationsModal()" class="relative p-2.5 rounded-xl bg-slate-900/80 border border-white/10 hover:border-emerald-400/40 text-slate-300 hover:text-white transition-all active:scale-95" aria-label="Notifications">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span id="unreadNotifBadge" class="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981]"></span>
         </button>
 
-        <!-- Profile Avatar -->
-        <button onclick="openPanel('profilePanel')" class="flex items-center gap-2 p-1.5 pr-3 rounded-xl bg-slate-900/80 border border-white/10 hover:border-emerald-400/40 transition-all active:scale-95">
+        <!-- Profile / Settings Button -->
+        <button onclick="switchView('profileView')" class="flex items-center gap-2 p-1.5 pr-3 rounded-xl bg-slate-900/80 border border-white/10 hover:border-emerald-400/40 transition-all active:scale-95">
           <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-600 to-emerald-400 flex items-center justify-center font-bold text-xs text-gray-950 shadow-md shadow-emerald-500/20">
             A
           </div>
@@ -274,609 +227,1439 @@
       </div>
     </header>
 
-    <!-- Main Grid Layout -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+    <!-- Desktop Navigation Tabs -->
+    <div class="hidden md:flex items-center gap-2 mb-6 border-b border-white/10 pb-3">
+      <button onclick="switchView('dashboardView')" data-tab="dashboardView" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Home</button>
+      <button onclick="switchView('historyView')" data-tab="historyView" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white">Transactions</button>
+      <button onclick="switchView('budgetView')" data-tab="budgetView" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white">Budgets & Goals</button>
+      <button onclick="switchView('reportsView')" data-tab="reportsView" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white">Reports</button>
+      <button onclick="switchView('accountsView')" data-tab="accountsView" class="tab-btn px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white">Accounts</button>
+    </div>
 
-      <!-- LEFT / TOP MAIN METRICS (Lg: 8 cols) -->
-      <div class="lg:col-span-8 space-y-5">
-        
-        <!-- 3. HERO TOTAL BALANCE CARD -->
-        <div class="dash-stagger fintech-card hero-balance-card rounded-2xl p-6 sm:p-7 border border-emerald-500/20">
-          <div class="flex items-center justify-between mb-3">
-            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Balance</span>
-            <button onclick="toggleBalanceMask()" class="text-slate-400 hover:text-emerald-400 transition-colors p-1" aria-label="Toggle Balance Visibility">
-              <svg id="eyeShowBal" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              <svg id="eyeHideBal" class="w-4 h-4 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-            </button>
+    <!-- ========================================================== -->
+    <!-- VIEW 1: DASHBOARD / HOME -->
+    <!-- ========================================================== -->
+    <div id="dashboardView" class="app-view active">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- Main Column (8 cols) -->
+        <div class="lg:col-span-8 space-y-5">
+          
+          <!-- Hero Total Balance Card -->
+          <div class="fintech-card hero-balance-card rounded-2xl p-6 sm:p-7 border border-emerald-500/20">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Calculated Balance</span>
+              <button onclick="toggleBalanceMask()" class="text-slate-400 hover:text-emerald-400 transition-colors p-1">
+                <svg id="eyeShowBal" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg id="eyeHideBal" class="w-4 h-4 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+
+            <div class="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-4 mb-4">
+              <h2 id="totalBalanceDisplay" class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight font-mono">₹0.00</h2>
+              <div id="netChangeBadge" class="flex items-center gap-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full w-fit">
+                <span>+₹0.00 this month</span>
+              </div>
+            </div>
+            <p class="text-xs text-slate-400">Summed live across all personal accounts and recorded entries.</p>
           </div>
 
-          <div class="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-4 mb-4">
-            <h2 id="balanceDisplay" class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight font-mono">₹1,24,580.00</h2>
-            <div class="flex items-center gap-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full w-fit">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
-              <span>+₹12,450 (10.2%) this month</span>
+          <!-- Income / Expenses Cards -->
+          <div class="grid grid-cols-2 gap-4">
+            <div onclick="switchView('reportsView')" class="fintech-card rounded-2xl p-4 sm:p-5 cursor-pointer">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-medium text-slate-400">Monthly Income</span>
+                <div class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+                </div>
+              </div>
+              <div id="monthlyIncomeDisplay" class="text-lg sm:text-xl font-bold text-white font-mono">₹0</div>
+              <span id="incomeChangeLabel" class="text-[11px] font-semibold text-emerald-400 mt-1 inline-block">+0% this month</span>
+            </div>
+
+            <div onclick="switchView('reportsView')" class="fintech-card rounded-2xl p-4 sm:p-5 cursor-pointer">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-medium text-slate-400">Monthly Expenses</span>
+                <div class="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+                </div>
+              </div>
+              <div id="monthlyExpenseDisplay" class="text-lg sm:text-xl font-bold text-white font-mono">₹0</div>
+              <span id="expenseChangeLabel" class="text-[11px] font-semibold text-slate-400 mt-1 inline-block">Active tracking</span>
             </div>
           </div>
 
-          <p class="text-xs text-slate-400">All accounts integrated • Real-time valuation</p>
-        </div>
-
-        <!-- 4. INCOME / EXPENSES CARDS -->
-        <div class="dash-stagger grid grid-cols-2 gap-4">
-          <!-- Income Card -->
+          <!-- Quick Actions -->
           <div class="fintech-card rounded-2xl p-4 sm:p-5">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-medium text-slate-400">Monthly Income</span>
-              <div class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
-              </div>
+            <span class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Quick Actions</span>
+            <div class="grid grid-cols-4 gap-2.5 sm:gap-3">
+              <button onclick="openTransactionModal('income')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-white/5 hover:border-emerald-500/30 transition-all active:scale-95">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-1.5">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </div>
+                <span class="text-[11px] font-medium text-slate-300">Income</span>
+              </button>
+
+              <button onclick="openTransactionModal('expense')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-white/5 hover:border-emerald-500/30 transition-all active:scale-95">
+                <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center mb-1.5">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </div>
+                <span class="text-[11px] font-medium text-slate-300">Expense</span>
+              </button>
+
+              <button onclick="openTransferModal()" class="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-white/5 hover:border-emerald-500/30 transition-all active:scale-95">
+                <div class="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center mb-1.5">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                </div>
+                <span class="text-[11px] font-medium text-slate-300">Transfer</span>
+              </button>
+
+              <button onclick="switchView('reportsView')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-white/5 hover:border-emerald-500/30 transition-all active:scale-95">
+                <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center mb-1.5">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                </div>
+                <span class="text-[11px] font-medium text-slate-300">Reports</span>
+              </button>
             </div>
-            <div class="text-lg sm:text-xl font-bold text-white font-mono" id="incomeDisplay">₹45,000</div>
-            <span class="text-[11px] font-semibold text-emerald-400 mt-1 inline-block">+12.4% vs last month</span>
           </div>
 
-          <!-- Expense Card -->
-          <div class="fintech-card rounded-2xl p-4 sm:p-5">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-medium text-slate-400">Monthly Expenses</span>
-              <div class="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+          <!-- Dynamic SVG Spending Overview Chart -->
+          <div class="fintech-card rounded-2xl p-5 sm:p-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div>
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Spending Curve</span>
+                <div id="chartPeriodTotal" class="text-base font-bold text-white mt-0.5">₹0.00 tracked</div>
+              </div>
+              <div class="flex items-center bg-black/40 p-1 rounded-xl border border-white/5 self-start">
+                <button onclick="setChartPeriod('7D', this)" class="chart-tab px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-500 text-gray-950">7D</button>
+                <button onclick="setChartPeriod('30D', this)" class="chart-tab px-2.5 py-1 text-xs font-semibold text-slate-400 hover:text-white">30D</button>
+                <button onclick="setChartPeriod('3M', this)" class="chart-tab px-2.5 py-1 text-xs font-semibold text-slate-400 hover:text-white">3M</button>
+                <button onclick="setChartPeriod('1Y', this)" class="chart-tab px-2.5 py-1 text-xs font-semibold text-slate-400 hover:text-white">1Y</button>
               </div>
             </div>
-            <div class="text-lg sm:text-xl font-bold text-white font-mono" id="expenseDisplay">₹32,550</div>
-            <span class="text-[11px] font-semibold text-emerald-400 mt-1 inline-block">-4.8% spending reduced</span>
+
+            <div class="relative h-44 w-full" id="chartCanvasContainer">
+              <svg id="svgChart" class="w-full h-full overflow-visible" viewBox="0 0 500 150" preserveAspectRatio="none"></svg>
+            </div>
+            <div id="chartLabels" class="grid grid-cols-7 text-center text-[10px] font-medium text-slate-500 mt-2"></div>
+          </div>
+
+          <!-- Recent Transactions -->
+          <div class="fintech-card rounded-2xl p-5 sm:p-6">
+            <div class="flex items-center justify-between mb-4">
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Recent Activity</span>
+              <button onclick="switchView('historyView')" class="text-xs font-semibold text-emerald-400 hover:underline">View all</button>
+            </div>
+            <div id="recentTransactionsList" class="space-y-2.5"></div>
           </div>
         </div>
 
-        <!-- 5. QUICK ACTIONS -->
-        <div class="dash-stagger fintech-card rounded-2xl p-4 sm:p-5">
-          <span class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Quick Actions</span>
-          <div class="grid grid-cols-4 gap-2.5 sm:gap-3">
-            <button onclick="openModal('Add Income')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-white/5 hover:border-emerald-500/30 transition-all active:scale-95">
-              <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-1.5">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <!-- Sidebar / Right Column (4 cols) -->
+        <div class="lg:col-span-4 space-y-5">
+          <!-- Dynamic Financial Insight Card -->
+          <div class="fintech-card rounded-2xl p-5 border border-emerald-500/30 bg-gradient-to-b from-emerald-950/20 to-transparent">
+            <div class="flex items-center gap-2.5 mb-2">
+              <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
               </div>
-              <span class="text-[11px] font-medium text-slate-300">Income</span>
-            </button>
-
-            <button onclick="openModal('Add Expense')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-white/5 hover:border-emerald-500/30 transition-all active:scale-95">
-              <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center mb-1.5">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              </div>
-              <span class="text-[11px] font-medium text-slate-300">Expense</span>
-            </button>
-
-            <button onclick="openModal('Transfer Funds')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-white/5 hover:border-emerald-500/30 transition-all active:scale-95">
-              <div class="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center mb-1.5">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-              </div>
-              <span class="text-[11px] font-medium text-slate-300">Transfer</span>
-            </button>
-
-            <button onclick="openModal('Financial Reports')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-white/5 hover:border-emerald-500/30 transition-all active:scale-95">
-              <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center mb-1.5">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-              </div>
-              <span class="text-[11px] font-medium text-slate-300">Reports</span>
-            </button>
+              <span class="text-xs font-bold text-emerald-300">Financial Insight</span>
+            </div>
+            <p id="dynamicInsightText" class="text-xs text-slate-300 leading-relaxed">Analyzing current activity...</p>
           </div>
-        </div>
 
-        <!-- 6. SPENDING OVERVIEW (ANIMATED SVG CHART) -->
-        <div class="dash-stagger fintech-card rounded-2xl p-5 sm:p-6">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-            <div>
-              <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Spending Overview</span>
-              <div class="text-base font-bold text-white mt-0.5">₹9,100 total this period</div>
+          <!-- Budget Overview -->
+          <div class="fintech-card rounded-2xl p-5 sm:p-6">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Monthly Budget</span>
+              <button onclick="openSetBudgetModal()" class="text-[11px] font-semibold text-emerald-400 hover:underline">Edit Limit</button>
             </div>
             
-            <!-- Period Switcher -->
-            <div class="flex items-center bg-black/40 p-1 rounded-xl border border-white/5 self-start">
-              <button onclick="switchTimeframe(this, '7D')" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-500 text-gray-950 transition-all">7D</button>
-              <button onclick="switchTimeframe(this, '30D')" class="px-2.5 py-1 text-xs font-semibold text-slate-400 hover:text-white transition-all">30D</button>
-              <button onclick="switchTimeframe(this, '3M')" class="px-2.5 py-1 text-xs font-semibold text-slate-400 hover:text-white transition-all">3M</button>
-              <button onclick="switchTimeframe(this, '1Y')" class="px-2.5 py-1 text-xs font-semibold text-slate-400 hover:text-white transition-all">1Y</button>
+            <div class="flex items-baseline justify-between mb-2">
+              <span id="budgetSpentRatio" class="text-lg font-bold text-white font-mono">₹0 <span class="text-xs font-normal text-slate-500">/ ₹0</span></span>
+              <span id="budgetRemainingLabel" class="text-xs font-medium text-slate-400 font-mono">₹0 left</span>
             </div>
+
+            <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden mb-4">
+              <div id="budgetGlobalProgressBar" class="h-full bg-emerald-400 rounded-full transition-all duration-700" style="width: 0%;"></div>
+            </div>
+
+            <div id="categoryBudgetSummary" class="space-y-3 pt-2 border-t border-white/5"></div>
           </div>
 
-          <!-- Chart Area -->
-          <div class="relative h-44 w-full">
-            <svg class="w-full h-full overflow-visible" viewBox="0 0 500 150" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#10b981" stop-opacity="0.35"/>
-                  <stop offset="100%" stop-color="#10b981" stop-opacity="0.0"/>
-                </linearGradient>
-              </defs>
-              <!-- Gradient Area Fill -->
-              <polygon class="chart-area" points="0,150 0,90 83,110 166,45 250,80 333,105 416,25 500,95 500,150" fill="url(#chartGrad)"/>
-              <!-- Animated Line Stroke -->
-              <path class="chart-path" d="M 0,90 Q 40,105 83,110 T 166,45 T 250,80 T 333,105 T 416,25 T 500,95" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round"/>
-              <!-- Key Points -->
-              <circle cx="166" cy="45" r="4" fill="#34d399" stroke="#04080F" stroke-width="2"/>
-              <circle cx="416" cy="25" r="4" fill="#34d399" stroke="#04080F" stroke-width="2"/>
-            </svg>
+          <!-- Financial Goals -->
+          <div class="fintech-card rounded-2xl p-5 sm:p-6">
+            <div class="flex items-center justify-between mb-4">
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Financial Goals</span>
+              <button onclick="openGoalModal()" class="text-xs font-semibold text-emerald-400 hover:underline">+ New Goal</button>
+            </div>
+            <div id="goalsSummaryList" class="space-y-3"></div>
           </div>
 
-          <div class="grid grid-cols-7 text-center text-[11px] font-medium text-slate-500 mt-2">
-            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
-          </div>
-        </div>
-
-        <!-- 7. RECENT TRANSACTIONS -->
-        <div class="dash-stagger fintech-card rounded-2xl p-5 sm:p-6">
-          <div class="flex items-center justify-between mb-4">
-            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Recent Transactions</span>
-            <button onclick="openModal('All Transactions')" class="text-xs font-semibold text-emerald-400 hover:underline">View all</button>
-          </div>
-
-          <div class="space-y-3" id="transactionList">
-            <!-- Row: Netflix -->
-            <div class="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/[0.03] transition-colors cursor-pointer">
-              <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center">
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/></svg>
-                </div>
-                <div>
-                  <div class="text-xs font-semibold text-white">Netflix Subscription</div>
-                  <div class="text-[11px] text-slate-500">Entertainment • Today</div>
-                </div>
+          <!-- Month's Ratio Metrics -->
+          <div class="fintech-card rounded-2xl p-5">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-3">Monthly Health</span>
+            <div class="grid grid-cols-2 gap-3 text-center">
+              <div class="p-3 rounded-xl bg-black/40 border border-white/5">
+                <span class="text-[10px] uppercase font-semibold text-slate-500">Net Saved</span>
+                <div id="monthlyNetSavedDisplay" class="text-sm font-bold text-emerald-400 font-mono mt-0.5">₹0</div>
               </div>
-              <div class="text-xs font-bold text-slate-200 font-mono">-₹649</div>
-            </div>
-
-            <!-- Row: Salary -->
-            <div class="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/[0.03] transition-colors cursor-pointer">
-              <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-                </div>
-                <div>
-                  <div class="text-xs font-semibold text-white">Salary Credited</div>
-                  <div class="text-[11px] text-slate-500">Income • Today</div>
-                </div>
+              <div class="p-3 rounded-xl bg-black/40 border border-white/5">
+                <span class="text-[10px] uppercase font-semibold text-slate-500">Savings Rate</span>
+                <div id="monthlySavingsRateDisplay" class="text-sm font-bold text-emerald-400 font-mono mt-0.5">0%</div>
               </div>
-              <div class="text-xs font-bold text-emerald-400 font-mono">+₹45,000</div>
-            </div>
-
-            <!-- Row: Swiggy -->
-            <div class="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/[0.03] transition-colors cursor-pointer">
-              <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
-                </div>
-                <div>
-                  <div class="text-xs font-semibold text-white">Swiggy Food</div>
-                  <div class="text-[11px] text-slate-500">Food & Dining • Yesterday</div>
-                </div>
-              </div>
-              <div class="text-xs font-bold text-slate-200 font-mono">-₹520</div>
-            </div>
-
-            <!-- Row: Amazon -->
-            <div class="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/[0.03] transition-colors cursor-pointer">
-              <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center">
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-                </div>
-                <div>
-                  <div class="text-xs font-semibold text-white">Amazon Shopping</div>
-                  <div class="text-[11px] text-slate-500">Shopping • Yesterday</div>
-                </div>
-              </div>
-              <div class="text-xs font-bold text-slate-200 font-mono">-₹1,299</div>
-            </div>
-
-            <!-- Row: Electricity Bill -->
-            <div class="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/[0.03] transition-colors cursor-pointer">
-              <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                </div>
-                <div>
-                  <div class="text-xs font-semibold text-white">Electricity Bill</div>
-                  <div class="text-[11px] text-slate-500">Utilities • Aug 15</div>
-                </div>
-              </div>
-              <div class="text-xs font-bold text-slate-200 font-mono">-₹2,450</div>
             </div>
           </div>
         </div>
-
       </div>
+    </div>
 
-      <!-- RIGHT SIDEBAR ON DESKTOP (Lg: 4 cols) -->
-      <div class="lg:col-span-4 space-y-5">
-        
-        <!-- 10. INTELLIGENT FINANCIAL INSIGHT -->
-        <div class="dash-stagger fintech-card rounded-2xl p-5 border border-emerald-500/30 bg-gradient-to-b from-emerald-950/20 to-transparent">
-          <div class="flex items-center gap-2.5 mb-2">
-            <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-            </div>
-            <span class="text-xs font-bold text-emerald-300">Financial Insight</span>
-          </div>
-          <p class="text-xs text-slate-300 leading-relaxed">
-            You're spending <span class="text-emerald-400 font-semibold">12% less</span> this month compared with last month. Keep it up to hit your savings target.
-          </p>
-        </div>
-
-        <!-- 8. BUDGET OVERVIEW -->
-        <div class="dash-stagger fintech-card rounded-2xl p-5 sm:p-6">
-          <div class="flex items-center justify-between mb-3">
-            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Monthly Budget</span>
-            <span class="text-xs font-bold text-emerald-400 font-mono">65% used</span>
+    <!-- ========================================================== -->
+    <!-- VIEW 2: TRANSACTIONS & HISTORY -->
+    <!-- ========================================================== -->
+    <div id="historyView" class="app-view">
+      <div class="fintech-card rounded-2xl p-5 sm:p-6 mb-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+          <div>
+            <h2 class="text-lg font-bold text-white">Transactions History</h2>
+            <p class="text-xs text-slate-400">Search, filter, and inspect your full financial log.</p>
           </div>
           
-          <div class="flex items-baseline justify-between mb-2">
-            <span class="text-lg font-bold text-white font-mono">₹32,550 <span class="text-xs font-normal text-slate-500">/ ₹50,000</span></span>
-            <span class="text-xs font-medium text-slate-400 font-mono">₹17,450 left</span>
-          </div>
-
-          <!-- Progress Bar -->
-          <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden mb-5">
-            <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-300 rounded-full transition-all duration-1000" style="width: 65%;"></div>
-          </div>
-
-          <!-- Category Allocations -->
-          <div class="space-y-3 pt-1 border-t border-white/5">
-            <div>
-              <div class="flex justify-between text-[11px] font-medium mb-1">
-                <span class="text-slate-300">Food & Dining</span>
-                <span class="text-slate-400 font-mono">₹8,000 / ₹12,000</span>
-              </div>
-              <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                <div class="h-full bg-emerald-400 rounded-full" style="width: 66%;"></div>
-              </div>
-            </div>
-
-            <div>
-              <div class="flex justify-between text-[11px] font-medium mb-1">
-                <span class="text-slate-300">Bills & Utilities</span>
-                <span class="text-amber-400 font-mono font-semibold">₹12,850 / ₹15,000 (85%)</span>
-              </div>
-              <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                <div class="h-full bg-amber-400 rounded-full" style="width: 85%;"></div>
-              </div>
-            </div>
-
-            <div>
-              <div class="flex justify-between text-[11px] font-medium mb-1">
-                <span class="text-slate-300">Shopping</span>
-                <span class="text-slate-400 font-mono">₹5,200 / ₹10,000</span>
-              </div>
-              <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                <div class="h-full bg-emerald-400 rounded-full" style="width: 52%;"></div>
-              </div>
-            </div>
+          <div class="flex items-center gap-2">
+            <button onclick="openTransactionModal('income')" class="px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 active:scale-95 transition-all">+ Income</button>
+            <button onclick="openTransactionModal('expense')" class="px-3 py-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold hover:bg-rose-500/20 active:scale-95 transition-all">+ Expense</button>
           </div>
         </div>
 
-        <!-- 9. FINANCIAL GOALS -->
-        <div class="dash-stagger fintech-card rounded-2xl p-5 sm:p-6">
-          <div class="flex items-center justify-between mb-4">
-            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Financial Goals</span>
-            <button onclick="openModal('Create New Goal')" class="text-xs font-semibold text-emerald-400 hover:underline">+ Create</button>
-          </div>
+        <!-- Filter Controls -->
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
+          <input type="text" id="txSearchInput" oninput="renderHistoryList()" placeholder="Search description, notes, category..." class="w-full bg-[#060B13] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400">
+          
+          <select id="txTypeFilter" onchange="renderHistoryList()" class="bg-[#060B13] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400">
+            <option value="ALL">All Types</option>
+            <option value="expense">Expenses Only</option>
+            <option value="income">Income Only</option>
+            <option value="transfer">Transfers Only</option>
+          </select>
 
-          <div class="space-y-4">
-            <!-- Goal 1 -->
-            <div class="p-3 rounded-xl bg-slate-900/60 border border-white/5">
-              <div class="flex justify-between items-center mb-1.5">
-                <span class="text-xs font-bold text-white">New Laptop</span>
-                <span class="text-[11px] font-semibold text-emerald-400 font-mono">65%</span>
-              </div>
-              <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mb-2">
-                <div class="h-full bg-emerald-400 rounded-full" style="width: 65%;"></div>
-              </div>
-              <div class="flex justify-between text-[10px] text-slate-400 font-mono">
-                <span>Saved: ₹42,000</span>
-                <span>Target: ₹65,000</span>
-              </div>
-            </div>
+          <select id="txCategoryFilter" onchange="renderHistoryList()" class="bg-[#060B13] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400">
+            <option value="ALL">All Categories</option>
+          </select>
 
-            <!-- Goal 2 -->
-            <div class="p-3 rounded-xl bg-slate-900/60 border border-white/5">
-              <div class="flex justify-between items-center mb-1.5">
-                <span class="text-xs font-bold text-white">Emergency Fund</span>
-                <span class="text-[11px] font-semibold text-emerald-400 font-mono">58%</span>
-              </div>
-              <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mb-2">
-                <div class="h-full bg-emerald-400 rounded-full" style="width: 58%;"></div>
-              </div>
-              <div class="flex justify-between text-[10px] text-slate-400 font-mono">
-                <span>Saved: ₹58,000</span>
-                <span>Target: ₹1,00,000</span>
-              </div>
-            </div>
-          </div>
+          <select id="txSortFilter" onchange="renderHistoryList()" class="bg-[#060B13] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="highest">Highest Amount</option>
+            <option value="lowest">Lowest Amount</option>
+          </select>
         </div>
-
-        <!-- 11. MONTHLY SUMMARY METRIC -->
-        <div class="dash-stagger fintech-card rounded-2xl p-5">
-          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-3">This Month's Metric</span>
-          <div class="grid grid-cols-2 gap-3 text-center">
-            <div class="p-3 rounded-xl bg-black/40 border border-white/5">
-              <span class="text-[10px] uppercase font-semibold text-slate-500">Net Saved</span>
-              <div class="text-sm font-bold text-emerald-400 font-mono mt-0.5">₹12,450</div>
-            </div>
-            <div class="p-3 rounded-xl bg-black/40 border border-white/5">
-              <span class="text-[10px] uppercase font-semibold text-slate-500">Savings Rate</span>
-              <div class="text-sm font-bold text-emerald-400 font-mono mt-0.5">27.6%</div>
-            </div>
-          </div>
-        </div>
-
       </div>
 
+      <!-- History List -->
+      <div id="fullHistoryContainer" class="space-y-2.5"></div>
     </div>
+
+    <!-- ========================================================== -->
+    <!-- VIEW 3: BUDGETS & GOALS -->
+    <!-- ========================================================== -->
+    <div id="budgetView" class="app-view">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- Monthly Budget Management (7 cols) -->
+        <div class="lg:col-span-7 space-y-5">
+          <div class="fintech-card rounded-2xl p-5 sm:p-6">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h2 class="text-base font-bold text-white">Category Budgets</h2>
+                <p class="text-xs text-slate-400">Set limits per spending vertical.</p>
+              </div>
+              <button onclick="openCategoryBudgetModal()" class="btn-action text-gray-950 px-3.5 py-1.5 rounded-xl text-xs font-bold">+ Add Category Limit</button>
+            </div>
+            <div id="budgetCategoryFullList" class="space-y-4"></div>
+          </div>
+        </div>
+
+        <!-- Goals & Targets (5 cols) -->
+        <div class="lg:col-span-5 space-y-5">
+          <div class="fintech-card rounded-2xl p-5 sm:p-6">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h2 class="text-base font-bold text-white">Savings Goals</h2>
+                <p class="text-xs text-slate-400">Track milestones and fund progress.</p>
+              </div>
+              <button onclick="openGoalModal()" class="text-xs font-semibold text-emerald-400 hover:underline">+ New Goal</button>
+            </div>
+            <div id="goalsFullList" class="space-y-4"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- VIEW 4: REPORTS & ANALYTICS -->
+    <!-- ========================================================== -->
+    <div id="reportsView" class="app-view">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div class="lg:col-span-12 fintech-card rounded-2xl p-5 sm:p-6">
+          <h2 class="text-lg font-bold text-white mb-1">Financial Breakdown</h2>
+          <p class="text-xs text-slate-400 mb-5">Categorical spending breakdown and net distribution.</p>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Spending by Category</h3>
+              <div id="reportCategoryBars" class="space-y-3"></div>
+            </div>
+            <div class="flex flex-col justify-center p-5 rounded-2xl bg-black/40 border border-white/5 space-y-4">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Summary Statistics</h3>
+              <div class="flex justify-between text-xs py-2 border-b border-white/5">
+                <span class="text-slate-400">Total Recorded Inflow</span>
+                <span id="repTotalIncome" class="font-mono font-bold text-emerald-400">₹0.00</span>
+              </div>
+              <div class="flex justify-between text-xs py-2 border-b border-white/5">
+                <span class="text-slate-400">Total Recorded Outflow</span>
+                <span id="repTotalExpense" class="font-mono font-bold text-rose-400">₹0.00</span>
+              </div>
+              <div class="flex justify-between text-xs py-2 border-b border-white/5">
+                <span class="text-slate-400">Net Surplus</span>
+                <span id="repNetSurplus" class="font-mono font-bold text-white">₹0.00</span>
+              </div>
+              <div class="flex justify-between text-xs py-2">
+                <span class="text-slate-400">Average Transaction Size</span>
+                <span id="repAvgExpense" class="font-mono font-bold text-slate-200">₹0.00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- VIEW 5: ACCOUNTS -->
+    <!-- ========================================================== -->
+    <div id="accountsView" class="app-view">
+      <div class="fintech-card rounded-2xl p-5 sm:p-6 mb-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-white">Personal Accounts</h2>
+            <p class="text-xs text-slate-400">Manage bank accounts, wallets, and cash reserves.</p>
+          </div>
+          <button onclick="openAccountModal()" class="btn-action text-gray-950 px-3.5 py-1.5 rounded-xl text-xs font-bold">+ New Account</button>
+        </div>
+        <div id="accountsListContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5"></div>
+      </div>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- VIEW 6: PROFILE & CONFIGURATION -->
+    <!-- ========================================================== -->
+    <div id="profileView" class="app-view">
+      <div class="max-w-2xl mx-auto fintech-card rounded-2xl p-6 sm:p-8 space-y-6">
+        <div class="flex items-center gap-4 pb-6 border-b border-white/10">
+          <div class="w-14 h-14 rounded-2xl bg-emerald-500 text-gray-950 font-bold flex items-center justify-center text-xl shadow-lg shadow-emerald-500/20">A</div>
+          <div>
+            <h2 id="profileDisplayName" class="text-lg font-bold text-white">Aryan</h2>
+            <p class="text-xs text-slate-400">Personal Account • Pro Tier</p>
+          </div>
+        </div>
+
+        <form onsubmit="saveProfileSettings(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Display Name</label>
+            <input type="text" id="profNameInput" class="w-full bg-[#060B13] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Currency Symbol</label>
+            <input type="text" id="profCurrencyInput" class="w-full bg-[#060B13] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Monthly Overall Budget Limit</label>
+            <input type="number" id="profBudgetInput" class="w-full bg-[#060B13] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400">
+          </div>
+          <button type="submit" class="btn-action w-full py-2.5 rounded-xl text-gray-950 font-bold text-xs">Save Profile Changes</button>
+        </form>
+
+        <button onclick="handleAppLogout()" class="w-full py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs font-bold text-red-400 hover:bg-red-500/20 transition-all">
+          Sign Out of Project Money
+        </button>
+      </div>
+    </div>
+
   </div>
 
   <!-- ========================================================== -->
-  <!-- 12. FIXED BOTTOM NAVIGATION (Mobile-First) -->
+  <!-- SPEED DIAL OVERLAY & BOTTOM NAVIGATION (MOBILE) -->
   <!-- ========================================================== -->
+  <!-- Speed Dial Action Sub-Buttons -->
+  <div id="speedDialMenu" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3 pointer-events-none opacity-0 transition-opacity duration-200">
+    <button onclick="openTransactionModal('income'); toggleSpeedDial();" class="speed-dial-btn flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-600 text-white text-xs font-bold shadow-xl active:scale-95">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span>Income</span>
+    </button>
+    <button onclick="openTransactionModal('expense'); toggleSpeedDial();" class="speed-dial-btn flex items-center gap-2 px-4 py-2 rounded-full bg-rose-600 text-white text-xs font-bold shadow-xl active:scale-95">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span>Expense</span>
+    </button>
+    <button onclick="openTransferModal(); toggleSpeedDial();" class="speed-dial-btn flex items-center gap-2 px-4 py-2 rounded-full bg-sky-600 text-white text-xs font-bold shadow-xl active:scale-95">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      <span>Transfer</span>
+    </button>
+  </div>
+
   <nav class="fixed bottom-0 left-0 right-0 z-40 bg-[#070D16]/90 backdrop-blur-xl border-t border-white/10 px-4 py-2 flex items-center justify-around md:hidden">
-    <!-- Home -->
-    <button onclick="setTab(this)" class="nav-active flex flex-col items-center justify-center p-1.5 relative text-slate-400 transition-colors">
+    <button onclick="switchView('dashboardView');" data-tab="dashboardView" class="mob-tab nav-active flex flex-col items-center justify-center p-1.5 relative text-slate-400">
       <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       <span class="text-[10px] font-semibold mt-1">Home</span>
     </button>
 
-    <!-- Transactions -->
-    <button onclick="setTab(this); openModal('Transactions')" class="flex flex-col items-center justify-center p-1.5 relative text-slate-400 hover:text-white transition-colors">
+    <button onclick="switchView('historyView');" data-tab="historyView" class="mob-tab flex flex-col items-center justify-center p-1.5 relative text-slate-400">
       <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
       <span class="text-[10px] font-medium mt-1">History</span>
     </button>
 
-    <!-- 13. Center Floating Add Action Button -->
-    <button onclick="openModal('Quick Add Entry')" class="w-12 h-12 -mt-5 rounded-full bg-gradient-to-tr from-emerald-600 to-emerald-400 text-gray-950 flex items-center justify-center shadow-lg shadow-emerald-500/40 active:scale-95 transition-all">
-      <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <!-- Center Floating Speed Dial Button -->
+    <button id="mainDialToggle" onclick="toggleSpeedDial()" class="w-12 h-12 -mt-5 rounded-full bg-gradient-to-tr from-emerald-600 to-emerald-400 text-gray-950 flex items-center justify-center shadow-lg shadow-emerald-500/40 active:scale-95 transition-all">
+      <svg id="dialPlusIcon" class="w-6 h-6 transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </button>
 
-    <!-- Budget -->
-    <button onclick="setTab(this); openModal('Budget Manager')" class="flex flex-col items-center justify-center p-1.5 relative text-slate-400 hover:text-white transition-colors">
+    <button onclick="switchView('budgetView');" data-tab="budgetView" class="mob-tab flex flex-col items-center justify-center p-1.5 relative text-slate-400">
       <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
       <span class="text-[10px] font-medium mt-1">Budget</span>
     </button>
 
-    <!-- Profile -->
-    <button onclick="openPanel('profilePanel')" class="flex flex-col items-center justify-center p-1.5 relative text-slate-400 hover:text-white transition-colors">
+    <button onclick="switchView('profileView');" data-tab="profileView" class="mob-tab flex flex-col items-center justify-center p-1.5 relative text-slate-400">
       <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       <span class="text-[10px] font-medium mt-1">Profile</span>
     </button>
   </nav>
 
   <!-- ========================================================== -->
-  <!-- 14. NOTIFICATION DRAWER -->
+  <!-- MODAL: ADD / EDIT TRANSACTION -->
   <!-- ========================================================== -->
-  <div id="notificationPanel" class="fixed inset-0 z-50 pointer-events-none opacity-0 transition-opacity duration-300">
-    <div class="modal-backdrop absolute inset-0" onclick="closePanel('notificationPanel')"></div>
-    <div class="drawer-panel absolute top-0 right-0 bottom-0 w-full max-w-sm bg-[#070D16] border-l border-white/10 p-6 flex flex-col translate-x-full custom-scroll overflow-y-auto">
-      <div class="flex items-center justify-between mb-6">
-        <h3 class="text-base font-bold text-white">Notifications</h3>
-        <button onclick="closePanel('notificationPanel')" class="text-slate-400 hover:text-white p-1">
+  <div id="txModal" class="fixed inset-0 z-50 pointer-events-none opacity-0 transition-opacity duration-300 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="modal-backdrop absolute inset-0" onclick="closeModal('txModal')"></div>
+    <div class="fintech-card relative z-10 w-full max-w-md rounded-t-3xl sm:rounded-2xl p-6 border border-white/10 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h3 id="txModalTitle" class="text-base font-bold text-white">Add Expense</h3>
+        <button onclick="closeModal('txModal')" class="text-slate-400 hover:text-white p-1">
           <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
 
-      <div class="space-y-3 flex-1">
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-white/5">
-          <div class="text-xs font-semibold text-white">Budget Alert (65%)</div>
-          <p class="text-[11px] text-slate-400 mt-1">You've spent ₹32,550 of your ₹50,000 monthly limit.</p>
-          <span class="text-[10px] text-slate-500 mt-2 block">10 mins ago</span>
-        </div>
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-white/5">
-          <div class="text-xs font-semibold text-white">Salary Credited</div>
-          <p class="text-[11px] text-slate-400 mt-1">₹45,000 has been deposited to your primary account.</p>
-          <span class="text-[10px] text-slate-500 mt-2 block">2 hours ago</span>
-        </div>
-      </div>
+      <form onsubmit="handleTransactionSubmit(event)" class="space-y-3.5">
+        <input type="hidden" id="formTxId">
+        <input type="hidden" id="formTxType" value="expense">
 
-      <button onclick="closePanel('notificationPanel')" class="w-full py-2 rounded-xl bg-slate-800 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition-colors">
-        Mark all as read
-      </button>
-    </div>
-  </div>
-
-  <!-- ========================================================== -->
-  <!-- 15. PROFILE DRAWER -->
-  <!-- ========================================================== -->
-  <div id="profilePanel" class="fixed inset-0 z-50 pointer-events-none opacity-0 transition-opacity duration-300">
-    <div class="modal-backdrop absolute inset-0" onclick="closePanel('profilePanel')"></div>
-    <div class="drawer-panel absolute top-0 right-0 bottom-0 w-full max-w-sm bg-[#070D16] border-l border-white/10 p-6 flex flex-col translate-x-full custom-scroll overflow-y-auto">
-      <div class="flex items-center justify-between mb-6">
-        <h3 class="text-base font-bold text-white">Profile Settings</h3>
-        <button onclick="closePanel('profilePanel')" class="text-slate-400 hover:text-white p-1">
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-
-      <!-- User Card -->
-      <div class="flex items-center gap-3 p-3.5 rounded-xl bg-slate-900/80 border border-white/5 mb-6">
-        <div class="w-11 h-11 rounded-xl bg-emerald-500 text-gray-950 font-bold flex items-center justify-center text-base">A</div>
         <div>
-          <h4 class="text-sm font-bold text-white">Aryan</h4>
-          <p class="text-xs text-slate-400">Personal Account • Pro Tier</p>
+          <label class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 mb-1">Amount (₹)</label>
+          <input type="number" step="0.01" id="formTxAmount" required placeholder="0.00" class="w-full bg-[#060B13] border border-white/10 rounded-xl px-4 py-2.5 text-lg font-bold font-mono text-white focus:outline-none focus:border-emerald-400">
         </div>
-      </div>
 
-      <!-- Options -->
-      <div class="space-y-1 text-xs font-medium text-slate-300 flex-1">
-        <button onclick="alert('Account settings')" class="w-full text-left py-2.5 px-3 rounded-lg hover:bg-white/5 transition-colors">Account Settings</button>
-        <button onclick="alert('Security settings')" class="w-full text-left py-2.5 px-3 rounded-lg hover:bg-white/5 transition-colors">Security & Privacy</button>
-        <button onclick="alert('Currency settings')" class="w-full text-left py-2.5 px-3 rounded-lg hover:bg-white/5 transition-colors">Currency (INR ₹)</button>
-        <button onclick="alert('Appearance settings')" class="w-full text-left py-2.5 px-3 rounded-lg hover:bg-white/5 transition-colors">Dark Appearance</button>
-        <button onclick="alert('Help center')" class="w-full text-left py-2.5 px-3 rounded-lg hover:bg-white/5 transition-colors">Help & Support</button>
-      </div>
+        <div>
+          <label class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 mb-1">Merchant / Description</label>
+          <input type="text" id="formTxDesc" required placeholder="e.g. Swiggy, Salary, Grocery" class="w-full bg-[#060B13] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400">
+        </div>
 
-      <button onclick="handleAppLogout()" class="w-full py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs font-bold text-red-400 hover:bg-red-500/20 transition-colors mt-6">
-        Sign Out
-      </button>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 mb-1">Category</label>
+            <select id="formTxCategory" class="w-full bg-[#060B13] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400"></select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 mb-1">Account</label>
+            <select id="formTxAccount" class="w-full bg-[#060B13] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400"></select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 mb-1">Payment Method</label>
+            <select id="formTxPaymentMethod" class="w-full bg-[#060B13] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400">
+              <option value="UPI">UPI</option>
+              <option value="Bank Transfer">Bank Transfer</option>
+              <option value="Credit Card">Credit Card</option>
+              <option value="Debit Card">Debit Card</option>
+              <option value="Cash">Cash</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 mb-1">Date</label>
+            <input type="date" id="formTxDate" required class="w-full bg-[#060B13] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 mb-1">Notes (Optional)</label>
+          <input type="text" id="formTxNotes" placeholder="Additional details..." class="w-full bg-[#060B13] border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-emerald-400">
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeModal('txModal')" class="flex-1 py-2.5 rounded-xl bg-slate-800 text-xs font-semibold text-slate-300 hover:bg-slate-700">Cancel</button>
+          <button type="submit" class="flex-1 py-2.5 rounded-xl btn-action text-xs font-bold text-gray-950">Save Record</button>
+        </div>
+      </form>
     </div>
   </div>
 
   <!-- ========================================================== -->
-  <!-- ACTION MODAL SYSTEM -->
+  <!-- MODAL: TRANSFER MONEY -->
   <!-- ========================================================== -->
-  <div id="actionModal" class="fixed inset-0 z-50 pointer-events-none opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
-    <div class="modal-backdrop absolute inset-0" onclick="closeModal()"></div>
+  <div id="transferModal" class="fixed inset-0 z-50 pointer-events-none opacity-0 transition-opacity duration-300 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="modal-backdrop absolute inset-0" onclick="closeModal('transferModal')"></div>
+    <div class="fintech-card relative z-10 w-full max-w-md rounded-t-3xl sm:rounded-2xl p-6 border border-white/10">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-white">Transfer Between Accounts</h3>
+        <button onclick="closeModal('transferModal')" class="text-slate-400 hover:text-white p-1">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <form onsubmit="handleTransferSubmit(event)" class="space-y-3.5">
+        <div>
+          <label class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 mb-1">Transfer Amount (₹)</label>
+          <input type="number" step="0.01" id="transferAmount" required placeholder="0.00" class="w-full bg-[#060B13] border border-white/10 rounded-xl px-4 py-2.5 text-lg font-bold font-mono text-white focus:outline-none focus:border-emerald-400">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 mb-1">From Account</label>
+            <select id="transferFrom" class="w-full bg-[#060B13] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400"></select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 mb-1">To Account</label>
+            <select id="transferTo" class="w-full bg-[#060B13] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400"></select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 mb-1">Notes</label>
+          <input type="text" id="transferNotes" placeholder="Optional reference..." class="w-full bg-[#060B13] border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-emerald-400">
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeModal('transferModal')" class="flex-1 py-2.5 rounded-xl bg-slate-800 text-xs font-semibold text-slate-300">Cancel</button>
+          <button type="submit" class="flex-1 py-2.5 rounded-xl btn-action text-xs font-bold text-gray-950">Complete Transfer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================== -->
+  <!-- MODAL: TRANSACTION DETAILS (INSPECT & DELETE) -->
+  <!-- ========================================================== -->
+  <div id="txDetailModal" class="fixed inset-0 z-50 pointer-events-none opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
+    <div class="modal-backdrop absolute inset-0" onclick="closeModal('txDetailModal')"></div>
     <div class="fintech-card relative z-10 w-full max-w-sm rounded-2xl p-6 border border-white/10">
-      <h3 id="modalTitle" class="text-base font-bold text-white mb-2">Modal Action</h3>
-      <p class="text-xs text-slate-400 mb-5">Interface container ready. Form actions and database mutations will hook here seamlessly.</p>
-      
-      <div class="space-y-3 mb-5">
-        <input type="number" placeholder="Enter amount (₹)" class="w-full bg-[#060B13] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400">
-        <input type="text" placeholder="Description / Note" class="w-full bg-[#060B13] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-white">Transaction Details</h3>
+        <button onclick="closeModal('txDetailModal')" class="text-slate-400 hover:text-white p-1">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="text-center py-3 border-b border-white/5 mb-4">
+        <h4 id="detailDesc" class="text-lg font-bold text-white">Merchant</h4>
+        <div id="detailAmount" class="text-2xl font-extrabold font-mono mt-1">₹0.00</div>
+        <span id="detailCategoryBadge" class="inline-block mt-2 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Category</span>
+      </div>
+
+      <div class="space-y-2.5 text-xs text-slate-300 mb-6">
+        <div class="flex justify-between"><span class="text-slate-500">Date & Time</span><span id="detailDateTime" class="font-medium">Today</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">Account</span><span id="detailAccount" class="font-medium">Bank</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">Payment Method</span><span id="detailMethod" class="font-medium">UPI</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">Notes</span><span id="detailNotes" class="font-medium text-slate-400 italic">None</span></div>
       </div>
 
       <div class="flex gap-2">
-        <button onclick="closeModal()" class="flex-1 py-2 rounded-xl bg-slate-800 text-xs font-semibold text-slate-300">Cancel</button>
-        <button onclick="closeModal()" class="flex-1 py-2 rounded-xl btn-action text-xs font-bold text-gray-950">Confirm</button>
+        <button id="detailEditBtn" class="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200">Edit</button>
+        <button id="detailDeleteBtn" class="flex-1 py-2 rounded-xl bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-xs font-bold text-red-400">Delete</button>
       </div>
     </div>
   </div>
 
   <!-- ========================================================== -->
-  <!-- INTERACTION SCRIPTS -->
+  <!-- MODAL: GOAL MANAGEMENT -->
+  <!-- ========================================================== -->
+  <div id="goalModal" class="fixed inset-0 z-50 pointer-events-none opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
+    <div class="modal-backdrop absolute inset-0" onclick="closeModal('goalModal')"></div>
+    <div class="fintech-card relative z-10 w-full max-w-sm rounded-2xl p-6 border border-white/10">
+      <h3 class="text-base font-bold text-white mb-4">Create Financial Goal</h3>
+      <form onsubmit="handleGoalSubmit(event)" class="space-y-3">
+        <input type="text" id="goalTitle" required placeholder="Goal Name (e.g. New Laptop)" class="w-full bg-[#060B13] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400">
+        <input type="number" id="goalTarget" required placeholder="Target Amount (₹)" class="w-full bg-[#060B13] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400">
+        <input type="number" id="goalSaved" required placeholder="Current Saved (₹)" class="w-full bg-[#060B13] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400">
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeModal('goalModal')" class="flex-1 py-2 rounded-xl bg-slate-800 text-xs text-slate-300">Cancel</button>
+          <button type="submit" class="flex-1 py-2 rounded-xl btn-action text-xs font-bold text-gray-950">Save Goal</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================== -->
+  <!-- MODAL: NOTIFICATIONS PANEL -->
+  <!-- ========================================================== -->
+  <div id="notificationsModal" class="fixed inset-0 z-50 pointer-events-none opacity-0 transition-opacity duration-300 flex items-start justify-end p-4">
+    <div class="modal-backdrop absolute inset-0" onclick="toggleNotificationsModal()"></div>
+    <div class="fintech-card relative z-10 w-full max-w-sm rounded-2xl p-5 border border-white/10 mt-14 space-y-4">
+      <div class="flex items-center justify-between border-b border-white/5 pb-3">
+        <h3 class="text-sm font-bold text-white">System Notifications</h3>
+        <button onclick="toggleNotificationsModal()" class="text-slate-400 hover:text-white text-xs">Close</button>
+      </div>
+      <div id="notificationsList" class="space-y-2.5 text-xs"></div>
+    </div>
+  </div>
+
+  <!-- ========================================================== -->
+  <!-- MODAL: GENERAL CONFIRMATION -->
+  <!-- ========================================================== -->
+  <div id="confirmModal" class="fixed inset-0 z-50 pointer-events-none opacity-0 transition-opacity duration-200 flex items-center justify-center p-4">
+    <div class="modal-backdrop absolute inset-0"></div>
+    <div class="fintech-card relative z-10 w-full max-w-xs rounded-2xl p-5 border border-white/10 text-center">
+      <h4 id="confirmTitle" class="text-sm font-bold text-white mb-1.5">Are you sure?</h4>
+      <p id="confirmDesc" class="text-xs text-slate-400 mb-5">This action cannot be undone.</p>
+      <div class="flex gap-2">
+        <button onclick="closeConfirmModal(false)" class="flex-1 py-2 rounded-xl bg-slate-800 text-xs text-slate-300">Cancel</button>
+        <button id="confirmProceedBtn" class="flex-1 py-2 rounded-xl bg-red-600 text-xs font-bold text-white">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================== -->
+  <!-- CORE REACTIVE JAVASCRIPT STATE ENGINE -->
   <!-- ========================================================== -->
   <script>
+    // System Data Model & Defaults
+    const DEFAULT_STORE = {
+      user: {
+        name: 'Aryan',
+        currency: '₹',
+        monthlyBudget: 50000
+      },
+      accounts: [
+        { id: 'acc_1', name: 'HDFC Bank', type: 'Bank', balance: 80000 },
+        { id: 'acc_2', name: 'Cash Wallet', type: 'Cash', balance: 5000 },
+        { id: 'acc_3', name: 'UPI Main', type: 'UPI', balance: 39580 }
+      ],
+      categories: [
+        'Food', 'Shopping', 'Bills', 'Transport', 'Entertainment', 'Health', 'Salary', 'Freelance', 'Investment', 'Other'
+      ],
+      categoryBudgets: {
+        'Food': 12000,
+        'Shopping': 10000,
+        'Bills': 15000,
+        'Entertainment': 5000
+      },
+      goals: [
+        { id: 'g_1', title: 'New Laptop', target: 65000, saved: 42000 },
+        { id: 'g_2', title: 'Emergency Fund', target: 100000, saved: 58000 }
+      ],
+      transactions: [
+        {
+          id: 'tx_1',
+          type: 'expense',
+          amount: 649,
+          description: 'Netflix Subscription',
+          category: 'Entertainment',
+          account: 'HDFC Bank',
+          paymentMethod: 'Credit Card',
+          date: new Date().toISOString().split('T')[0],
+          time: '14:30',
+          notes: 'Standard 4K plan'
+        },
+        {
+          id: 'tx_2',
+          type: 'income',
+          amount: 45000,
+          description: 'Salary Credited',
+          category: 'Salary',
+          account: 'HDFC Bank',
+          paymentMethod: 'Bank Transfer',
+          date: new Date().toISOString().split('T')[0],
+          time: '09:00',
+          notes: 'August Payout'
+        },
+        {
+          id: 'tx_3',
+          type: 'expense',
+          amount: 520,
+          description: 'Swiggy Dinner',
+          category: 'Food',
+          account: 'UPI Main',
+          paymentMethod: 'UPI',
+          date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
+          time: '20:45',
+          notes: 'Biryani order'
+        },
+        {
+          id: 'tx_4',
+          type: 'expense',
+          amount: 1299,
+          description: 'Amazon Order',
+          category: 'Shopping',
+          account: 'HDFC Bank',
+          paymentMethod: 'Debit Card',
+          date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
+          time: '11:15',
+          notes: 'Desk accessories'
+        },
+        {
+          id: 'tx_5',
+          type: 'expense',
+          amount: 2450,
+          description: 'Electricity Bill',
+          category: 'Bills',
+          account: 'UPI Main',
+          paymentMethod: 'UPI',
+          date: new Date(Date.now() - 172800000).toISOString().split('T')[0],
+          time: '16:20',
+          notes: 'Power utility'
+        }
+      ]
+    };
+
+    // Load or initialize store
+    let DB = JSON.parse(localStorage.getItem('PROJECT_MONEY_DB')) || DEFAULT_STORE;
     let isMasked = false;
-    const realBalance = "₹1,24,580.00";
+    let activeChartPeriod = '7D';
+    let speedDialOpen = false;
 
-    // Set Dynamic Header Greeting
-    function updateGreeting() {
-      const hour = new Date().getHours();
-      const el = document.getElementById('greetingText');
-      if (!el) return;
-      if (hour < 12) el.textContent = "Good Morning";
-      else if (hour < 17) el.textContent = "Good Afternoon";
-      else el.textContent = "Good Evening";
+    function saveDB() {
+      localStorage.setItem('PROJECT_MONEY_DB', JSON.stringify(DB));
+      renderAll();
     }
 
-    // Toggle Total Balance Eye
-    function toggleBalanceMask() {
-      isMasked = !isMasked;
-      const display = document.getElementById('balanceDisplay');
-      const eyeShow = document.getElementById('eyeShowBal');
-      const eyeHide = document.getElementById('eyeHideBal');
+    // UI Toast Provider
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `p-3 rounded-xl border text-xs font-semibold shadow-2xl transition-all duration-300 transform translate-y-[-10px] opacity-0 flex items-center justify-between ${
+        type === 'success' ? 'bg-emerald-950/90 border-emerald-500/40 text-emerald-300' :
+        type === 'error' ? 'bg-rose-950/90 border-rose-500/40 text-rose-300' :
+        'bg-slate-900/90 border-white/10 text-white'
+      }`;
+      toast.innerHTML = `<span>${msg}</span><button onclick="this.parentElement.remove()" class="ml-2 text-slate-400 hover:text-white">✕</button>`;
+      container.appendChild(toast);
 
-      if (isMasked) {
-        display.textContent = "₹ ••••••";
-        eyeShow.classList.add('hidden');
-        eyeHide.classList.remove('hidden');
-      } else {
-        display.textContent = realBalance;
-        eyeHide.classList.add('hidden');
-        eyeShow.classList.remove('hidden');
-      }
+      void toast.offsetWidth;
+      toast.classList.remove('translate-y-[-10px]', 'opacity-0');
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-[-10px]');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
     }
 
-    // Login Handler & Smooth Staggered Transition
+    // Authentication Sequence
     function handleAppLogin(e) {
       e.preventDefault();
       const u = document.getElementById('loginUser').value.trim();
       const p = document.getElementById('loginPass').value;
       const btn = document.getElementById('loginSubmitBtn');
-      const err = document.getElementById('loginErrorAlert');
 
       btn.disabled = true;
-      btn.innerText = "Verifying...";
+      btn.innerText = "Authenticating...";
 
       setTimeout(() => {
         if (u === 'aryan' && p === '123') {
-          // Fade out login overlay
           const wrapper = document.getElementById('loginScreenWrapper');
           wrapper.style.opacity = '0';
-          wrapper.style.transform = 'scale(0.96)';
-
           setTimeout(() => {
             wrapper.style.display = 'none';
-            const dash = document.getElementById('mainDashboard');
-            dash.style.opacity = '1';
-
-            // Trigger Staggered Dashboard Items
-            document.querySelectorAll('.dash-stagger').forEach((el, index) => {
-              setTimeout(() => {
-                el.classList.add('dash-visible');
-              }, 80 * index);
-            });
-            updateGreeting();
-          }, 450);
-
+            document.getElementById('mainApp').classList.remove('hidden');
+            renderAll();
+            showToast(`Welcome back, ${DB.user.name}`, 'success');
+          }, 400);
         } else {
           btn.disabled = false;
           btn.innerText = "Sign In";
-          err.classList.remove('hidden');
+          showToast('Invalid credentials. Use aryan / 123', 'error');
         }
-      }, 500);
+      }, 400);
     }
 
-    // Sign Out / Return to Login
     function handleAppLogout() {
-      closePanel('profilePanel');
+      document.getElementById('mainApp').classList.add('hidden');
       const wrapper = document.getElementById('loginScreenWrapper');
-      const dash = document.getElementById('mainDashboard');
-
-      dash.style.opacity = '0';
       wrapper.style.display = 'flex';
-      
       void wrapper.offsetWidth;
       wrapper.style.opacity = '1';
-      wrapper.style.transform = 'scale(1)';
-
       document.getElementById('loginSubmitBtn').disabled = false;
       document.getElementById('loginSubmitBtn').innerText = "Sign In";
     }
 
-    // Drawer Panels
-    function openPanel(id) {
-      const panel = document.getElementById(id);
-      panel.classList.remove('pointer-events-none');
-      panel.style.opacity = '1';
-      panel.querySelector('.drawer-panel').style.transform = 'translateX(0)';
+    // Dynamic Header Greetings
+    function updateGreeting() {
+      const h = new Date().getHours();
+      const el = document.getElementById('greetingText');
+      if (h < 12) el.textContent = "Good Morning";
+      else if (h < 17) el.textContent = "Good Afternoon";
+      else el.textContent = "Good Evening";
+      document.getElementById('userHeaderName').textContent = DB.user.name;
     }
 
-    function closePanel(id) {
-      const panel = document.getElementById(id);
-      panel.style.opacity = '0';
-      panel.querySelector('.drawer-panel').style.transform = 'translateX(100%)';
-      setTimeout(() => panel.classList.add('pointer-events-none'), 300);
-    }
+    // Navigation Switcher
+    function switchView(viewId) {
+      document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
+      const activeV = document.getElementById(viewId);
+      if (activeV) activeV.classList.add('active');
 
-    // Action Modals
-    function openModal(title) {
-      document.getElementById('modalTitle').textContent = title;
-      const modal = document.getElementById('actionModal');
-      modal.classList.remove('pointer-events-none');
-      modal.style.opacity = '1';
-    }
-
-    function closeModal() {
-      const modal = document.getElementById('actionModal');
-      modal.style.opacity = '0';
-      setTimeout(() => modal.classList.add('pointer-events-none'), 300);
-    }
-
-    // Timeframe Switcher
-    function switchTimeframe(btn, tf) {
-      const container = btn.parentElement;
-      container.querySelectorAll('button').forEach(b => {
-        b.className = "px-2.5 py-1 text-xs font-semibold text-slate-400 hover:text-white transition-all";
+      // Update Desktop Tabs
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        if (btn.getAttribute('data-tab') === viewId) {
+          btn.className = "tab-btn px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+        } else {
+          btn.className = "tab-btn px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white";
+        }
       });
-      btn.className = "px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-500 text-gray-950 transition-all";
-    }
 
-    // Bottom Navigation Active State
-    function setTab(btn) {
-      document.querySelectorAll('nav button').forEach(b => {
-        b.classList.remove('nav-active');
-        b.classList.add('text-slate-400');
+      // Update Mobile Tabs
+      document.querySelectorAll('.mob-tab').forEach(btn => {
+        if (btn.getAttribute('data-tab') === viewId) {
+          btn.classList.add('nav-active');
+        } else {
+          btn.classList.remove('nav-active');
+        }
       });
-      btn.classList.add('nav-active');
-      btn.classList.remove('text-slate-400');
+
+      if (speedDialOpen) toggleSpeedDial();
     }
 
-    document.addEventListener('DOMContentLoaded', updateGreeting);
+    // Floating Speed Dial Toggle
+    function toggleSpeedDial() {
+      speedDialOpen = !speedDialOpen;
+      const menu = document.getElementById('speedDialMenu');
+      const icon = document.getElementById('dialPlusIcon');
+      
+      if (speedDialOpen) {
+        menu.classList.remove('pointer-events-none');
+        menu.classList.remove('opacity-0');
+        icon.style.transform = 'rotate(45deg)';
+      } else {
+        menu.classList.add('pointer-events-none');
+        menu.classList.add('opacity-0');
+        icon.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    // Balance Masking
+    function toggleBalanceMask() {
+      isMasked = !isMasked;
+      document.getElementById('eyeShowBal').classList.toggle('hidden', isMasked);
+      document.getElementById('eyeHideBal').classList.toggle('hidden', !isMasked);
+      renderCalculatedTotals();
+    }
+
+    // ==========================================
+    // REVENUE & FINANCIAL ARITHMETIC CORE
+    // ==========================================
+    function calculateTotals() {
+      let totalBalance = DB.accounts.reduce((sum, a) => sum + (Number(a.balance) || 0), 0);
+      let monthlyIncome = 0;
+      let monthlyExpense = 0;
+
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+
+      DB.transactions.forEach(t => {
+        const tDate = new Date(t.date);
+        if (tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear) {
+          if (t.type === 'income') monthlyIncome += Number(t.amount);
+          if (t.type === 'expense') monthlyExpense += Number(t.amount);
+        }
+      });
+
+      const netSaved = monthlyIncome - monthlyExpense;
+      const savingsRate = monthlyIncome > 0 ? ((netSaved / monthlyIncome) * 100).toFixed(1) : 0;
+
+      return {
+        totalBalance,
+        monthlyIncome,
+        monthlyExpense,
+        netSaved,
+        savingsRate
+      };
+    }
+
+    function renderCalculatedTotals() {
+      const stats = calculateTotals();
+      const cur = DB.user.currency;
+
+      const balDisplay = document.getElementById('totalBalanceDisplay');
+      if (isMasked) {
+        balDisplay.textContent = `${cur} ••••••`;
+      } else {
+        balDisplay.textContent = `${cur}${stats.totalBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+      }
+
+      document.getElementById('monthlyIncomeDisplay').textContent = `${cur}${stats.monthlyIncome.toLocaleString('en-IN')}`;
+      document.getElementById('monthlyExpenseDisplay').textContent = `${cur}${stats.monthlyExpense.toLocaleString('en-IN')}`;
+      document.getElementById('monthlyNetSavedDisplay').textContent = `${cur}${stats.netSaved.toLocaleString('en-IN')}`;
+      document.getElementById('monthlySavingsRateDisplay').textContent = `${stats.savingsRate}%`;
+
+      document.getElementById('netChangeBadge').innerHTML = `<span>${stats.netSaved >= 0 ? '+' : '-'}${cur}${Math.abs(stats.netSaved).toLocaleString('en-IN')} this month</span>`;
+
+      // Budget Progress
+      const budgetLimit = Number(DB.user.monthlyBudget) || 50000;
+      const budgetPercent = Math.min(100, Math.round((stats.monthlyExpense / budgetLimit) * 100));
+      const remaining = Math.max(0, budgetLimit - stats.monthlyExpense);
+
+      document.getElementById('budgetSpentRatio').innerHTML = `${cur}${stats.monthlyExpense.toLocaleString('en-IN')} <span class="text-xs font-normal text-slate-500">/ ${cur}${budgetLimit.toLocaleString('en-IN')}</span>`;
+      document.getElementById('budgetRemainingLabel').textContent = `${cur}${remaining.toLocaleString('en-IN')} left`;
+      
+      const bar = document.getElementById('budgetGlobalProgressBar');
+      bar.style.width = `${budgetPercent}%`;
+      bar.className = `h-full rounded-full transition-all duration-700 ${budgetPercent > 90 ? 'bg-rose-500' : budgetPercent > 75 ? 'bg-amber-400' : 'bg-emerald-400'}`;
+
+      // Dynamic Insight
+      const insight = document.getElementById('dynamicInsightText');
+      if (stats.monthlyExpense > budgetLimit) {
+        insight.innerHTML = `⚠️ Monthly limit exceeded by <span class="text-rose-400 font-bold">${cur}${(stats.monthlyExpense - budgetLimit).toLocaleString('en-IN')}</span>. Review non-essential expenses.`;
+      } else if (stats.savingsRate > 25) {
+        insight.innerHTML = `🌟 Outstanding! Your savings rate is <span class="text-emerald-400 font-bold">${stats.savingsRate}%</span>, well above standard benchmarks.`;
+      } else {
+        insight.innerHTML = `📊 You have spent <span class="text-emerald-400 font-semibold">${budgetPercent}%</span> of your monthly allowance with ${cur}${remaining.toLocaleString('en-IN')} remaining.`;
+      }
+    }
+
+    // ==========================================
+    // RENDERERS (TRANSACTIONS & CHARTS)
+    // ==========================================
+    function renderRecentTransactions() {
+      const container = document.getElementById('recentTransactionsList');
+      container.innerHTML = '';
+
+      if (DB.transactions.length === 0) {
+        container.innerHTML = `<div class="p-6 text-center text-xs text-slate-500">No transactions recorded yet. Tap + to begin.</div>`;
+        return;
+      }
+
+      DB.transactions.slice(0, 5).forEach(t => {
+        const isExp = t.type === 'expense';
+        const isInc = t.type === 'income';
+        const row = document.createElement('div');
+        row.className = "flex items-center justify-between p-2.5 rounded-xl hover:bg-white/[0.04] transition-colors cursor-pointer";
+        row.onclick = () => inspectTransaction(t.id);
+        row.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl ${isInc ? 'bg-emerald-500/10 text-emerald-400' : isExp ? 'bg-rose-500/10 text-rose-400' : 'bg-sky-500/10 text-sky-400'} flex items-center justify-center font-bold text-xs">
+              ${t.category.slice(0,2).toUpperCase()}
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-white">${t.description}</div>
+              <div class="text-[11px] text-slate-500">${t.category} • ${t.paymentMethod || 'Direct'}</div>
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="text-xs font-bold font-mono ${isInc ? 'text-emerald-400' : isExp ? 'text-slate-200' : 'text-sky-400'}">
+              ${isInc ? '+' : isExp ? '-' : ''}${DB.user.currency}${Number(t.amount).toLocaleString('en-IN')}
+            </div>
+            <div class="text-[10px] text-slate-500">${t.date}</div>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function renderHistoryList() {
+      const container = document.getElementById('fullHistoryContainer');
+      const search = document.getElementById('txSearchInput').value.toLowerCase();
+      const typeFilter = document.getElementById('txTypeFilter').value;
+      const catFilter = document.getElementById('txCategoryFilter').value;
+      const sortFilter = document.getElementById('txSortFilter').value;
+
+      let filtered = [...DB.transactions].filter(t => {
+        const matchesSearch = t.description.toLowerCase().includes(search) || 
+                              t.category.toLowerCase().includes(search) || 
+                              (t.notes && t.notes.toLowerCase().includes(search));
+        const matchesType = typeFilter === 'ALL' || t.type === typeFilter;
+        const matchesCat = catFilter === 'ALL' || t.category === catFilter;
+        return matchesSearch && matchesType && matchesCat;
+      });
+
+      if (sortFilter === 'newest') filtered.sort((a,b) => new Date(b.date) - new Date(a.date));
+      if (sortFilter === 'oldest') filtered.sort((a,b) => new Date(a.date) - new Date(b.date));
+      if (sortFilter === 'highest') filtered.sort((a,b) => b.amount - a.amount);
+      if (sortFilter === 'lowest') filtered.sort((a,b) => a.amount - b.amount);
+
+      container.innerHTML = '';
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="fintech-card p-8 text-center text-xs text-slate-500 rounded-2xl">No transactions found matching your criteria.</div>`;
+        return;
+      }
+
+      filtered.forEach(t => {
+        const isInc = t.type === 'income';
+        const isExp = t.type === 'expense';
+        const row = document.createElement('div');
+        row.className = "fintech-card p-3.5 rounded-xl flex items-center justify-between cursor-pointer hover:border-emerald-500/30 transition-all";
+        row.onclick = () => inspectTransaction(t.id);
+        row.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl ${isInc ? 'bg-emerald-500/10 text-emerald-400' : isExp ? 'bg-rose-500/10 text-rose-400' : 'bg-sky-500/10 text-sky-400'} flex items-center justify-center font-bold text-xs">
+              ${t.category.slice(0, 2).toUpperCase()}
+            </div>
+            <div>
+              <div class="text-xs font-bold text-white">${t.description}</div>
+              <div class="text-[11px] text-slate-400">${t.category} • ${t.account} • ${t.paymentMethod}</div>
+              ${t.notes ? `<div class="text-[10px] text-slate-500 italic mt-0.5">"${t.notes}"</div>` : ''}
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="text-sm font-bold font-mono ${isInc ? 'text-emerald-400' : isExp ? 'text-white' : 'text-sky-400'}">
+              ${isInc ? '+' : isExp ? '-' : ''}${DB.user.currency}${Number(t.amount).toLocaleString('en-IN')}
+            </div>
+            <div class="text-[10px] text-slate-500">${t.date} • ${t.time || ''}</div>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function renderInteractiveChart() {
+      const svg = document.getElementById('svgChart');
+      const labelsContainer = document.getElementById('chartLabels');
+      const totalLabel = document.getElementById('chartPeriodTotal');
+      
+      const days = activeChartPeriod === '7D' ? 7 : activeChartPeriod === '30D' ? 30 : 90;
+      const dailyExpenses = new Array(days).fill(0);
+      const dayNames = [];
+
+      const now = new Date();
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(now.getDate() - i);
+        const iso = d.toISOString().split('T')[0];
+        dayNames.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
+        
+        DB.transactions.filter(t => t.type === 'expense' && t.date === iso)
+          .forEach(t => dailyExpenses[days - 1 - i] += Number(t.amount));
+      }
+
+      const totalTracked = dailyExpenses.reduce((a, b) => a + b, 0);
+      totalLabel.textContent = `${DB.user.currency}${totalTracked.toLocaleString('en-IN')} during ${activeChartPeriod}`;
+
+      const max = Math.max(...dailyExpenses, 1000);
+      const points = dailyExpenses.map((val, idx) => {
+        const x = (idx / (days - 1)) * 500;
+        const y = 140 - (val / max) * 110;
+        return `${x},${y}`;
+      });
+
+      const pathData = `M 0,${points[0].split(',')[1]} ` + points.map(p => `L ${p}`).join(' ');
+      const areaData = `0,150 ${points.join(' ')} 500,150`;
+
+      svg.innerHTML = `
+        <defs>
+          <linearGradient id="liveChartGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#10b981" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="#10b981" stop-opacity="0.0"/>
+          </linearGradient>
+        </defs>
+        <polygon points="${areaData}" fill="url(#liveChartGrad)"/>
+        <path d="${pathData}" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"/>
+      `;
+
+      labelsContainer.innerHTML = '';
+      const step = Math.ceil(days / 7);
+      for (let i = 0; i < days; i += step) {
+        labelsContainer.innerHTML += `<span>${dayNames[i] || ''}</span>`;
+      }
+    }
+
+    function setChartPeriod(period, btn) {
+      activeChartPeriod = period;
+      document.querySelectorAll('.chart-tab').forEach(b => {
+        b.className = "chart-tab px-2.5 py-1 text-xs font-semibold text-slate-400 hover:text-white";
+      });
+      btn.className = "chart-tab px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-500 text-gray-950";
+      renderInteractiveChart();
+    }
+
+    // ==========================================
+    // BUDGETS & GOALS RENDERERS
+    // ==========================================
+    function renderBudgets() {
+      const summaryList = document.getElementById('categoryBudgetSummary');
+      const fullList = document.getElementById('budgetCategoryFullList');
+      summaryList.innerHTML = '';
+      fullList.innerHTML = '';
+
+      Object.entries(DB.categoryBudgets).forEach(([category, limit]) => {
+        let spent = 0;
+        DB.transactions.filter(t => t.type === 'expense' && t.category === category).forEach(t => spent += Number(t.amount));
+        const pct = Math.min(100, Math.round((spent / limit) * 100));
+
+        const html = `
+          <div>
+            <div class="flex justify-between text-[11px] font-medium mb-1">
+              <span class="text-slate-300">${category}</span>
+              <span class="font-mono text-slate-400">${DB.user.currency}${spent.toLocaleString('en-IN')} / ${DB.user.currency}${limit.toLocaleString('en-IN')} (${pct}%)</span>
+            </div>
+            <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+              <div class="h-full ${pct > 90 ? 'bg-rose-500' : 'bg-emerald-400'} rounded-full" style="width: ${pct}%;"></div>
+            </div>
+          </div>
+        `;
+        summaryList.innerHTML += html;
+        fullList.innerHTML += `<div class="p-3 rounded-xl bg-[#060B13] border border-white/5">${html}</div>`;
+      });
+    }
+
+    function renderGoals() {
+      const summaryContainer = document.getElementById('goalsSummaryList');
+      const fullContainer = document.getElementById('goalsFullList');
+      summaryContainer.innerHTML = '';
+      fullContainer.innerHTML = '';
+
+      DB.goals.forEach(g => {
+        const pct = Math.min(100, Math.round((g.saved / g.target) * 100));
+        const card = `
+          <div class="p-3 rounded-xl bg-slate-900/60 border border-white/5">
+            <div class="flex justify-between items-center mb-1.5">
+              <span class="text-xs font-bold text-white">${g.title}</span>
+              <span class="text-[11px] font-semibold text-emerald-400 font-mono">${pct}%</span>
+            </div>
+            <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mb-2">
+              <div class="h-full bg-emerald-400 rounded-full" style="width: ${pct}%;"></div>
+            </div>
+            <div class="flex justify-between text-[10px] text-slate-400 font-mono">
+              <span>Saved: ${DB.user.currency}${Number(g.saved).toLocaleString('en-IN')}</span>
+              <span>Target: ${DB.user.currency}${Number(g.target).toLocaleString('en-IN')}</span>
+            </div>
+          </div>
+        `;
+        summaryContainer.innerHTML += card;
+        fullContainer.innerHTML += card;
+      });
+    }
+
+    function renderAccounts() {
+      const container = document.getElementById('accountsListContainer');
+      container.innerHTML = '';
+      DB.accounts.forEach(a => {
+        container.innerHTML += `
+          <div class="p-4 rounded-xl bg-[#060B13] border border-white/10 flex items-center justify-between">
+            <div>
+              <div class="text-xs font-bold text-white">${a.name}</div>
+              <div class="text-[11px] text-slate-500">${a.type}</div>
+            </div>
+            <div class="text-sm font-bold font-mono text-emerald-400">
+              ${DB.user.currency}${Number(a.balance).toLocaleString('en-IN')}
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function renderReports() {
+      const container = document.getElementById('reportCategoryBars');
+      container.innerHTML = '';
+      const catTotals = {};
+      let totalExp = 0;
+
+      DB.transactions.filter(t => t.type === 'expense').forEach(t => {
+        catTotals[t.category] = (catTotals[t.category] || 0) + Number(t.amount);
+        totalExp += Number(t.amount);
+      });
+
+      let totalInc = DB.transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
+
+      document.getElementById('repTotalIncome').textContent = `${DB.user.currency}${totalInc.toLocaleString('en-IN')}`;
+      document.getElementById('repTotalExpense').textContent = `${DB.user.currency}${totalExp.toLocaleString('en-IN')}`;
+      document.getElementById('repNetSurplus').textContent = `${DB.user.currency}${(totalInc - totalExp).toLocaleString('en-IN')}`;
+      document.getElementById('repAvgExpense').textContent = `${DB.user.currency}${(totalExp / (DB.transactions.filter(t => t.type === 'expense').length || 1)).toFixed(0)}`;
+
+      Object.entries(catTotals).forEach(([c, amt]) => {
+        const pct = Math.round((amt / (totalExp || 1)) * 100);
+        container.innerHTML += `
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300 font-medium">${c}</span>
+              <span class="font-mono text-slate-400">${DB.user.currency}${amt.toLocaleString('en-IN')} (${pct}%)</span>
+            </div>
+            <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+              <div class="h-full bg-emerald-400 rounded-full" style="width: ${pct}%;"></div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    // ==========================================
+    // MODALS & MUTATIONS
+    // ==========================================
+    function openModal(id) {
+      const m = document.getElementById(id);
+      m.classList.remove('pointer-events-none');
+      m.classList.remove('opacity-0');
+    }
+
+    function closeModal(id) {
+      const m = document.getElementById(id);
+      m.classList.add('opacity-0');
+      setTimeout(() => m.classList.add('pointer-events-none'), 300);
+    }
+
+    function populateSelects() {
+      const catSelect = document.getElementById('formTxCategory');
+      const accSelect = document.getElementById('formTxAccount');
+      const fromSelect = document.getElementById('transferFrom');
+      const toSelect = document.getElementById('transferTo');
+      const filterCat = document.getElementById('txCategoryFilter');
+
+      catSelect.innerHTML = '';
+      filterCat.innerHTML = '<option value="ALL">All Categories</option>';
+      DB.categories.forEach(c => {
+        catSelect.innerHTML += `<option value="${c}">${c}</option>`;
+        filterCat.innerHTML += `<option value="${c}">${c}</option>`;
+      });
+
+      accSelect.innerHTML = '';
+      fromSelect.innerHTML = '';
+      toSelect.innerHTML = '';
+      DB.accounts.forEach(a => {
+        accSelect.innerHTML += `<option value="${a.name}">${a.name}</option>`;
+        fromSelect.innerHTML += `<option value="${a.name}">${a.name}</option>`;
+        toSelect.innerHTML += `<option value="${a.name}">${a.name}</option>`;
+      });
+    }
+
+    function openTransactionModal(type = 'expense', editId = null) {
+      populateSelects();
+      document.getElementById('formTxType').value = type;
+      document.getElementById('txModalTitle').textContent = editId ? 'Edit Transaction' : (type === 'income' ? 'Add Income' : 'Add Expense');
+      document.getElementById('formTxDate').value = new Date().toISOString().split('T')[0];
+
+      if (editId) {
+        const tx = DB.transactions.find(t => t.id === editId);
+        if (tx) {
+          document.getElementById('formTxId').value = tx.id;
+          document.getElementById('formTxAmount').value = tx.amount;
+          document.getElementById('formTxDesc').value = tx.description;
+          document.getElementById('formTxCategory').value = tx.category;
+          document.getElementById('formTxAccount').value = tx.account;
+          document.getElementById('formTxPaymentMethod').value = tx.paymentMethod || 'UPI';
+          document.getElementById('formTxDate').value = tx.date;
+          document.getElementById('formTxNotes').value = tx.notes || '';
+        }
+      } else {
+        document.getElementById('formTxId').value = '';
+        document.getElementById('formTxAmount').value = '';
+        document.getElementById('formTxDesc').value = '';
+        document.getElementById('formTxNotes').value = '';
+      }
+
+      openModal('txModal');
+    }
+
+    function handleTransactionSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('formTxId').value;
+      const type = document.getElementById('formTxType').value;
+      const amount = parseFloat(document.getElementById('formTxAmount').value);
+      const desc = document.getElementById('formTxDesc').value.trim();
+      const cat = document.getElementById('formTxCategory').value;
+      const acc = document.getElementById('formTxAccount').value;
+      const method = document.getElementById('formTxPaymentMethod').value;
+      const date = document.getElementById('formTxDate').value;
+      const notes = document.getElementById('formTxNotes').value.trim();
+
+      if (!amount || amount <= 0) return showToast('Please provide a valid amount', 'error');
+
+      // Adjust Account Balances
+      const targetAccount = DB.accounts.find(a => a.name === acc);
+      if (targetAccount) {
+        if (type === 'income') targetAccount.balance += amount;
+        if (type === 'expense') targetAccount.balance -= amount;
+      }
+
+      if (id) {
+        // Edit existing
+        const idx = DB.transactions.findIndex(t => t.id === id);
+        if (idx !== -1) {
+          DB.transactions[idx] = { ...DB.transactions[idx], type, amount, description: desc, category: cat, account: acc, paymentMethod: method, date, notes };
+        }
+      } else {
+        // Add new
+        DB.transactions.unshift({
+          id: 'tx_' + Date.now(),
+          type,
+          amount,
+          description: desc,
+          category: cat,
+          account: acc,
+          paymentMethod: method,
+          date,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          notes
+        });
+      }
+
+      saveDB();
+      closeModal('txModal');
+      showToast(type === 'income' ? 'Income recorded successfully' : 'Expense recorded successfully', 'success');
+    }
+
+    function openTransferModal() {
+      populateSelects();
+      openModal('transferModal');
+    }
+
+    function handleTransferSubmit(e) {
+      e.preventDefault();
+      const amount = parseFloat(document.getElementById('transferAmount').value);
+      const from = document.getElementById('transferFrom').value;
+      const to = document.getElementById('transferTo').value;
+      const notes = document.getElementById('transferNotes').value.trim();
+
+      if (from === to) return showToast('Source and destination accounts must be different', 'error');
+      if (!amount || amount <= 0) return showToast('Enter a valid transfer amount', 'error');
+
+      const srcAcc = DB.accounts.find(a => a.name === from);
+      const dstAcc = DB.accounts.find(a => a.name === to);
+
+      if (srcAcc) srcAcc.balance -= amount;
+      if (dstAcc) dstAcc.balance += amount;
+
+      DB.transactions.unshift({
+        id: 'tx_' + Date.now(),
+        type: 'transfer',
+        amount,
+        description: `Transfer: ${from} → ${to}`,
+        category: 'Transfer',
+        account: `${from} → ${to}`,
+        paymentMethod: 'Direct Transfer',
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        notes
+      });
+
+      saveDB();
+      closeModal('transferModal');
+      showToast('Transfer completed', 'success');
+    }
+
+    function inspectTransaction(id) {
+      const tx = DB.transactions.find(t => t.id === id);
+      if (!tx) return;
+
+      document.getElementById('detailDesc').textContent = tx.description;
+      document.getElementById('detailAmount').textContent = `${tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : ''}${DB.user.currency}${Number(tx.amount).toLocaleString('en-IN')}`;
+      document.getElementById('detailAmount').className = `text-2xl font-extrabold font-mono mt-1 ${tx.type === 'income' ? 'text-emerald-400' : tx.type === 'expense' ? 'text-white' : 'text-sky-400'}`;
+      document.getElementById('detailCategoryBadge').textContent = tx.category;
+      document.getElementById('detailDateTime').textContent = `${tx.date} • ${tx.time || ''}`;
+      document.getElementById('detailAccount').textContent = tx.account;
+      document.getElementById('detailMethod').textContent = tx.paymentMethod || 'Direct';
+      document.getElementById('detailNotes').textContent = tx.notes || 'None';
+
+      document.getElementById('detailEditBtn').onclick = () => {
+        closeModal('txDetailModal');
+        openTransactionModal(tx.type, tx.id);
+      };
+
+      document.getElementById('detailDeleteBtn').onclick = () => {
+        closeModal('txDetailModal');
+        confirmAction('Delete this transaction?', 'This action permanently removes the record and adjusts balance.', () => {
+          DB.transactions = DB.transactions.filter(t => t.id !== id);
+          saveDB();
+          showToast('Transaction deleted', 'success');
+        });
+      };
+
+      openModal('txDetailModal');
+    }
+
+    // Goal Handlers
+    function openGoalModal() {
+      openModal('goalModal');
+    }
+
+    function handleGoalSubmit(e) {
+      e.preventDefault();
+      const title = document.getElementById('goalTitle').value.trim();
+      const target = parseFloat(document.getElementById('goalTarget').value);
+      const saved = parseFloat(document.getElementById('goalSaved').value);
+
+      DB.goals.push({
+        id: 'g_' + Date.now(),
+        title,
+        target,
+        saved
+      });
+
+      saveDB();
+      closeModal('goalModal');
+      showToast('Financial goal created', 'success');
+    }
+
+    // Confirmation Modal System
+    let activeConfirmCallback = null;
+    function confirmAction(title, desc, cb) {
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmDesc').textContent = desc;
+      activeConfirmCallback = cb;
+      openModal('confirmModal');
+      document.getElementById('confirmProceedBtn').onclick = () => {
+        if (activeConfirmCallback) activeConfirmCallback();
+        closeConfirmModal();
+      };
+    }
+
+    function closeConfirmModal() {
+      closeModal('confirmModal');
+      activeConfirmCallback = null;
+    }
+
+    // Notifications Panel
+    function toggleNotificationsModal() {
+      const list = document.getElementById('notificationsList');
+      list.innerHTML = `
+        <div class="p-3 rounded-xl bg-slate-900/60 border border-white/5">
+          <span class="font-bold text-white">Budget Status</span>
+          <p class="text-slate-400 mt-0.5">Your monthly budget limit is monitored live.</p>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-900/60 border border-white/5">
+          <span class="font-bold text-white">Daily Summary</span>
+          <p class="text-slate-400 mt-0.5">All transactions synced successfully on this device.</p>
+        </div>
+      `;
+      const m = document.getElementById('notificationsModal');
+      if (m.classList.contains('opacity-0')) openModal('notificationsModal');
+      else closeModal('notificationsModal');
+    }
+
+    // Profile Settings
+    function saveProfileSettings(e) {
+      e.preventDefault();
+      DB.user.name = document.getElementById('profNameInput').value.trim() || 'Aryan';
+      DB.user.currency = document.getElementById('profCurrencyInput').value.trim() || '₹';
+      DB.user.monthlyBudget = parseFloat(document.getElementById('profBudgetInput').value) || 50000;
+      saveDB();
+      showToast('Profile configuration updated', 'success');
+    }
+
+    // Main Renderer Pipeline
+    function renderAll() {
+      updateGreeting();
+      renderCalculatedTotals();
+      renderRecentTransactions();
+      renderHistoryList();
+      renderInteractiveChart();
+      renderBudgets();
+      renderGoals();
+      renderAccounts();
+      renderReports();
+
+      // Update Form Values
+      document.getElementById('profNameInput').value = DB.user.name;
+      document.getElementById('profCurrencyInput').value = DB.user.currency;
+      document.getElementById('profBudgetInput').value = DB.user.monthlyBudget;
+      document.getElementById('profileDisplayName').textContent = DB.user.name;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      populateSelects();
+    });
   </script>
 </body>
 </html>
