@@ -2,15 +2,13 @@
 <html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Project Money</title>
   
-  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -22,7 +20,6 @@
           },
           colors: {
             brand: {
-              50: '#f0fdf4',
               400: '#4ade80',
               500: '#22c55e',
               600: '#16a34a',
@@ -38,161 +35,132 @@
       -webkit-tap-highlight-color: transparent;
       box-sizing: border-box;
     }
-    body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
+    
+    html, body {
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
       background-color: #030712;
       color: #f3f4f6;
-      overflow-x: hidden;
+      font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
-    /* Ambient Background Orbs */
+    /* Ambient Glow */
     .ambient-orb {
       position: absolute;
       border-radius: 50%;
-      filter: blur(100px);
+      filter: blur(80px);
       pointer-events: none;
       will-change: transform, opacity;
       animation: float-ambient 18s ease-in-out infinite alternate;
     }
     .orb-1 {
-      top: -10%;
+      top: -5%;
       left: -10%;
-      width: 480px;
-      height: 480px;
-      background: radial-gradient(circle, rgba(34, 197, 94, 0.18) 0%, rgba(34, 197, 94, 0) 70%);
-      animation-delay: 0s;
+      width: 320px;
+      height: 320px;
+      background: radial-gradient(circle, rgba(34, 197, 94, 0.16) 0%, transparent 70%);
     }
     .orb-2 {
-      bottom: -15%;
+      bottom: -10%;
       right: -10%;
-      width: 520px;
-      height: 520px;
-      background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0) 70%);
-      animation-delay: -5s;
-    }
-    .orb-3 {
-      top: 40%;
-      left: 60%;
       width: 350px;
       height: 350px;
-      background: radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, rgba(56, 189, 248, 0) 70%);
-      animation-delay: -10s;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.13) 0%, transparent 70%);
     }
 
     @keyframes float-ambient {
       0% { transform: translate(0, 0) scale(1); }
-      50% { transform: translate(40px, -30px) scale(1.08); }
-      100% { transform: translate(-30px, 30px) scale(0.95); }
+      100% { transform: translate(25px, -20px) scale(1.05); }
     }
 
-    /* Glassmorphism Card */
+    /* Glass Card */
     .glass-card {
-      background: rgba(17, 24, 39, 0.65);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
+      background: rgba(17, 24, 39, 0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), inset 0 1px 1px 0 rgba(255, 255, 255, 0.1);
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
     }
 
-    /* Custom Input Focus Underline & Glow */
+    /* Inputs */
     .input-field {
       background: rgba(15, 23, 42, 0.6);
       border: 1px solid rgba(255, 255, 255, 0.09);
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.2s ease;
     }
     .input-field:focus {
       border-color: rgba(74, 222, 128, 0.6);
-      background: rgba(15, 23, 42, 0.85);
-      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12), 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      background: rgba(15, 23, 42, 0.9);
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
     }
 
-    /* UI Micro Animations */
+    /* Micro Animations */
     .login-shake {
       animation: shake-error 0.5s cubic-bezier(.36,.07,.19,.97) both;
     }
     @keyframes shake-error {
       10%, 90% { transform: translate3d(-2px, 0, 0); }
       20%, 80% { transform: translate3d(4px, 0, 0); }
-      30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
-      40%, 60% { transform: translate3d(6px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-5px, 0, 0); }
+      40%, 60% { transform: translate3d(5px, 0, 0); }
     }
 
-    .btn-shine {
-      position: relative;
-      overflow: hidden;
-    }
-    .btn-shine::after {
-      content: '';
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: linear-gradient(60deg, transparent, rgba(255,255,255,0.18), transparent);
-      transform: rotate(25deg) translate(-100%, -100%);
-      transition: transform 0.6s ease;
-    }
-    .btn-shine:hover::after {
-      transform: rotate(25deg) translate(100%, 100%);
-    }
-
-    /* Transition Screens */
     .view-screen {
-      transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: opacity 0.35s ease, transform 0.35s ease;
     }
     .view-hidden {
       opacity: 0;
-      transform: scale(0.97);
+      transform: scale(0.96);
       pointer-events: none;
       display: none;
     }
   </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4 sm:p-6 relative selection:bg-brand-500 selection:text-black">
+<body class="h-[100dvh] w-full flex items-center justify-center p-3 sm:p-5 relative select-none">
 
-  <!-- Ambient Glowing Background Elements -->
+  <!-- Ambient Glow Background -->
   <div class="ambient-orb orb-1"></div>
   <div class="ambient-orb orb-2"></div>
-  <div class="ambient-orb orb-3"></div>
 
-  <!-- Geometric Grid Accent Overlay -->
-  <div class="fixed inset-0 bg-[linear-gradient(to_right,#1f293708_1px,transparent_1px),linear-gradient(to_bottom,#1f293708_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none"></div>
+  <!-- Geometric Grid Pattern Overlay -->
+  <div class="fixed inset-0 bg-[linear-gradient(to_right,#1f293708_1px,transparent_1px),linear-gradient(to_bottom,#1f293708_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] pointer-events-none"></div>
 
-  <!-- ========================================== -->
-  <!-- 1. LOGIN INTERFACE CONTAINER -->
-  <!-- ========================================== -->
-  <main id="loginScreen" class="view-screen w-full max-w-[420px] relative z-10">
-    <div id="loginCard" class="glass-card rounded-2xl p-7 sm:p-9 transition-all duration-300">
+  <!-- 1. COMPACT LOGIN CONTAINER -->
+  <main id="loginScreen" class="view-screen w-full max-w-[390px] relative z-10">
+    <div id="loginCard" class="glass-card rounded-2xl px-5 py-6 sm:px-8 sm:py-7">
       
-      <!-- Brand Logo & Header -->
-      <div class="flex flex-col items-center text-center mb-8">
-        <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-500 to-emerald-400 p-[1px] shadow-lg shadow-brand-500/20 mb-4 flex items-center justify-center">
-          <div class="w-full h-full bg-gray-950 rounded-[15px] flex items-center justify-center">
-            <svg class="w-7 h-7 text-brand-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Brand Header -->
+      <div class="flex flex-col items-center text-center mb-5">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-brand-500 to-emerald-400 p-[1px] shadow-md shadow-brand-500/20 mb-2.5 flex items-center justify-center">
+          <div class="w-full h-full bg-gray-950 rounded-[11px] flex items-center justify-center">
+            <svg class="w-6 h-6 text-brand-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
             </svg>
           </div>
         </div>
-        <h1 class="text-2xl font-bold tracking-tight text-white">Project Money</h1>
-        <p class="text-xs font-medium text-gray-400 mt-1.5">Sign in to your control center</p>
+        <h1 class="text-xl font-bold tracking-tight text-white leading-tight">Project Money</h1>
+        <p class="text-[11px] font-medium text-gray-400 mt-0.5">Sign in to your control center</p>
       </div>
 
       <!-- Live Error Notification -->
-      <div id="errorAlert" class="hidden mb-5 p-3 rounded-xl bg-red-500/10 border border-red-500/25 flex items-center gap-2.5 text-xs text-red-400 transition-all duration-200">
-        <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <div id="errorAlert" class="hidden mb-3.5 p-2.5 rounded-lg bg-red-500/10 border border-red-500/25 flex items-center gap-2 text-[11px] text-red-400">
+        <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
-        <span id="errorMessage">Invalid credentials. Check username or password.</span>
+        <span id="errorMessage">Invalid credentials.</span>
       </div>
 
       <!-- Login Form -->
-      <form id="loginForm" class="space-y-4" onsubmit="handleLogin(event)" autocomplete="off">
+      <form id="loginForm" class="space-y-3" onsubmit="handleLogin(event)" autocomplete="off">
         
         <!-- Username Input -->
-        <div class="space-y-1.5">
-          <label for="usernameInput" class="block text-xs font-medium text-gray-300">Username</label>
+        <div class="space-y-1">
+          <label for="usernameInput" class="block text-[11px] font-medium text-gray-300">Username</label>
           <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-500">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
               </svg>
@@ -202,16 +170,16 @@
               id="usernameInput" 
               placeholder="aryan"
               required 
-              class="input-field w-full pl-10 pr-4 py-3 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none"
+              class="input-field w-full pl-9 pr-3 py-2.5 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none"
             />
           </div>
         </div>
 
         <!-- Password Input -->
-        <div class="space-y-1.5">
-          <label for="passwordInput" class="block text-xs font-medium text-gray-300">Password</label>
+        <div class="space-y-1">
+          <label for="passwordInput" class="block text-[11px] font-medium text-gray-300">Password</label>
           <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-500">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
               </svg>
@@ -221,12 +189,12 @@
               id="passwordInput" 
               placeholder="••••••"
               required 
-              class="input-field w-full pl-10 pr-11 py-3 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none"
+              class="input-field w-full pl-9 pr-10 py-2.5 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none"
             />
             <button 
               type="button" 
               onclick="togglePasswordVisibility()" 
-              class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-500 hover:text-gray-300 transition-colors focus:outline-none"
+              class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-300 focus:outline-none"
               tabindex="-1"
             >
               <svg id="eyeIcon" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -239,20 +207,20 @@
           </div>
         </div>
 
-        <!-- Remember Me & Forgot Password -->
-        <div class="flex items-center justify-between pt-1 pb-2">
+        <!-- Options -->
+        <div class="flex items-center justify-between pt-0.5 pb-1">
           <label class="flex items-center gap-2 cursor-pointer select-none">
-            <input type="checkbox" id="rememberMe" class="w-4 h-4 rounded bg-gray-900 border-gray-700 text-brand-500 focus:ring-0 focus:ring-offset-0 focus:outline-none accent-brand-500 cursor-pointer">
-            <span class="text-xs text-gray-400 hover:text-gray-300">Remember me</span>
+            <input type="checkbox" id="rememberMe" class="w-3.5 h-3.5 rounded bg-gray-900 border-gray-700 text-brand-500 focus:ring-0 accent-brand-500 cursor-pointer">
+            <span class="text-[11px] text-gray-400">Remember me</span>
           </label>
-          <a href="javascript:void(0)" onclick="handleForgotPassword()" class="text-xs text-gray-400 hover:text-brand-400 transition-colors">Forgot password?</a>
+          <a href="javascript:void(0)" onclick="handleForgotPassword()" class="text-[11px] text-gray-400 hover:text-brand-400">Forgot password?</a>
         </div>
 
-        <!-- Login Button -->
+        <!-- Submit Button -->
         <button 
           type="submit" 
           id="loginBtn" 
-          class="btn-shine w-full py-3.5 px-4 bg-brand-500 hover:bg-brand-400 active:scale-[0.98] text-gray-950 font-bold text-sm rounded-xl shadow-lg shadow-brand-500/25 transition-all duration-200 flex items-center justify-center gap-2 focus:outline-none"
+          class="w-full py-2.5 px-4 bg-brand-500 hover:bg-brand-400 active:scale-[0.98] text-gray-950 font-bold text-sm rounded-xl shadow-md shadow-brand-500/20 transition-all duration-150 flex items-center justify-center gap-2 focus:outline-none"
         >
           <span id="btnText">Sign In</span>
           <svg id="btnSpinner" class="hidden animate-spin h-4 w-4 text-gray-950" fill="none" viewBox="0 0 24 24">
@@ -263,41 +231,36 @@
 
       </form>
 
-      <!-- Credentials Hint (Demo Setup) -->
-      <div class="mt-6 text-center">
-        <p class="text-[11px] text-gray-500">Demo Login: <span class="text-gray-400 font-mono">aryan</span> / <span class="text-gray-400 font-mono">123</span></p>
+      <!-- Bottom Hint -->
+      <div class="mt-4 text-center">
+        <p class="text-[10px] text-gray-500 font-mono">Demo: aryan / 123</p>
       </div>
 
     </div>
   </main>
 
-  <!-- ========================================== -->
-  <!-- 2. CLEAN EMPTY HOME PAGE (AUTHENTICATED) -->
-  <!-- ========================================== -->
-  <section id="homeScreen" class="view-screen view-hidden w-full max-w-2xl relative z-10">
-    <div class="glass-card rounded-2xl p-8 sm:p-12 text-center border border-white/10">
+  <!-- 2. COMPACT EMPTY HOME PAGE -->
+  <section id="homeScreen" class="view-screen view-hidden w-full max-w-[390px] relative z-10">
+    <div class="glass-card rounded-2xl px-6 py-8 text-center border border-white/10">
       
-      <!-- Verified Badge -->
-      <div class="w-16 h-16 rounded-full bg-brand-500/10 border border-brand-500/30 flex items-center justify-center mx-auto mb-6">
-        <svg class="w-8 h-8 text-brand-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <div class="w-12 h-12 rounded-full bg-brand-500/10 border border-brand-500/30 flex items-center justify-center mx-auto mb-4">
+        <svg class="w-6 h-6 text-brand-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"/>
         </svg>
       </div>
 
-      <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Welcome, <span class="text-brand-400">Aryan</span></h2>
-      <p class="text-sm text-gray-400 mt-2 max-w-md mx-auto">Authentication verified successfully. Your empty Home canvas is online and ready for development.</p>
+      <h2 class="text-xl font-bold text-white tracking-tight">Welcome, <span class="text-brand-400">Aryan</span></h2>
+      <p class="text-xs text-gray-400 mt-1.5 leading-relaxed">Authentication verified. Empty canvas ready.</p>
 
-      <!-- Minimal Placeholder Canvas Status -->
-      <div class="my-8 py-4 px-6 rounded-xl bg-gray-900/60 border border-gray-800 text-xs font-mono text-gray-400 flex items-center justify-center gap-2">
-        <span class="w-2 h-2 rounded-full bg-brand-400 animate-pulse"></span>
+      <div class="my-6 py-2.5 px-4 rounded-lg bg-gray-900/60 border border-gray-800 text-[11px] font-mono text-gray-400 flex items-center justify-center gap-2">
+        <span class="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse"></span>
         <span>Canvas Ready • No Modules Loaded</span>
       </div>
 
-      <!-- Sign Out / Return Button -->
       <button 
         type="button" 
         onclick="handleLogout()" 
-        class="py-2.5 px-6 rounded-xl bg-gray-800/80 hover:bg-gray-700 active:scale-[0.98] text-xs font-semibold text-gray-300 transition-all focus:outline-none border border-gray-700"
+        class="py-2 px-5 rounded-lg bg-gray-800/80 hover:bg-gray-700 active:scale-[0.98] text-[11px] font-semibold text-gray-300 transition-all border border-gray-700"
       >
         Sign Out
       </button>
@@ -305,17 +268,12 @@
     </div>
   </section>
 
-  <!-- ========================================== -->
-  <!-- CLIENT INTERACTION SCRIPT -->
-  <!-- ========================================== -->
   <script>
-    // Configured Demo Credentials
     const AUTH_CONFIG = {
       username: 'aryan',
       password: '123'
     };
 
-    // Toggle Password Visibility
     function togglePasswordVisibility() {
       const passwordInput = document.getElementById('passwordInput');
       const eyeIcon = document.getElementById('eyeIcon');
@@ -332,12 +290,10 @@
       }
     }
 
-    // Handle Forgot Password Notice
     function handleForgotPassword() {
-      showError("Temporary mode active. Use username 'aryan' and password '123'.");
+      showError("Use username 'aryan' and password '123'.");
     }
 
-    // Display / Hide Error Alert with Animation
     function showError(message) {
       const alert = document.getElementById('errorAlert');
       const errorText = document.getElementById('errorMessage');
@@ -346,18 +302,15 @@
       errorText.textContent = message;
       alert.classList.remove('hidden');
 
-      // Trigger Card Shake
       loginCard.classList.remove('login-shake');
-      void loginCard.offsetWidth; // Reflow trigger
+      void loginCard.offsetWidth;
       loginCard.classList.add('login-shake');
     }
 
     function clearError() {
-      const alert = document.getElementById('errorAlert');
-      alert.classList.add('hidden');
+      document.getElementById('errorAlert').classList.add('hidden');
     }
 
-    // Handle Login Submission
     function handleLogin(e) {
       e.preventDefault();
       clearError();
@@ -368,22 +321,18 @@
       const btnText = document.getElementById('btnText');
       const btnSpinner = document.getElementById('btnSpinner');
 
-      // Start Loading State
       loginBtn.disabled = true;
       btnText.textContent = "Authenticating...";
       btnSpinner.classList.remove('hidden');
 
-      // Simulate 600ms network verification latency for polish
       setTimeout(() => {
         if (userVal === AUTH_CONFIG.username && passVal === AUTH_CONFIG.password) {
-          // Success: Transition to Home Page
           btnText.textContent = "Success";
           
           setTimeout(() => {
             const loginScreen = document.getElementById('loginScreen');
             const homeScreen = document.getElementById('homeScreen');
 
-            // Fade out login screen
             loginScreen.style.opacity = '0';
             loginScreen.style.transform = 'scale(0.96)';
 
@@ -391,24 +340,21 @@
               loginScreen.classList.add('view-hidden');
               homeScreen.classList.remove('view-hidden');
               
-              // Force layout reflow before fading in
               void homeScreen.offsetWidth;
               homeScreen.style.opacity = '1';
               homeScreen.style.transform = 'scale(1)';
-            }, 300);
-          }, 350);
+            }, 250);
+          }, 250);
 
         } else {
-          // Failure: Reset button & Trigger Error
           loginBtn.disabled = false;
           btnText.textContent = "Sign In";
           btnSpinner.classList.add('hidden');
-          showError("Invalid username or password. Please try again.");
+          showError("Invalid username or password.");
         }
-      }, 600);
+      }, 500);
     }
 
-    // Handle Logout / Return to Login Screen
     function handleLogout() {
       const loginScreen = document.getElementById('loginScreen');
       const homeScreen = document.getElementById('homeScreen');
@@ -417,14 +363,12 @@
       const btnText = document.getElementById('btnText');
       const btnSpinner = document.getElementById('btnSpinner');
 
-      // Reset inputs & buttons
       passwordInput.value = '';
       loginBtn.disabled = false;
       btnText.textContent = "Sign In";
       btnSpinner.classList.add('hidden');
       clearError();
 
-      // Smooth transition back
       homeScreen.style.opacity = '0';
       homeScreen.style.transform = 'scale(0.96)';
 
@@ -435,7 +379,7 @@
         void loginScreen.offsetWidth;
         loginScreen.style.opacity = '1';
         loginScreen.style.transform = 'scale(1)';
-      }, 300);
+      }, 250);
     }
   </script>
 </body>
