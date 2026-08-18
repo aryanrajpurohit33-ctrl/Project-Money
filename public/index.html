@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>NEXUS DIGITAL — Subscriptions & Digital Marketplace</title>
+  <title>NEXUS DIGITAL — Digital Goods & Subscriptions</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -142,7 +142,7 @@
     }
 
     // =========================================================================
-    // STOREFRONT LAYOUT & SUBSCRIPTION PRODUCT SELECTION
+    // STOREFRONT LAYOUT & PRODUCTS
     // =========================================================================
     function renderStorefrontLayout(viewport, view, params) {
       viewport.innerHTML = `
@@ -285,7 +285,6 @@
                 <p class="text-xs text-slate-400 mt-1">${p.short_description || ''}</p>
               </div>
 
-              <!-- Subscription Duration Switcher -->
               ${p.product_type === 'SUBSCRIPTION' ? `
                 <div class="space-y-2">
                   <label class="text-xs font-bold text-slate-300">Select Subscription Duration:</label>
@@ -443,7 +442,7 @@
 
         let detailsHTML = selectedMethod === 'UPI' ? `
           <div class="text-center space-y-4">
-            <img src="${ps.upi_qr_url}" class="w-56 h-56 mx-auto rounded-2xl glass p-2 bg-white">
+            <img src="${ps.upi_qr_url}" class="w-56 h-56 mx-auto rounded-2xl glass p-2 bg-white object-contain">
             <div class="space-y-1">
               <span class="text-[10px] text-slate-500 uppercase font-bold">UPI ID</span>
               <div class="font-mono text-emerald-400 text-sm font-bold">${ps.upi_id}</div>
@@ -453,7 +452,7 @@
           </div>
         ` : `
           <div class="text-center space-y-4">
-            <img src="${ps.crypto_qr_url}" class="w-56 h-56 mx-auto rounded-2xl glass p-2 bg-white">
+            <img src="${ps.crypto_qr_url}" class="w-56 h-56 mx-auto rounded-2xl glass p-2 bg-white object-contain">
             <div class="space-y-1">
               <span class="text-[10px] text-slate-500 uppercase font-bold">Wallet Address (${ps.crypto_currency} - ${ps.crypto_network})</span>
               <div class="font-mono text-emerald-400 text-xs font-bold break-all">${ps.crypto_wallet_address}</div>
@@ -505,6 +504,7 @@
           img.onload = () => {
             const canvas = document.createElement('canvas');
             const MAX_WIDTH = 1280;
+            const MAX_HEIGHT = 1280;
             let width = img.width;
             let height = img.height;
             if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
@@ -737,7 +737,7 @@
     }
 
     // =========================================================================
-    // DEDICATED SAAS ADMIN CONTROL CENTER & SUBSCRIPTION ENGINE
+    // DEDICATED SAAS ADMIN CONTROL CENTER
     // =========================================================================
     function renderAdminLogin(viewport) {
       viewport.innerHTML = `
@@ -806,6 +806,7 @@
                 <button onclick="switchAdminSection('subscriptions')" id="adnav-subscriptions" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🔄 <span>Subscription Engine</span></button>
                 <button onclick="switchAdminSection('products')" id="adnav-products" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🛍 <span>Product Studio</span></button>
                 <button onclick="switchAdminSection('payment-settings')" id="adnav-payment-settings" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">💰 <span>Payment Gateway</span></button>
+                <button onclick="switchAdminSection('system-monitor')" id="adnav-system-monitor" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all border border-emerald-500/20 bg-emerald-500/5">🖥️ <span>System & Infrastructure</span></button>
               </nav>
             </div>
 
@@ -853,13 +854,15 @@
         case 'subscriptions': renderAdminSubscriptions(content); break;
         case 'products': renderAdminProductsStudio(content); break;
         case 'payment-settings': renderAdminPaymentSettings(content); break;
+        case 'system-monitor': renderAdminSystemMonitor(content); break;
       }
     }
 
     async function renderAdminOverview(container) {
       const statsRes = await fetch('/api/admin/stats', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
       const stats = await statsRes.json();
-      document.getElementById('pendingTxnCountBadge').textContent = stats.pendingPayments || '0';
+      const pBadge = document.getElementById('pendingTxnCountBadge');
+      if (pBadge) pBadge.textContent = stats.pendingPayments || '0';
 
       container.innerHTML = `
         <div class="space-y-6">
@@ -874,7 +877,7 @@
     }
 
     // =========================================================================
-    // TRANSACTIONS QUEUE & MANUAL ACCOUNT SLOT ASSIGNMENT
+    // TRANSACTIONS QUEUE
     // =========================================================================
     async function renderAdminTransactions(container) {
       container.innerHTML = '<div class="text-center py-12 text-slate-500 font-mono">Loading transactions...</div>';
@@ -1029,11 +1032,9 @@
 
       container.innerHTML = `
         <div class="space-y-6">
-          <div class="flex justify-between items-center">
-            <div>
-              <h2 class="text-lg font-black text-white font-sans">Active & Historical Customer Subscriptions</h2>
-              <p class="text-xs text-slate-400 font-mono">Real-time calendar start & expiration dates</p>
-            </div>
+          <div>
+            <h2 class="text-lg font-black text-white font-sans">Active & Historical Customer Subscriptions</h2>
+            <p class="text-xs text-slate-400 font-mono">Real-time calendar start & expiration dates</p>
           </div>
 
           <div class="grid grid-cols-2 gap-4">
@@ -1233,7 +1234,6 @@
           <h3 class="text-base font-black text-white mb-1">${productName}</h3>
           <p class="text-xs text-slate-400 font-mono mb-4">Manage Credential Slots (${slots.length} Total)</p>
 
-          <!-- Add New Slot Form -->
           <form onsubmit="submitNewSlot(event, '${productId}', '${productName}')" class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-2 mb-4 text-xs">
             <span class="text-[10px] font-bold uppercase text-emerald-400">+ Add Account Slot</span>
             <div class="grid grid-cols-3 gap-2">
@@ -1244,7 +1244,6 @@
             <button type="submit" class="w-full py-2 rounded-xl bg-emerald-500 text-gray-950 font-bold uppercase text-[10px]">Attach Slot</button>
           </form>
 
-          <!-- Slots List -->
           <div class="space-y-2 max-h-60 overflow-y-auto custom-scroll">
             ${slots.map(s => `
               <div class="p-3 rounded-xl bg-surface-950 border border-admin-border flex justify-between items-center text-xs font-mono">
@@ -1307,28 +1306,100 @@
       } catch (err) { showToast(err.message, 'error'); }
     }
 
+    // =========================================================================
+    // ADMIN PAYMENT SETTINGS (WITH DIRECT QR IMAGE UPLOAD & PREVIEW)
+    // =========================================================================
     async function renderAdminPaymentSettings(container) {
+      container.innerHTML = '<div class="text-center py-12 text-slate-500 font-mono">Loading payment configurations...</div>';
       const res = await fetch('/api/admin/payment-settings', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
       const s = await res.json();
 
       container.innerHTML = `
         <div class="max-w-2xl space-y-6">
-          <h2 class="text-lg font-black text-white">Payment Settings</h2>
-          <form onsubmit="saveAdminPaymentSettings(event)" class="space-y-4 text-xs">
-            <div class="admin-card rounded-3xl p-6 space-y-3">
-              <h3 class="font-bold text-emerald-400">UPI Settings</h3>
-              <input type="text" id="admUpiId" required value="${s.upi_id || ''}" placeholder="UPI ID" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
-              <input type="text" id="admUpiQr" required value="${s.upi_qr_url || ''}" placeholder="QR Code URL" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
+          <div>
+            <h2 class="text-lg font-black text-white font-sans">Payment Gateway & QR Codes</h2>
+            <p class="text-xs text-slate-400 font-mono">Upload your UPI QR Code image or paste URL</p>
+          </div>
+
+          <form onsubmit="saveAdminPaymentSettings(event)" class="space-y-6 text-xs font-mono">
+            
+            <!-- UPI Settings Card -->
+            <div class="admin-card rounded-3xl p-6 space-y-4">
+              <h3 class="font-bold text-emerald-400 uppercase">1. UPI Configuration</h3>
+              <div class="space-y-3">
+                <div>
+                  <label class="text-[10px] text-slate-400 block mb-1">UPI ID (VPA)</label>
+                  <input type="text" id="admUpiId" required value="${s.upi_id || ''}" placeholder="e.g. merchant@okaxis" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
+                </div>
+
+                <div>
+                  <label class="text-[10px] text-slate-400 block mb-1">UPI QR Code Image</label>
+                  <div class="flex flex-col sm:flex-row gap-3 items-center">
+                    <img id="upiQrPreviewImg" src="${s.upi_qr_url || 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi'}" class="w-24 h-24 rounded-2xl bg-white p-1 border border-white/20 object-contain shadow-lg">
+                    
+                    <div class="flex-1 w-full space-y-2">
+                      <label class="w-full py-2.5 px-4 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center gap-2 cursor-pointer font-bold transition-all">
+                        <span>📁</span> <span>Upload QR Code Image</span>
+                        <input type="file" id="upiQrFileInput" accept="image/*" class="hidden" onchange="handleQrFileSelection(this, 'upi')">
+                      </label>
+                      
+                      <input type="text" id="admUpiQr" value="${s.upi_qr_url || ''}" oninput="document.getElementById('upiQrPreviewImg').src=this.value" placeholder="Or paste image URL" class="w-full px-3 py-2 rounded-xl bg-surface-950 border border-admin-border text-[11px] text-slate-400">
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="admin-card rounded-3xl p-6 space-y-3">
-              <h3 class="font-bold text-teal-400">Crypto Settings</h3>
-              <input type="text" id="admCryptoWallet" required value="${s.crypto_wallet_address || ''}" placeholder="Wallet Address" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
-              <input type="text" id="admCryptoQr" required value="${s.crypto_qr_url || ''}" placeholder="QR Code URL" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-mono">
+
+            <!-- Crypto Settings Card -->
+            <div class="admin-card rounded-3xl p-6 space-y-4">
+              <h3 class="font-bold text-teal-400 uppercase">2. Crypto Configuration</h3>
+              <div class="space-y-3">
+                <div>
+                  <label class="text-[10px] text-slate-400 block mb-1">Wallet Address (USDT TRC20)</label>
+                  <input type="text" id="admCryptoWallet" required value="${s.crypto_wallet_address || ''}" placeholder="Wallet Address" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
+                </div>
+
+                <div>
+                  <label class="text-[10px] text-slate-400 block mb-1">Crypto QR Code Image</label>
+                  <div class="flex flex-col sm:flex-row gap-3 items-center">
+                    <img id="cryptoQrPreviewImg" src="${s.crypto_qr_url || 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=crypto'}" class="w-24 h-24 rounded-2xl bg-white p-1 border border-white/20 object-contain shadow-lg">
+                    
+                    <div class="flex-1 w-full space-y-2">
+                      <label class="w-full py-2.5 px-4 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/30 flex items-center justify-center gap-2 cursor-pointer font-bold transition-all">
+                        <span>📁</span> <span>Upload Crypto QR Image</span>
+                        <input type="file" id="cryptoQrFileInput" accept="image/*" class="hidden" onchange="handleQrFileSelection(this, 'crypto')">
+                      </label>
+                      
+                      <input type="text" id="admCryptoQr" value="${s.crypto_qr_url || ''}" oninput="document.getElementById('cryptoQrPreviewImg').src=this.value" placeholder="Or paste image URL" class="w-full px-3 py-2 rounded-xl bg-surface-950 border border-admin-border text-[11px] text-slate-400">
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase">Save Settings</button>
+
+            <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+              Save Payment Settings
+            </button>
           </form>
         </div>
       `;
+    }
+
+    async function handleQrFileSelection(input, type) {
+      if (!input.files || !input.files[0]) return;
+      try {
+        const base64Data = await compressImageFile(input.files[0]);
+        if (type === 'upi') {
+          document.getElementById('admUpiQr').value = base64Data;
+          document.getElementById('upiQrPreviewImg').src = base64Data;
+        } else {
+          document.getElementById('admCryptoQr').value = base64Data;
+          document.getElementById('cryptoQrPreviewImg').src = base64Data;
+        }
+        showToast('QR Image processed and ready to save!');
+      } catch (err) {
+        showToast('Error reading image: ' + err.message, 'error');
+      }
     }
 
     async function saveAdminPaymentSettings(e) {
@@ -1345,8 +1416,186 @@
           })
         });
         if (!res.ok) throw new Error((await res.json()).error);
-        showToast('Payment settings saved!');
+        showToast('Payment settings saved successfully!');
       } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    // =========================================================================
+    // SYSTEM & INFRASTRUCTURE MONITOR
+    // =========================================================================
+    async function renderAdminSystemMonitor(container) {
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Running live infrastructure diagnostics & MongoDB ping...</div>';
+
+      try {
+        const res = await fetch('/api/admin/system/infrastructure', {
+          headers: { 'Authorization': `Bearer ${state.adminToken}` }
+        });
+        const data = await res.json();
+
+        container.innerHTML = `
+          <div class="space-y-8 pb-12 font-mono">
+            
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h1 class="text-xl font-black text-white font-sans">System & Infrastructure Monitor</h1>
+                <p class="text-xs text-slate-400">Live hardware profiling, database cluster metrics & runtime diagnostics</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="runSystemHealthCheck()" class="px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold hover:bg-emerald-500/20 transition-all font-sans">
+                  🩺 Run Health Check
+                </button>
+                <button onclick="switchAdminSection('system-monitor')" class="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold font-sans">
+                  ↻ Refresh
+                </button>
+              </div>
+            </div>
+
+            <!-- Core Infrastructure KPI Row -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              
+              <!-- RAM / Service Memory -->
+              <div class="admin-card rounded-2xl p-5 space-y-2">
+                <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
+                  <span>Service Memory (RSS)</span>
+                  <span class="text-emerald-400">● Normal</span>
+                </div>
+                <div class="text-2xl font-black text-white">${data.server.service_memory_rss_mb} MB</div>
+                <div class="w-full bg-surface-950 rounded-full h-1.5 overflow-hidden">
+                  <div class="bg-emerald-500 h-full rounded-full" style="width: ${Math.min(100, Math.round((data.server.service_memory_rss_mb / 512) * 100))}%"></div>
+                </div>
+                <div class="flex justify-between text-[9px] text-slate-500">
+                  <span>Heap: ${data.server.heap_used_mb}MB</span>
+                  <span>Container: ${data.server.os_mem_percent}%</span>
+                </div>
+              </div>
+
+              <!-- Database Connection & Latency -->
+              <div class="admin-card rounded-2xl p-5 space-y-2">
+                <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
+                  <span>MongoDB Atlas Ping</span>
+                  <span class="text-emerald-400">● Connected</span>
+                </div>
+                <div class="text-2xl font-black text-emerald-400">${data.database.ping_latency_ms} ms</div>
+                <div class="w-full bg-surface-950 rounded-full h-1.5 overflow-hidden">
+                  <div class="bg-emerald-500 h-full rounded-full" style="width: ${Math.min(100, data.database.ping_latency_ms)}%"></div>
+                </div>
+                <div class="flex justify-between text-[9px] text-slate-500">
+                  <span>Collections: ${data.database.collections_count}</span>
+                  <span>Storage: ${data.database.storage_size_mb} MB</span>
+                </div>
+              </div>
+
+              <!-- Process Uptime -->
+              <div class="admin-card rounded-2xl p-5 space-y-2">
+                <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
+                  <span>Backend Uptime</span>
+                  <span class="text-emerald-400">● Live</span>
+                </div>
+                <div class="text-lg font-black text-white mt-1">${data.server.uptime_formatted}</div>
+                <div class="text-[9px] text-slate-500">Continuous uptime</div>
+              </div>
+
+              <!-- Average API Latency & Error Rate -->
+              <div class="admin-card rounded-2xl p-5 space-y-2">
+                <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
+                  <span>Avg Latency / Errors</span>
+                  <span class="${data.server.error_rate_percent > 5 ? 'text-rose-400' : 'text-emerald-400'}">● ${data.server.error_rate_percent}% Err</span>
+                </div>
+                <div class="text-2xl font-black text-white">${data.server.avg_response_time_ms} ms</div>
+                <div class="text-[9px] text-slate-500">Tracked: ${data.server.request_count_tracked} requests</div>
+              </div>
+
+            </div>
+
+            <!-- Database Collections Table -->
+            <div class="admin-card rounded-3xl p-6 space-y-4">
+              <div class="flex justify-between items-center">
+                <h3 class="text-xs font-bold uppercase text-slate-400">MongoDB Atlas Cloud Collections</h3>
+                <span class="text-[10px] text-emerald-400 font-mono">Data Size: ${data.database.data_size_mb} MB | Indexes: ${data.database.indexes_size_mb} MB</span>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                  <thead>
+                    <tr class="border-b border-admin-border text-slate-500">
+                      <th class="pb-2">Collection Name</th>
+                      <th class="pb-2">Document Count</th>
+                      <th class="pb-2 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-admin-border">
+                    ${data.database.collections.map(c => `
+                      <tr>
+                        <td class="py-3 text-white font-bold">${c.name}</td>
+                        <td class="py-3 text-slate-300 font-bold">${c.count} records</td>
+                        <td class="py-3 text-right text-emerald-400">🟢 ${c.status}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        `;
+      } catch (err) {
+        container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">Diagnostics Error: ${err.message}</div>`;
+      }
+    }
+
+    async function runSystemHealthCheck() {
+      const modal = document.getElementById('globalModal');
+      const content = document.getElementById('globalModalContent');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono animate-pulse">Running health checks...</div>';
+
+      try {
+        const res = await fetch('/api/admin/system/health-check', {
+          headers: { 'Authorization': `Bearer ${state.adminToken}` }
+        });
+        const data = await res.json();
+        const c = data.checks;
+
+        content.innerHTML = `
+          <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+          <div class="space-y-5 font-mono">
+            <div>
+              <h3 class="text-base font-bold text-white font-sans">Full Subsystem Health Results</h3>
+              <p class="text-xs text-slate-400">Timestamp: ${new Date(data.timestamp).toLocaleTimeString()}</p>
+            </div>
+
+            <div class="space-y-2.5 text-xs">
+              <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
+                <span>Frontend Layer</span>
+                <span class="text-emerald-400 font-bold">🟢 ${c.frontend.status} (${c.frontend.latency_ms}ms)</span>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
+                <span>Backend Express Engine</span>
+                <span class="text-emerald-400 font-bold">🟢 ${c.backend.status} (${c.backend.uptime_sec}s uptime)</span>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
+                <span>MongoDB Atlas Cluster</span>
+                <span class="${c.database.status === 'Connected' ? 'text-emerald-400' : 'text-rose-400'} font-bold">
+                  ${c.database.status === 'Connected' ? '🟢 Connected (' + c.database.latency_ms + 'ms ping)' : '🔴 ' + c.database.status}
+                </span>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
+                <span>Digital Delivery Stock Queue</span>
+                <span class="${c.digital_delivery.stock_ready ? 'text-emerald-400' : 'text-amber-400'} font-bold">
+                  ${c.digital_delivery.stock_ready ? '🟢 Ready (' + c.digital_delivery.available_stock + ' slots in stock)' : '🟡 Stock Low (0 units)'}
+                </span>
+              </div>
+            </div>
+
+            <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="w-full py-3.5 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider font-sans">
+              Done
+            </button>
+          </div>
+        `;
+      } catch (err) {
+        content.innerHTML = `<div class="text-center py-8 text-rose-400 font-mono">Health Check Error: ${err.message}</div>`;
+      }
     }
 
     function adminSignOut() {

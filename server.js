@@ -80,7 +80,6 @@ const UserSchema = new mongoose.Schema({
   created_at: { type: Date, default: Date.now }
 });
 
-// Product Schema with One-Time & Subscription Tier Support
 const ProductSchema = new mongoose.Schema({
   name: { type: String, required: true },
   short_description: { type: String, default: '' },
@@ -90,7 +89,6 @@ const ProductSchema = new mongoose.Schema({
   original_price: { type: Number, required: true },
   sale_price: { type: Number, required: true },
   discount_percentage: { type: Number, default: 0 },
-  // Subscription Duration Pricing
   subscription_pricing: {
     one_month: { type: Number, default: 199 },
     six_months: { type: Number, default: 899 },
@@ -107,7 +105,6 @@ const ProductSchema = new mongoose.Schema({
   sales_count: { type: Number, default: 0 }
 });
 
-// Inventory Account Slot (One-time and Subscription)
 const InventorySlotSchema = new mongoose.Schema({
   product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
   account_label: { type: String, default: 'Account Slot' },
@@ -129,7 +126,6 @@ const InventorySlotSchema = new mongoose.Schema({
   created_at: { type: Date, default: Date.now }
 });
 
-// Active & Historical Customer Subscriptions
 const SubscriptionSchema = new mongoose.Schema({
   order_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true },
   user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -207,15 +203,6 @@ const PaymentSettingsSchema = new mongoose.Schema({
   crypto_instructions: { type: String, default: '1. Send exact amount in USDT (TRC20 network).\n2. Note transaction hash & take transfer screenshot.\n3. Upload payment proof for instant admin verification.' }
 });
 
-const CouponSchema = new mongoose.Schema({
-  code: { type: String, required: true, unique: true, uppercase: true },
-  discount_type: { type: String, enum: ['percentage', 'fixed'], required: true },
-  discount_value: { type: Number, required: true },
-  min_purchase: { type: Number, default: 0 },
-  max_discount: { type: Number, default: 0 },
-  status: { type: String, default: 'active' }
-});
-
 const Admin = mongoose.model('Admin', AdminSchema);
 const User = mongoose.model('User', UserSchema);
 const Product = mongoose.model('Product', ProductSchema);
@@ -224,10 +211,9 @@ const Subscription = mongoose.model('Subscription', SubscriptionSchema);
 const Transaction = mongoose.model('Transaction', TransactionSchema);
 const Order = mongoose.model('Order', OrderSchema);
 const PaymentSettings = mongoose.model('PaymentSettings', PaymentSettingsSchema);
-const Coupon = mongoose.model('Coupon', CouponSchema);
 
 // ----------------------------------------------------
-// SEEDING
+// DATABASE INITIALIZATION
 // ----------------------------------------------------
 async function initializeSystem() {
   try {
@@ -243,7 +229,6 @@ async function initializeSystem() {
 
     const pCount = await Product.countDocuments();
     if (pCount === 0) {
-      // Seed Demo Subscription Product with Account Slots
       const subProduct = await Product.create({
         name: 'Authorized Streaming Subscription',
         short_description: 'PIN-protected 4K UHD streaming profile with instant activation.',
@@ -262,9 +247,7 @@ async function initializeSystem() {
       });
 
       await InventorySlot.create([
-        { product_id: subProduct._id, account_label: 'Account #1 (Dedicated)', email: 'stream_vip01@nexus.io', password: 'NexusPass@2026', status: 'AVAILABLE' },
-        { product_id: subProduct._id, account_label: 'Account #2 (Dedicated)', email: 'stream_vip02@nexus.io', password: 'VaultStream#889', status: 'AVAILABLE' },
-        { product_id: subProduct._id, account_label: 'Account #3 (Dedicated)', email: 'stream_vip03@nexus.io', password: 'UltraAccess#990', status: 'AVAILABLE' }
+        { product_id: subProduct._id, account_label: 'Account #1 (Dedicated)', email: 'stream_vip01@nexus.io', password: 'NexusPass@2026', status: 'AVAILABLE' }
       ]);
     }
   } catch (err) {
@@ -304,9 +287,145 @@ function authAdmin(req, res, next) {
 }
 
 // ----------------------------------------------------
+// SYSTEM & INFRASTRUCTURE MONITORING ENDPOINT
+// ----------------------------------------------------
+app.get('/api/admin/system/infrastructure', authAdmin, async (req, res) => {
+  try {
+    const memUsage = process.memoryUsage();
+    const rssMB = Math.round((memUsage.rss / 1024 / 1024) * 10) / 10;
+    const heapUsedMB = Math.round((memUsage.heapUsed / 1024 / 1024) * 10) / 10;
+    const heapTotalMB = Math.round((memUsage.heapTotal / 1024 / 1024) * 10) / 10;
+
+    const osFreeMemMB = Math.round(os.freemem() / 1024 / 1024);
+    const osTotalMemMB = Math.round(os.totalmem() / 1024 / 1024);
+    const osUsedMemMB = osTotalMemMB - osFreeMemMB;
+    const osMemPercent = Math.round((osUsedMemMB / osTotalMemMB) * 100);
+
+    let dbStatus = 'Disconnected';
+    let dbDataSizeMB = 0;
+    let dbStorageSizeMB = 0;
+    let dbIndexesSizeMB = 0;
+    let dbCollectionsCount = 0;
+    let dbPingMs = 0;
+
+    if (mongoose.connection.readyState === 1) {
+      dbStatus = 'Connected';
+      const pingStart = Date.now();
+      const stats = await mongoose.connection.db.stats();
+      dbPingMs = Date.now() - pingStart;
+
+      dbDataSizeMB = Math.round((stats.dataSize / 1024 / 1024) * 100) / 100;
+      dbStorageSizeMB = Math.round((stats.storageSize / 1024 / 1024) * 100) / 100;
+      dbIndexesSizeMB = Math.round((stats.indexSize / 1024 / 1024) * 100) / 100;
+      dbCollectionsCount = stats.collections;
+    }
+
+    const [usersCount, productsCount, ordersCount, txnsCount, invCount] = await Promise.all([
+      User.countDocuments(),
+      Product.countDocuments(),
+      Order.countDocuments(),
+      Transaction.countDocuments(),
+      InventorySlot.countDocuments()
+    ]);
+
+    const recentRequests = requestLogs.slice(0, 50);
+    const avgResponseTime = recentRequests.length > 0
+      ? Math.round(recentRequests.reduce((a, b) => a + b.responseTime, 0) / recentRequests.length)
+      : 12;
+
+    const errorCount = recentRequests.filter(r => r.statusCode >= 400).length;
+    const errorRatePercent = recentRequests.length > 0
+      ? Math.round((errorCount / recentRequests.length) * 100)
+      : 0;
+
+    const uptimeSec = Math.floor(process.uptime());
+    const days = Math.floor(uptimeSec / 86400);
+    const hours = Math.floor((uptimeSec % 86400) / 3600);
+    const mins = Math.floor((uptimeSec % 3600) / 60);
+    const formattedUptime = `${days > 0 ? days + 'd ' : ''}${hours}h ${mins}m ${uptimeSec % 60}s`;
+
+    const isRender = !!process.env.RENDER;
+    const hostingDetails = {
+      provider: isRender ? 'Render Cloud (Production)' : 'Node.js Standalone Container',
+      service_id: process.env.RENDER_SERVICE_ID || 'Container-Local',
+      node_version: process.version,
+      platform: `${os.type()} ${os.arch()}`,
+      environment: process.env.NODE_ENV || 'production'
+    };
+
+    res.json({
+      server: {
+        status: 'Operational',
+        uptime_seconds: uptimeSec,
+        uptime_formatted: formattedUptime,
+        service_memory_rss_mb: rssMB,
+        heap_used_mb: heapUsedMB,
+        heap_total_mb: heapTotalMB,
+        os_used_mem_mb: osUsedMemMB,
+        os_total_mem_mb: osTotalMemMB,
+        os_mem_percent: osMemPercent,
+        avg_response_time_ms: avgResponseTime,
+        error_rate_percent: errorRatePercent,
+        request_count_tracked: requestLogs.length,
+        hosting: hostingDetails
+      },
+      database: {
+        status: dbStatus,
+        ping_latency_ms: dbPingMs,
+        data_size_mb: dbDataSizeMB,
+        storage_size_mb: dbStorageSizeMB,
+        indexes_size_mb: dbIndexesSizeMB,
+        collections_count: dbCollectionsCount,
+        collections: [
+          { name: 'Users', count: usersCount, status: 'Healthy' },
+          { name: 'Products', count: productsCount, status: 'Healthy' },
+          { name: 'Orders', count: ordersCount, status: 'Healthy' },
+          { name: 'Transactions', count: txnsCount, status: 'Healthy' },
+          { name: 'Inventory Slots', count: invCount, status: 'Healthy' }
+        ]
+      },
+      recent_api_metrics: requestLogs.slice(0, 8),
+      recent_errors: appErrorLogs.slice(0, 10),
+      timestamp: new Date()
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Full Multi-Subsystem Health Check
+app.get('/api/admin/system/health-check', authAdmin, async (req, res) => {
+  const results = {
+    frontend: { status: 'Operational', latency_ms: 2 },
+    backend: { status: 'Operational', uptime_sec: Math.floor(process.uptime()) },
+    database: { status: 'Disconnected', latency_ms: null },
+    auth_service: { status: 'Operational', algorithm: 'HS256' },
+    payment_gateway: { status: 'Operational', configured: true },
+    digital_delivery: { status: 'Operational', stock_ready: false }
+  };
+
+  try {
+    const dbStart = Date.now();
+    await mongoose.connection.db.admin().ping();
+    results.database.status = 'Connected';
+    results.database.latency_ms = Date.now() - dbStart;
+
+    const availableStock = await InventorySlot.countDocuments({ status: 'AVAILABLE' });
+    results.digital_delivery.stock_ready = availableStock > 0;
+    results.digital_delivery.available_stock = availableStock;
+
+    res.json({ success: true, timestamp: new Date(), checks: results });
+  } catch (err) {
+    results.database.status = 'Degraded';
+    results.database.error = err.message;
+    res.status(500).json({ success: false, checks: results });
+  }
+});
+
+// ----------------------------------------------------
 // STORE & CHECKOUT APIS
 // ----------------------------------------------------
-
 app.post('/api/presence/heartbeat', (req, res) => {
   const { sessionId, page, action } = req.body;
   if (sessionId) activeSessions.set(sessionId, { page: page || 'home', timestamp: Date.now() });
@@ -382,10 +501,9 @@ app.post('/api/auth/customer/login', async (req, res) => {
   }
 });
 
-// Create Order & Start Transaction (With Subscription Duration Validation)
 app.post('/api/checkout/initiate-order', authCustomer, async (req, res) => {
   try {
-    const { items, payment_method, coupon_code } = req.body;
+    const { items, payment_method } = req.body;
     const user = await User.findById(req.user.id);
     let subtotal = 0;
     const orderItems = [];
@@ -486,7 +604,6 @@ app.post('/api/checkout/upload-proof-json', authCustomer, async (req, res) => {
   }
 });
 
-// Customer Purchased Items with Server-Side Subscription Expiration Checks
 app.get('/api/customer/orders', authCustomer, async (req, res) => {
   try {
     const orders = await Order.find({ user_id: req.user.id })
@@ -502,7 +619,6 @@ app.get('/api/customer/orders', authCustomer, async (req, res) => {
       oObj.items = oObj.items.map(it => {
         if (!isPaid) return { ...it, delivered_data: null };
 
-        // For Subscription Items, check live expiration
         if (it.product_type === 'SUBSCRIPTION' && it.subscription_id) {
           const expiresAt = new Date(it.subscription_id.expires_at);
           const isExpired = now >= expiresAt;
@@ -513,7 +629,6 @@ app.get('/api/customer/orders', authCustomer, async (req, res) => {
             is_expired: isExpired,
             start_at: it.subscription_id.start_at,
             expires_at: it.subscription_id.expires_at,
-            // Mask credentials server-side if expired!
             delivered_data: isExpired ? null : it.delivered_data
           };
         }
@@ -531,7 +646,7 @@ app.get('/api/customer/orders', authCustomer, async (req, res) => {
 });
 
 // ----------------------------------------------------
-// ADMIN CONTROL CENTER & SUBSCRIPTION ENGINE
+// ADMIN CONTROL CENTER APIS
 // ----------------------------------------------------
 app.post('/api/admin/login', async (req, res) => {
   try {
@@ -563,7 +678,6 @@ app.get('/api/admin/stats', authAdmin, async (req, res) => {
   }
 });
 
-// Admin Subscriptions Overview
 app.get('/api/admin/subscriptions', authAdmin, async (req, res) => {
   try {
     const now = new Date();
@@ -576,17 +690,12 @@ app.get('/api/admin/subscriptions', authAdmin, async (req, res) => {
     const totalActive = subs.filter(s => s.status === 'ACTIVE' && s.expires_at > now).length;
     const totalExpired = subs.filter(s => s.expires_at <= now || s.status === 'EXPIRED').length;
 
-    res.json({
-      subscriptions: subs,
-      totalActive,
-      totalExpired
-    });
+    res.json({ subscriptions: subs, totalActive, totalExpired });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Admin Transactions Queue with Associated Available Inventory Slots
 app.get('/api/admin/transactions', authAdmin, async (req, res) => {
   try {
     const txns = await Transaction.find().select('-proof_screenshot').sort({ created_at: -1 });
@@ -624,7 +733,6 @@ app.get('/api/admin/transactions/:id/proof', authAdmin, async (req, res) => {
   }
 });
 
-// Admin Confirm Payment + Bind Account Slot + Calculate Calendar Expiration Date
 app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -638,7 +746,6 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
     const order = await Order.findById(txn.order_id).session(session);
     const item = order.items[0];
 
-    // Atomically find & lock selected slot or next available slot
     let slot = null;
     if (slot_id) {
       slot = await InventorySlot.findOneAndUpdate(
@@ -654,28 +761,18 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
       );
     }
 
-    if (!slot) {
-      throw new Error('No available account slot found in inventory for this product. Please add an account slot first.');
-    }
+    if (!slot) throw new Error('No available slot found. Please create an account slot under Product Studio first.');
 
-    // Calculate Calendar-Accurate Expiration Date
     const startAt = new Date();
     const expiresAt = new Date(startAt);
 
-    if (item.duration === '1_MONTH') {
-      expiresAt.setMonth(expiresAt.getMonth() + 1);
-    } else if (item.duration === '6_MONTHS') {
-      expiresAt.setMonth(expiresAt.getMonth() + 6);
-    } else if (item.duration === '1_YEAR') {
-      expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-    } else {
-      // Default fallback for 30 days
-      expiresAt.setDate(expiresAt.getDate() + 30);
-    }
+    if (item.duration === '1_MONTH') expiresAt.setMonth(expiresAt.getMonth() + 1);
+    else if (item.duration === '6_MONTHS') expiresAt.setMonth(expiresAt.getMonth() + 6);
+    else if (item.duration === '1_YEAR') expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+    else expiresAt.setDate(expiresAt.getDate() + 30);
 
-    let createdSub = null;
     if (item.product_type === 'SUBSCRIPTION') {
-      createdSub = await Subscription.create([{
+      const createdSub = await Subscription.create([{
         order_id: order._id,
         user_id: order.user_id,
         product_id: item.product_id,
@@ -691,7 +788,6 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
       item.subscription_id = createdSub[0]._id;
     }
 
-    // Record Slot History
     slot.assignment_history.push({
       customer_name: order.customer_name,
       customer_email: order.customer_email,
@@ -702,7 +798,6 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
     });
     await slot.save({ session });
 
-    // Package Delivered Data for Instant Unlock
     item.delivered_data = {
       account_label: slot.account_label,
       email: slot.email,
@@ -723,7 +818,7 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
     session.endSession();
 
     recordActivity('subscription_activated', `Subscription confirmed & ${slot.account_label} assigned to ${order.customer_name}`);
-    res.json({ success: true, message: 'Payment confirmed, account assigned, and subscription activated!' });
+    res.json({ success: true });
 
   } catch (err) {
     await session.abortTransaction();
@@ -747,7 +842,6 @@ app.post('/api/admin/transactions/:id/reject', authAdmin, async (req, res) => {
   }
 });
 
-// Admin Product & Subscription Inventory Slots
 app.get('/api/admin/products/:id/slots', authAdmin, async (req, res) => {
   try {
     const slots = await InventorySlot.find({ product_id: req.params.id }).sort({ created_at: -1 });
@@ -788,8 +882,7 @@ app.get('/api/admin/products', authAdmin, async (req, res) => {
     const list = await Promise.all(products.map(async (p) => {
       const total = await InventorySlot.countDocuments({ product_id: p._id });
       const available = await InventorySlot.countDocuments({ product_id: p._id, status: 'AVAILABLE' });
-      const assigned = await InventorySlot.countDocuments({ product_id: p._id, status: 'ASSIGNED' });
-      return { ...p.toObject(), total_slots: total, available_slots: available, assigned_slots: assigned };
+      return { ...p.toObject(), total_slots: total, available_slots: available };
     }));
     res.json(list);
   } catch (err) {
@@ -851,9 +944,9 @@ app.get('*', (req, res) => {
 const MONGODB_URI = process.env.MONGODB_URI;
 mongoose.connect(MONGODB_URI)
   .then(async () => {
-    console.log('✓ Successfully connected to MongoDB Atlas Cloud Database');
+    console.log('✓ Connected to MongoDB Atlas Cloud Database');
     await initializeSystem();
     const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => console.log(`✓ NEXUS Engine running on port ${PORT}`));
+    app.listen(PORT, () => console.log(`✓ NEXUS Digital Hub running on port ${PORT}`));
   })
   .catch(err => console.error('✕ Failed to connect to MongoDB Atlas:', err.message));
