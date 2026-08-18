@@ -39,7 +39,6 @@
       font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
-    /* Pixel-Perfect Rainy Room GIF Background */
     .bg-gif {
       position: fixed;
       inset: 0;
@@ -54,7 +53,6 @@
       pointer-events: none;
     }
 
-    /* Glass Bottom Audio Dock */
     .glass-dock {
       background: rgba(8, 14, 26, 0.72);
       backdrop-filter: blur(24px);
@@ -63,7 +61,6 @@
       box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.75), inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
     }
 
-    /* Equalizer Bar Animation */
     .eq-bar {
       width: 3px;
       border-radius: 99px;
@@ -88,17 +85,15 @@
 </head>
 <body class="h-[100dvh] w-full flex flex-col justify-between p-6 relative select-none">
 
-  <!-- Rainy Pixel Room Animated Background -->
+  <!-- Natively Hosted Pixel Background -->
   <img 
     class="bg-gif" 
-    src="https://images.squarespace-cdn.com/content/v1/5769fc401b631bab1add22bf/1501584488349-O5L96AEEHMYL9T5P9A4Z/room.gif" 
+    src="https://media.giphy.com/media/26n6WywJyh39n1pBu/giphy.gif" 
     alt="Pixel Room Rainy Night"
   />
 
-  <!-- Subtle Film Vignette Overlay -->
   <div class="fixed inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/50 pointer-events-none z-[1]"></div>
 
-  <!-- Top Status Bar -->
   <header class="relative z-10 flex items-center justify-between w-full max-w-4xl mx-auto">
     <div class="flex items-center gap-2.5">
       <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -107,7 +102,6 @@
     <div id="liveClock" class="text-xs font-mono font-medium text-white/70">--:--:--</div>
   </header>
 
-  <!-- Center Minimalist Typography -->
   <main class="relative z-10 flex flex-col items-center justify-center text-center space-y-2">
     <h1 class="text-3xl sm:text-5xl font-extralight tracking-widest text-white/90 drop-shadow-md">
       夜 • 雨音
@@ -117,11 +111,9 @@
     </p>
   </main>
 
-  <!-- Bottom Audio Controller Dock -->
   <footer class="relative z-10 w-full max-w-sm mx-auto mb-2">
     <div class="glass-dock rounded-2xl p-4 flex items-center justify-between">
       
-      <!-- Visualizer & Stream Status -->
       <div class="flex items-center gap-3">
         <div class="flex items-end gap-1 h-6 px-1">
           <span class="eq-bar bar-1 eq-paused" id="eq1"></span>
@@ -136,7 +128,6 @@
         </div>
       </div>
 
-      <!-- Play / Pause Button -->
       <button 
         id="playBtn" 
         onclick="toggleAudio()" 
@@ -155,7 +146,6 @@
     </div>
   </footer>
 
-  <!-- 24/7 Lofi Stream -->
   <audio id="chillAudio" preload="none" src="https://stream.zeno.fm/f3wvbbqmdg8uv"></audio>
 
   <script>
