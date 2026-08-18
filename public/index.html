@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Lofi Tokyo — Chill Beats</title>
+  <title>Lofi Room — Rainy Night</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -39,25 +39,28 @@
       font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
-    /* Ambient Soothing Japanese Lofi Animated GIF */
+    /* Pixel-Perfect Rainy Room GIF Background */
     .bg-gif {
       position: fixed;
       inset: 0;
       width: 100%;
       height: 100%;
       object-fit: cover;
+      image-rendering: pixelated;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: crisp-edges;
       z-index: 0;
-      filter: brightness(0.68) contrast(1.05);
+      filter: brightness(0.8) contrast(1.05);
       pointer-events: none;
     }
 
     /* Glass Bottom Audio Dock */
     .glass-dock {
-      background: rgba(8, 14, 26, 0.65);
+      background: rgba(8, 14, 26, 0.72);
       backdrop-filter: blur(24px);
       -webkit-backdrop-filter: blur(24px);
       border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.7), inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
+      box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.75), inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
     }
 
     /* Equalizer Bar Animation */
@@ -85,22 +88,21 @@
 </head>
 <body class="h-[100dvh] w-full flex flex-col justify-between p-6 relative select-none">
 
-  <!-- Relaxing Japanese Rainy Night Scene -->
+  <!-- Rainy Pixel Room Animated Background -->
   <img 
     class="bg-gif" 
-    src="https://images.unsplash.com/photo-1503899036084-c55cdd92da26?auto=format&fit=crop&w=1920&q=80" 
-    id="bgVisual"
-    alt="Tokyo Night View"
+    src="https://images.squarespace-cdn.com/content/v1/5769fc401b631bab1add22bf/1501584488349-O5L96AEEHMYL9T5P9A4Z/room.gif" 
+    alt="Pixel Room Rainy Night"
   />
 
   <!-- Subtle Film Vignette Overlay -->
-  <div class="fixed inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/50 pointer-events-none z-[1]"></div>
+  <div class="fixed inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/50 pointer-events-none z-[1]"></div>
 
   <!-- Top Status Bar -->
   <header class="relative z-10 flex items-center justify-between w-full max-w-4xl mx-auto">
     <div class="flex items-center gap-2.5">
       <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-      <span class="text-xs uppercase tracking-widest font-semibold text-white/80">Tokyo Night</span>
+      <span class="text-xs uppercase tracking-widest font-semibold text-white/80">Late Night Coding</span>
     </div>
     <div id="liveClock" class="text-xs font-mono font-medium text-white/70">--:--:--</div>
   </header>
@@ -108,14 +110,14 @@
   <!-- Center Minimalist Typography -->
   <main class="relative z-10 flex flex-col items-center justify-center text-center space-y-2">
     <h1 class="text-3xl sm:text-5xl font-extralight tracking-widest text-white/90 drop-shadow-md">
-      東京 • 静けさ
+      夜 • 雨音
     </h1>
     <p class="text-xs sm:text-sm font-light text-slate-300/80 tracking-wide max-w-xs sm:max-w-sm">
-      Mellow ambient rhythms & late night Japanese rain.
+      Cozy pixel rain, warm neon glow & mellow beats.
     </p>
   </main>
 
-  <!-- Bottom Floating Audio Dock -->
+  <!-- Bottom Audio Controller Dock -->
   <footer class="relative z-10 w-full max-w-sm mx-auto mb-2">
     <div class="glass-dock rounded-2xl p-4 flex items-center justify-between">
       
@@ -134,12 +136,12 @@
         </div>
       </div>
 
-      <!-- Play / Pause Controller -->
+      <!-- Play / Pause Button -->
       <button 
         id="playBtn" 
         onclick="toggleAudio()" 
         class="w-10 h-10 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-gray-950 flex items-center justify-center transition-all shadow-lg shadow-emerald-500/25 focus:outline-none"
-        aria-label="Toggle Chill Beats"
+        aria-label="Toggle Beats"
       >
         <svg id="playIcon" class="w-5 h-5 ml-0.5" viewBox="0 0 24 24" fill="currentColor">
           <polygon points="5 3 19 12 5 21 5 3"/>
@@ -153,7 +155,7 @@
     </div>
   </footer>
 
-  <!-- 24/7 Ultra-Chill Low-Tempo Lofi Stream -->
+  <!-- 24/7 Lofi Stream -->
   <audio id="chillAudio" preload="none" src="https://stream.zeno.fm/f3wvbbqmdg8uv"></audio>
 
   <script>
@@ -167,16 +169,6 @@
       document.getElementById('eq3'),
       document.getElementById('eq4')
     ];
-
-    // Array of tranquil night visual loops
-    const ambientVisuals = [
-      "https://media.giphy.com/media/l41YqKti3pFKuI9CE/giphy.gif",
-      "https://media.giphy.com/media/3oKIPnAiaMCws8nOsE/giphy.gif",
-      "https://media.giphy.com/media/26n6WywJyh39n1pBu/giphy.gif"
-    ];
-
-    // Pick a relaxing animation on load
-    document.getElementById('bgVisual').src = ambientVisuals[0];
 
     function toggleAudio() {
       if (audio.paused) {
