@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Project Money</title>
+  <title>Project Money — Dashboard</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -44,39 +44,36 @@
     }
     
     html, body {
-      height: 100%;
-      height: 100dvh;
-      overflow: hidden;
-      margin: 0;
-      padding: 0;
       background-color: #04080F;
       color: #f8fafc;
       font-family: 'Plus Jakarta Sans', sans-serif;
+      overflow-x: hidden;
     }
 
-    /* Ambient Cinematic Background Glows */
+    /* Ambient Background Atmosphere */
     .ambient-orb {
-      position: absolute;
+      position: fixed;
       border-radius: 50%;
-      filter: blur(90px);
+      filter: blur(100px);
       pointer-events: none;
       will-change: transform, opacity;
+      z-index: 0;
       animation: floatOrb 22s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
     }
     .orb-primary {
-      top: -12%;
-      left: 15%;
-      width: 380px;
-      height: 380px;
-      background: radial-gradient(circle, rgba(16, 185, 129, 0.14) 0%, rgba(5, 150, 105, 0.04) 55%, transparent 70%);
+      top: -10%;
+      left: 10%;
+      width: 420px;
+      height: 420px;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.03) 55%, transparent 70%);
     }
     .orb-secondary {
-      bottom: -15%;
-      right: 10%;
-      width: 440px;
-      height: 440px;
-      background: radial-gradient(circle, rgba(14, 165, 233, 0.08) 0%, rgba(16, 185, 129, 0.03) 60%, transparent 75%);
-      animation-delay: -7s;
+      bottom: 5%;
+      right: 5%;
+      width: 480px;
+      height: 480px;
+      background: radial-gradient(circle, rgba(14, 165, 233, 0.07) 0%, rgba(16, 185, 129, 0.02) 60%, transparent 75%);
+      animation-delay: -8s;
     }
 
     @keyframes floatOrb {
@@ -85,500 +82,801 @@
       100% { transform: translate3d(-25px, 35px, 0) scale(0.95); opacity: 0.75; }
     }
 
-    /* Subtle Cinematic Light Sweep */
-    .light-sweep {
-      position: fixed;
-      inset: -100% -100% -100% -100%;
-      background: radial-gradient(circle 800px at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(16, 185, 129, 0.035), transparent 70%);
-      pointer-events: none;
-      z-index: 1;
-    }
-
-    /* Fintech Card Surface & Glowing Active Edge */
+    /* Glassmorphism Card System */
     .fintech-card {
       background: linear-gradient(165deg, rgba(16, 26, 42, 0.75) 0%, rgba(8, 14, 24, 0.85) 100%);
       backdrop-filter: blur(28px);
       -webkit-backdrop-filter: blur(28px);
       border: 1px solid rgba(255, 255, 255, 0.07);
       box-shadow: 
-        0 30px 60px -15px rgba(0, 0, 0, 0.85),
+        0 20px 40px -15px rgba(0, 0, 0, 0.7),
         0 0 0 1px rgba(255, 255, 255, 0.03) inset,
-        0 1px 0 0 rgba(255, 255, 255, 0.12) inset;
-      transition: border-color 0.4s ease, box-shadow 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        0 1px 0 0 rgba(255, 255, 255, 0.1) inset;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .fintech-card:focus-within {
-      border-color: rgba(16, 185, 129, 0.28);
-      box-shadow: 
-        0 30px 60px -15px rgba(0, 0, 0, 0.85),
-        0 0 40px -10px rgba(16, 185, 129, 0.15),
-        0 0 0 1px rgba(16, 185, 129, 0.15) inset,
-        0 1px 0 0 rgba(255, 255, 255, 0.15) inset;
+    .fintech-card:hover {
+      border-color: rgba(16, 185, 129, 0.2);
     }
 
-    /* Brand Logo Breathing Glow */
-    .logo-container {
-      box-shadow: 0 0 25px -4px rgba(16, 185, 129, 0.35);
-      animation: logoBreathing 4.5s ease-in-out infinite alternate;
-    }
-    @keyframes logoBreathing {
-      0% { box-shadow: 0 0 18px -4px rgba(16, 185, 129, 0.25); border-color: rgba(52, 211, 153, 0.4); }
-      100% { box-shadow: 0 0 32px 0px rgba(16, 185, 129, 0.48); border-color: rgba(52, 211, 153, 0.8); }
-    }
-
-    /* Input Field Treatment */
-    .input-field-group {
-      position: relative;
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .input-control {
-      background: rgba(6, 11, 19, 0.7);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .input-control:focus {
-      background: rgba(7, 14, 25, 0.95);
-      border-color: rgba(52, 211, 153, 0.65);
-      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.14), 0 4px 16px -2px rgba(0, 0, 0, 0.4);
-    }
-    .input-control:focus + .field-icon,
-    .input-field-group:focus-within .field-icon {
-      color: #34d399;
-      transform: scale(1.04);
-    }
-    .field-icon {
-      transition: color 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    /* Custom Fintech Checkbox */
-    .custom-checkbox {
-      appearance: none;
-      -webkit-appearance: none;
-      width: 17px;
-      height: 17px;
-      border-radius: 5px;
-      background: rgba(6, 11, 19, 0.8);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      cursor: pointer;
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-      outline: none;
-      margin: 0;
-    }
-    .custom-checkbox:checked {
-      background: #10b981;
-      border-color: #10b981;
-      box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
-      transform: scale(1.05);
-    }
-    .custom-checkbox:active {
-      transform: scale(0.92);
-    }
-    .checkbox-icon {
-      pointer-events: none;
-      opacity: 0;
-      transform: scale(0.5);
-      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    .custom-checkbox:checked + .checkbox-icon {
-      opacity: 1;
-      transform: scale(1);
-    }
-
-    /* Action Button Glow & Sweep */
-    .btn-action {
-      background: linear-gradient(180deg, #10b981 0%, #059669 100%);
-      box-shadow: 
-        0 10px 24px -6px rgba(16, 185, 129, 0.4),
-        0 1px 0 0 rgba(255, 255, 255, 0.35) inset,
-        0 -1px 0 0 rgba(0, 0, 0, 0.2) inset;
-      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    /* Hero Balance Card Glow */
+    .hero-balance-card {
+      background: linear-gradient(145deg, rgba(18, 38, 35, 0.85) 0%, rgba(9, 18, 28, 0.92) 100%);
       position: relative;
       overflow: hidden;
     }
-    .btn-action:hover {
-      background: linear-gradient(180deg, #34d399 0%, #059669 100%);
-      box-shadow: 
-        0 12px 28px -4px rgba(16, 185, 129, 0.52),
-        0 1px 0 0 rgba(255, 255, 255, 0.45) inset;
-      transform: translateY(-1px);
-    }
-    .btn-action:active {
-      transform: translateY(1px) scale(0.985);
-      box-shadow: 0 4px 14px -2px rgba(16, 185, 129, 0.35);
-    }
-    .btn-action::after {
+    .hero-balance-card::before {
       content: '';
       position: absolute;
       top: -50%;
-      left: -60%;
-      width: 220%;
+      left: -50%;
+      width: 200%;
       height: 200%;
-      background: linear-gradient(75deg, transparent 35%, rgba(255, 255, 255, 0.22) 50%, transparent 65%);
-      transform: rotate(20deg) translate3d(-100%, 0, 0);
-      transition: transform 0.75s ease;
+      background: radial-gradient(circle at 50% 30%, rgba(16, 185, 129, 0.15), transparent 60%);
       pointer-events: none;
     }
-    .btn-action:hover::after {
-      transform: rotate(20deg) translate3d(100%, 0, 0);
+
+    /* Interactive Action Buttons */
+    .btn-action {
+      background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+      box-shadow: 0 10px 24px -6px rgba(16, 185, 129, 0.4), 0 1px 0 0 rgba(255, 255, 255, 0.3) inset;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .btn-action:active {
+      transform: scale(0.97);
     }
 
-    /* Micro Vibrations & Shake */
-    .field-error-state {
-      border-color: rgba(239, 68, 68, 0.65) !important;
-      background: rgba(239, 68, 68, 0.05) !important;
-      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12) !important;
+    /* Chart Canvas and SVG Path Animation */
+    .chart-path {
+      stroke-dasharray: 1000;
+      stroke-dashoffset: 1000;
+      animation: drawChart 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation-delay: 0.3s;
     }
-    .shake-anim {
-      animation: smoothShake 0.48s cubic-bezier(.36,.07,.19,.97) both;
-    }
-    @keyframes smoothShake {
-      10%, 90% { transform: translate3d(-2px, 0, 0); }
-      20%, 80% { transform: translate3d(3.5px, 0, 0); }
-      30%, 50%, 70% { transform: translate3d(-5px, 0, 0); }
-      40%, 60% { transform: translate3d(5px, 0, 0); }
+    @keyframes drawChart {
+      to { stroke-dashoffset: 0; }
     }
 
-    /* Staggered Staged Entrance Sequence */
-    .stagger-item {
+    .chart-area {
       opacity: 0;
-      transform: translate3d(0, 16px, 0);
-      transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1), transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+      animation: fadeInArea 1.2s ease forwards;
+      animation-delay: 0.6s;
+    }
+    @keyframes fadeInArea {
+      to { opacity: 0.18; }
+    }
+
+    /* Staggered Orchestration */
+    .dash-stagger {
+      opacity: 0;
+      transform: translate3d(0, 18px, 0);
+      transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
       will-change: opacity, transform;
     }
-    .stagger-visible {
+    .dash-visible {
       opacity: 1;
       transform: translate3d(0, 0, 0);
     }
 
-    /* Reduced Motion Fallback */
-    @media (prefers-reduced-motion: reduce) {
-      .ambient-orb, .logo-container, .btn-action::after {
-        animation: none !important;
-      }
-      .stagger-item {
-        transition: none !important;
-        opacity: 1 !important;
-        transform: none !important;
-      }
+    /* Custom Scrollbar for Drawer Panels */
+    .custom-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+
+    /* Bottom Navigation Active Glow */
+    .nav-active {
+      color: #34d399 !important;
+    }
+    .nav-active::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      width: 16px;
+      height: 2px;
+      background: #10b981;
+      border-radius: 99px;
+      box-shadow: 0 0 10px #10b981;
+    }
+
+    /* Modals & Drawers */
+    .modal-backdrop {
+      background: rgba(3, 7, 18, 0.78);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .drawer-panel {
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     }
   </style>
 </head>
-<body class="h-[100dvh] w-full flex items-center justify-center p-4 sm:p-6 relative select-none">
+<body class="min-h-screen relative selection:bg-brand-500 selection:text-black pb-28 md:pb-8">
 
-  <!-- Cinematic Atmosphere -->
+  <!-- Atmosphere -->
   <div class="ambient-orb orb-primary"></div>
   <div class="ambient-orb orb-secondary"></div>
-  <div class="light-sweep"></div>
-  <div class="fixed inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none opacity-40"></div>
+  <div class="fixed inset-0 bg-[radial-gradient(#ffffff08_1px,transparent_1px)] [background-size:28px_28px] pointer-events-none opacity-40 z-0"></div>
 
-  <!-- ========================================== -->
-  <!-- 1. PREMIUM LOGIN CARD -->
-  <!-- ========================================== -->
-  <main id="loginScreen" class="w-full max-w-[390px] relative z-10">
-    <div id="loginCard" class="fintech-card rounded-[22px] px-6 py-7 sm:px-8 sm:py-8">
-      
-      <!-- Logo & Refined Header -->
-      <div class="flex flex-col items-center text-center mb-6">
-        <div id="el-logo" class="stagger-item logo-container w-[52px] h-[52px] rounded-[15px] bg-[#070D16] border border-emerald-400/50 flex items-center justify-center mb-3">
-          <svg class="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-          </svg>
-        </div>
-        <h1 id="el-title" class="stagger-item text-[22px] font-bold tracking-tight text-white leading-tight">Project Money</h1>
-        <p id="el-subtitle" class="stagger-item text-[12px] font-medium text-slate-400 mt-1">Sign in to your control center</p>
-      </div>
-
-      <!-- Live Error Notification -->
-      <div id="errorAlert" class="hidden mb-4 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-2.5 text-[11.5px] text-red-400 transition-all duration-300">
-        <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        <span id="errorMessage">Invalid credentials. Check username or password.</span>
-      </div>
-
-      <!-- Authentication Form -->
-      <form id="loginForm" class="space-y-3.5" onsubmit="handleLogin(event)" autocomplete="off">
+  <!-- ========================================================== -->
+  <!-- 1. LOGIN SCREEN (Preserved & Connected) -->
+  <!-- ========================================================== -->
+  <div id="loginScreenWrapper" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#04080F] transition-all duration-500">
+    <main class="w-full max-w-[390px] relative z-10">
+      <div id="loginCard" class="fintech-card rounded-[22px] px-6 py-7 sm:px-8 sm:py-8">
         
-        <!-- Username Field -->
-        <div id="el-user" class="stagger-item space-y-1.5 input-field-group">
-          <label for="usernameInput" class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 pl-0.5">Username</label>
-          <div class="relative flex items-center">
-            <input 
-              type="text" 
-              id="usernameInput" 
-              placeholder="aryan"
-              required 
-              class="input-control w-full pl-10 pr-3.5 py-2.5 rounded-xl text-[13.5px] font-normal text-white placeholder-slate-600 focus:outline-none"
-            />
-            <div class="field-icon absolute left-3.5 pointer-events-none text-slate-500 flex items-center justify-center">
-              <svg class="w-[17px] h-[17px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-              </svg>
+        <div class="flex flex-col items-center text-center mb-6">
+          <div class="w-[52px] h-[52px] rounded-[15px] bg-[#070D16] border border-emerald-400/50 flex items-center justify-center mb-3 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+            <svg class="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </div>
+          <h1 class="text-[22px] font-bold tracking-tight text-white leading-tight">Project Money</h1>
+          <p class="text-[12px] font-medium text-slate-400 mt-1">Sign in to your control center</p>
+        </div>
+
+        <div id="loginErrorAlert" class="hidden mb-4 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-2.5 text-[11.5px] text-red-400">
+          <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>Invalid credentials. Use aryan / 123</span>
+        </div>
+
+        <form onsubmit="handleAppLogin(event)" class="space-y-3.5">
+          <div class="space-y-1.5">
+            <label class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 pl-0.5">Username</label>
+            <input type="text" id="loginUser" value="aryan" required class="w-full bg-[#060B13]/80 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400/70 transition-all">
+          </div>
+          <div class="space-y-1.5">
+            <label class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 pl-0.5">Password</label>
+            <input type="password" id="loginPass" value="123" required class="w-full bg-[#060B13]/80 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400/70 transition-all">
+          </div>
+          <button type="submit" id="loginSubmitBtn" class="btn-action w-full py-2.5 px-4 text-gray-950 font-bold text-sm rounded-xl mt-2 flex items-center justify-center gap-2">
+            <span>Sign In</span>
+          </button>
+        </form>
+        <p class="text-center text-[11px] text-slate-500 mt-4 font-mono">Demo Credentials: aryan / 123</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- ========================================================== -->
+  <!-- 2. MAIN DASHBOARD / HOME PAGE -->
+  <!-- ========================================================== -->
+  <div id="mainDashboard" class="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-8 opacity-0 transition-opacity duration-700">
+    
+    <!-- Top Header -->
+    <header class="dash-stagger flex items-center justify-between mb-6 pb-2">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="greetingText" class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Good Morning</span>
+        </div>
+        <h1 class="text-xl sm:text-2xl font-bold text-white tracking-tight mt-0.5">Aryan</h1>
+      </div>
+
+      <div class="flex items-center gap-2.5">
+        <!-- Notification Bell -->
+        <button onclick="openPanel('notificationPanel')" class="relative p-2.5 rounded-xl bg-slate-900/80 border border-white/10 hover:border-emerald-400/40 text-slate-300 hover:text-white transition-all active:scale-95" aria-label="Notifications">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981]"></span>
+        </button>
+
+        <!-- Profile Avatar -->
+        <button onclick="openPanel('profilePanel')" class="flex items-center gap-2 p-1.5 pr-3 rounded-xl bg-slate-900/80 border border-white/10 hover:border-emerald-400/40 transition-all active:scale-95">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-600 to-emerald-400 flex items-center justify-center font-bold text-xs text-gray-950 shadow-md shadow-emerald-500/20">
+            A
+          </div>
+          <span class="text-xs font-semibold text-slate-300 hidden sm:inline">Settings</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Grid Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+      <!-- LEFT / TOP MAIN METRICS (Lg: 8 cols) -->
+      <div class="lg:col-span-8 space-y-5">
+        
+        <!-- 3. HERO TOTAL BALANCE CARD -->
+        <div class="dash-stagger fintech-card hero-balance-card rounded-2xl p-6 sm:p-7 border border-emerald-500/20">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Balance</span>
+            <button onclick="toggleBalanceMask()" class="text-slate-400 hover:text-emerald-400 transition-colors p-1" aria-label="Toggle Balance Visibility">
+              <svg id="eyeShowBal" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg id="eyeHideBal" class="w-4 h-4 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+          </div>
+
+          <div class="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-4 mb-4">
+            <h2 id="balanceDisplay" class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight font-mono">₹1,24,580.00</h2>
+            <div class="flex items-center gap-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full w-fit">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+              <span>+₹12,450 (10.2%) this month</span>
             </div>
+          </div>
+
+          <p class="text-xs text-slate-400">All accounts integrated • Real-time valuation</p>
+        </div>
+
+        <!-- 4. INCOME / EXPENSES CARDS -->
+        <div class="dash-stagger grid grid-cols-2 gap-4">
+          <!-- Income Card -->
+          <div class="fintech-card rounded-2xl p-4 sm:p-5">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-medium text-slate-400">Monthly Income</span>
+              <div class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+              </div>
+            </div>
+            <div class="text-lg sm:text-xl font-bold text-white font-mono" id="incomeDisplay">₹45,000</div>
+            <span class="text-[11px] font-semibold text-emerald-400 mt-1 inline-block">+12.4% vs last month</span>
+          </div>
+
+          <!-- Expense Card -->
+          <div class="fintech-card rounded-2xl p-4 sm:p-5">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-medium text-slate-400">Monthly Expenses</span>
+              <div class="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+              </div>
+            </div>
+            <div class="text-lg sm:text-xl font-bold text-white font-mono" id="expenseDisplay">₹32,550</div>
+            <span class="text-[11px] font-semibold text-emerald-400 mt-1 inline-block">-4.8% spending reduced</span>
           </div>
         </div>
 
-        <!-- Password Field -->
-        <div id="el-pass" class="stagger-item space-y-1.5 input-field-group">
-          <label for="passwordInput" class="block text-[11px] font-semibold tracking-wide uppercase text-slate-400 pl-0.5">Password</label>
-          <div class="relative flex items-center">
-            <input 
-              type="password" 
-              id="passwordInput" 
-              placeholder="••••••"
-              required 
-              class="input-control w-full pl-10 pr-10 py-2.5 rounded-xl text-[13.5px] font-normal text-white placeholder-slate-600 focus:outline-none tracking-wider"
-            />
-            <div class="field-icon absolute left-3.5 pointer-events-none text-slate-500 flex items-center justify-center">
-              <svg class="w-[17px] h-[17px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>
-            </div>
-            <button 
-              type="button" 
-              onclick="togglePasswordVisibility()" 
-              class="absolute right-3 text-slate-500 hover:text-slate-300 transition-colors focus:outline-none p-1"
-              tabindex="-1"
-              aria-label="Toggle password visibility"
-            >
-              <svg id="eyeIcon" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-              </svg>
-              <svg id="eyeOffIcon" class="w-4 h-4 hidden text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>
-              </svg>
+        <!-- 5. QUICK ACTIONS -->
+        <div class="dash-stagger fintech-card rounded-2xl p-4 sm:p-5">
+          <span class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Quick Actions</span>
+          <div class="grid grid-cols-4 gap-2.5 sm:gap-3">
+            <button onclick="openModal('Add Income')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-white/5 hover:border-emerald-500/30 transition-all active:scale-95">
+              <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-1.5">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </div>
+              <span class="text-[11px] font-medium text-slate-300">Income</span>
+            </button>
+
+            <button onclick="openModal('Add Expense')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-white/5 hover:border-emerald-500/30 transition-all active:scale-95">
+              <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center mb-1.5">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </div>
+              <span class="text-[11px] font-medium text-slate-300">Expense</span>
+            </button>
+
+            <button onclick="openModal('Transfer Funds')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-white/5 hover:border-emerald-500/30 transition-all active:scale-95">
+              <div class="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center mb-1.5">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+              </div>
+              <span class="text-[11px] font-medium text-slate-300">Transfer</span>
+            </button>
+
+            <button onclick="openModal('Financial Reports')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-white/5 hover:border-emerald-500/30 transition-all active:scale-95">
+              <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center mb-1.5">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              </div>
+              <span class="text-[11px] font-medium text-slate-300">Reports</span>
             </button>
           </div>
         </div>
 
-        <!-- Custom Checkbox & Options -->
-        <div id="el-options" class="stagger-item flex items-center justify-between pt-1 pb-1">
-          <label class="flex items-center gap-2.5 cursor-pointer select-none group">
-            <div class="relative flex items-center justify-center">
-              <input type="checkbox" id="rememberMe" class="custom-checkbox">
-              <svg class="checkbox-icon absolute w-3 h-3 text-gray-950" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
+        <!-- 6. SPENDING OVERVIEW (ANIMATED SVG CHART) -->
+        <div class="dash-stagger fintech-card rounded-2xl p-5 sm:p-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+            <div>
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Spending Overview</span>
+              <div class="text-base font-bold text-white mt-0.5">₹9,100 total this period</div>
             </div>
-            <span class="text-[11.5px] font-medium text-slate-400 group-hover:text-slate-300 transition-colors">Remember me</span>
-          </label>
-          <a href="javascript:void(0)" onclick="handleForgotPassword()" class="text-[11.5px] font-medium text-slate-400 hover:text-emerald-400 transition-colors">Forgot password?</a>
-        </div>
+            
+            <!-- Period Switcher -->
+            <div class="flex items-center bg-black/40 p-1 rounded-xl border border-white/5 self-start">
+              <button onclick="switchTimeframe(this, '7D')" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-500 text-gray-950 transition-all">7D</button>
+              <button onclick="switchTimeframe(this, '30D')" class="px-2.5 py-1 text-xs font-semibold text-slate-400 hover:text-white transition-all">30D</button>
+              <button onclick="switchTimeframe(this, '3M')" class="px-2.5 py-1 text-xs font-semibold text-slate-400 hover:text-white transition-all">3M</button>
+              <button onclick="switchTimeframe(this, '1Y')" class="px-2.5 py-1 text-xs font-semibold text-slate-400 hover:text-white transition-all">1Y</button>
+            </div>
+          </div>
 
-        <!-- Action Button -->
-        <div id="el-button" class="stagger-item pt-1">
-          <button 
-            type="submit" 
-            id="loginBtn" 
-            class="btn-action w-full py-2.5 px-4 text-gray-950 font-bold text-[13.5px] rounded-xl flex items-center justify-center gap-2 focus:outline-none"
-          >
-            <span id="btnText">Sign In</span>
-            <svg id="btnSpinner" class="hidden animate-spin h-4 w-4 text-gray-950" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          <!-- Chart Area -->
+          <div class="relative h-44 w-full">
+            <svg class="w-full h-full overflow-visible" viewBox="0 0 500 150" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#10b981" stop-opacity="0.35"/>
+                  <stop offset="100%" stop-color="#10b981" stop-opacity="0.0"/>
+                </linearGradient>
+              </defs>
+              <!-- Gradient Area Fill -->
+              <polygon class="chart-area" points="0,150 0,90 83,110 166,45 250,80 333,105 416,25 500,95 500,150" fill="url(#chartGrad)"/>
+              <!-- Animated Line Stroke -->
+              <path class="chart-path" d="M 0,90 Q 40,105 83,110 T 166,45 T 250,80 T 333,105 T 416,25 T 500,95" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round"/>
+              <!-- Key Points -->
+              <circle cx="166" cy="45" r="4" fill="#34d399" stroke="#04080F" stroke-width="2"/>
+              <circle cx="416" cy="25" r="4" fill="#34d399" stroke="#04080F" stroke-width="2"/>
             </svg>
-          </button>
+          </div>
+
+          <div class="grid grid-cols-7 text-center text-[11px] font-medium text-slate-500 mt-2">
+            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+          </div>
         </div>
 
-      </form>
+        <!-- 7. RECENT TRANSACTIONS -->
+        <div class="dash-stagger fintech-card rounded-2xl p-5 sm:p-6">
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Recent Transactions</span>
+            <button onclick="openModal('All Transactions')" class="text-xs font-semibold text-emerald-400 hover:underline">View all</button>
+          </div>
 
-      <!-- Bottom Hint -->
-      <div id="el-hint" class="stagger-item mt-4 text-center">
-        <p class="text-[10.5px] font-medium text-slate-500 tracking-wide font-mono">Demo Login: <span class="text-slate-400">aryan</span> / <span class="text-slate-400">123</span></p>
+          <div class="space-y-3" id="transactionList">
+            <!-- Row: Netflix -->
+            <div class="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/[0.03] transition-colors cursor-pointer">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/></svg>
+                </div>
+                <div>
+                  <div class="text-xs font-semibold text-white">Netflix Subscription</div>
+                  <div class="text-[11px] text-slate-500">Entertainment • Today</div>
+                </div>
+              </div>
+              <div class="text-xs font-bold text-slate-200 font-mono">-₹649</div>
+            </div>
+
+            <!-- Row: Salary -->
+            <div class="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/[0.03] transition-colors cursor-pointer">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                </div>
+                <div>
+                  <div class="text-xs font-semibold text-white">Salary Credited</div>
+                  <div class="text-[11px] text-slate-500">Income • Today</div>
+                </div>
+              </div>
+              <div class="text-xs font-bold text-emerald-400 font-mono">+₹45,000</div>
+            </div>
+
+            <!-- Row: Swiggy -->
+            <div class="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/[0.03] transition-colors cursor-pointer">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                </div>
+                <div>
+                  <div class="text-xs font-semibold text-white">Swiggy Food</div>
+                  <div class="text-[11px] text-slate-500">Food & Dining • Yesterday</div>
+                </div>
+              </div>
+              <div class="text-xs font-bold text-slate-200 font-mono">-₹520</div>
+            </div>
+
+            <!-- Row: Amazon -->
+            <div class="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/[0.03] transition-colors cursor-pointer">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                </div>
+                <div>
+                  <div class="text-xs font-semibold text-white">Amazon Shopping</div>
+                  <div class="text-[11px] text-slate-500">Shopping • Yesterday</div>
+                </div>
+              </div>
+              <div class="text-xs font-bold text-slate-200 font-mono">-₹1,299</div>
+            </div>
+
+            <!-- Row: Electricity Bill -->
+            <div class="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/[0.03] transition-colors cursor-pointer">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </div>
+                <div>
+                  <div class="text-xs font-semibold text-white">Electricity Bill</div>
+                  <div class="text-[11px] text-slate-500">Utilities • Aug 15</div>
+                </div>
+              </div>
+              <div class="text-xs font-bold text-slate-200 font-mono">-₹2,450</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT SIDEBAR ON DESKTOP (Lg: 4 cols) -->
+      <div class="lg:col-span-4 space-y-5">
+        
+        <!-- 10. INTELLIGENT FINANCIAL INSIGHT -->
+        <div class="dash-stagger fintech-card rounded-2xl p-5 border border-emerald-500/30 bg-gradient-to-b from-emerald-950/20 to-transparent">
+          <div class="flex items-center gap-2.5 mb-2">
+            <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            </div>
+            <span class="text-xs font-bold text-emerald-300">Financial Insight</span>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            You're spending <span class="text-emerald-400 font-semibold">12% less</span> this month compared with last month. Keep it up to hit your savings target.
+          </p>
+        </div>
+
+        <!-- 8. BUDGET OVERVIEW -->
+        <div class="dash-stagger fintech-card rounded-2xl p-5 sm:p-6">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Monthly Budget</span>
+            <span class="text-xs font-bold text-emerald-400 font-mono">65% used</span>
+          </div>
+          
+          <div class="flex items-baseline justify-between mb-2">
+            <span class="text-lg font-bold text-white font-mono">₹32,550 <span class="text-xs font-normal text-slate-500">/ ₹50,000</span></span>
+            <span class="text-xs font-medium text-slate-400 font-mono">₹17,450 left</span>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden mb-5">
+            <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-300 rounded-full transition-all duration-1000" style="width: 65%;"></div>
+          </div>
+
+          <!-- Category Allocations -->
+          <div class="space-y-3 pt-1 border-t border-white/5">
+            <div>
+              <div class="flex justify-between text-[11px] font-medium mb-1">
+                <span class="text-slate-300">Food & Dining</span>
+                <span class="text-slate-400 font-mono">₹8,000 / ₹12,000</span>
+              </div>
+              <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div class="h-full bg-emerald-400 rounded-full" style="width: 66%;"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-[11px] font-medium mb-1">
+                <span class="text-slate-300">Bills & Utilities</span>
+                <span class="text-amber-400 font-mono font-semibold">₹12,850 / ₹15,000 (85%)</span>
+              </div>
+              <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div class="h-full bg-amber-400 rounded-full" style="width: 85%;"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-[11px] font-medium mb-1">
+                <span class="text-slate-300">Shopping</span>
+                <span class="text-slate-400 font-mono">₹5,200 / ₹10,000</span>
+              </div>
+              <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div class="h-full bg-emerald-400 rounded-full" style="width: 52%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 9. FINANCIAL GOALS -->
+        <div class="dash-stagger fintech-card rounded-2xl p-5 sm:p-6">
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Financial Goals</span>
+            <button onclick="openModal('Create New Goal')" class="text-xs font-semibold text-emerald-400 hover:underline">+ Create</button>
+          </div>
+
+          <div class="space-y-4">
+            <!-- Goal 1 -->
+            <div class="p-3 rounded-xl bg-slate-900/60 border border-white/5">
+              <div class="flex justify-between items-center mb-1.5">
+                <span class="text-xs font-bold text-white">New Laptop</span>
+                <span class="text-[11px] font-semibold text-emerald-400 font-mono">65%</span>
+              </div>
+              <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mb-2">
+                <div class="h-full bg-emerald-400 rounded-full" style="width: 65%;"></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-slate-400 font-mono">
+                <span>Saved: ₹42,000</span>
+                <span>Target: ₹65,000</span>
+              </div>
+            </div>
+
+            <!-- Goal 2 -->
+            <div class="p-3 rounded-xl bg-slate-900/60 border border-white/5">
+              <div class="flex justify-between items-center mb-1.5">
+                <span class="text-xs font-bold text-white">Emergency Fund</span>
+                <span class="text-[11px] font-semibold text-emerald-400 font-mono">58%</span>
+              </div>
+              <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mb-2">
+                <div class="h-full bg-emerald-400 rounded-full" style="width: 58%;"></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-slate-400 font-mono">
+                <span>Saved: ₹58,000</span>
+                <span>Target: ₹1,00,000</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 11. MONTHLY SUMMARY METRIC -->
+        <div class="dash-stagger fintech-card rounded-2xl p-5">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-3">This Month's Metric</span>
+          <div class="grid grid-cols-2 gap-3 text-center">
+            <div class="p-3 rounded-xl bg-black/40 border border-white/5">
+              <span class="text-[10px] uppercase font-semibold text-slate-500">Net Saved</span>
+              <div class="text-sm font-bold text-emerald-400 font-mono mt-0.5">₹12,450</div>
+            </div>
+            <div class="p-3 rounded-xl bg-black/40 border border-white/5">
+              <span class="text-[10px] uppercase font-semibold text-slate-500">Savings Rate</span>
+              <div class="text-sm font-bold text-emerald-400 font-mono mt-0.5">27.6%</div>
+            </div>
+          </div>
+        </div>
+
       </div>
 
     </div>
-  </main>
+  </div>
 
-  <!-- ========================================== -->
-  <!-- 2. EMPTY HOME PAGE CANVAS -->
-  <!-- ========================================== -->
-  <section id="homeScreen" class="hidden w-full max-w-[390px] relative z-10 opacity-0 transition-all duration-500">
-    <div class="fintech-card rounded-[22px] px-6 py-8 text-center">
-      <div class="w-13 h-13 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4 p-3.5 shadow-lg shadow-emerald-500/10">
-        <svg class="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="20 6 9 17 4 12"/>
-        </svg>
+  <!-- ========================================================== -->
+  <!-- 12. FIXED BOTTOM NAVIGATION (Mobile-First) -->
+  <!-- ========================================================== -->
+  <nav class="fixed bottom-0 left-0 right-0 z-40 bg-[#070D16]/90 backdrop-blur-xl border-t border-white/10 px-4 py-2 flex items-center justify-around md:hidden">
+    <!-- Home -->
+    <button onclick="setTab(this)" class="nav-active flex flex-col items-center justify-center p-1.5 relative text-slate-400 transition-colors">
+      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span class="text-[10px] font-semibold mt-1">Home</span>
+    </button>
+
+    <!-- Transactions -->
+    <button onclick="setTab(this); openModal('Transactions')" class="flex flex-col items-center justify-center p-1.5 relative text-slate-400 hover:text-white transition-colors">
+      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      <span class="text-[10px] font-medium mt-1">History</span>
+    </button>
+
+    <!-- 13. Center Floating Add Action Button -->
+    <button onclick="openModal('Quick Add Entry')" class="w-12 h-12 -mt-5 rounded-full bg-gradient-to-tr from-emerald-600 to-emerald-400 text-gray-950 flex items-center justify-center shadow-lg shadow-emerald-500/40 active:scale-95 transition-all">
+      <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+
+    <!-- Budget -->
+    <button onclick="setTab(this); openModal('Budget Manager')" class="flex flex-col items-center justify-center p-1.5 relative text-slate-400 hover:text-white transition-colors">
+      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+      <span class="text-[10px] font-medium mt-1">Budget</span>
+    </button>
+
+    <!-- Profile -->
+    <button onclick="openPanel('profilePanel')" class="flex flex-col items-center justify-center p-1.5 relative text-slate-400 hover:text-white transition-colors">
+      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="text-[10px] font-medium mt-1">Profile</span>
+    </button>
+  </nav>
+
+  <!-- ========================================================== -->
+  <!-- 14. NOTIFICATION DRAWER -->
+  <!-- ========================================================== -->
+  <div id="notificationPanel" class="fixed inset-0 z-50 pointer-events-none opacity-0 transition-opacity duration-300">
+    <div class="modal-backdrop absolute inset-0" onclick="closePanel('notificationPanel')"></div>
+    <div class="drawer-panel absolute top-0 right-0 bottom-0 w-full max-w-sm bg-[#070D16] border-l border-white/10 p-6 flex flex-col translate-x-full custom-scroll overflow-y-auto">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-base font-bold text-white">Notifications</h3>
+        <button onclick="closePanel('notificationPanel')" class="text-slate-400 hover:text-white p-1">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
 
-      <h2 class="text-xl font-bold text-white tracking-tight">Welcome, <span class="text-emerald-400">Aryan</span></h2>
-      <p class="text-xs text-slate-400 mt-1.5">Authenticated control center session initialized.</p>
-
-      <div class="my-6 py-2.5 px-4 rounded-xl bg-black/40 border border-white/5 text-[11px] font-mono text-slate-400 flex items-center justify-center gap-2">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span>Canvas Ready • No Modules Loaded</span>
+      <div class="space-y-3 flex-1">
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-white/5">
+          <div class="text-xs font-semibold text-white">Budget Alert (65%)</div>
+          <p class="text-[11px] text-slate-400 mt-1">You've spent ₹32,550 of your ₹50,000 monthly limit.</p>
+          <span class="text-[10px] text-slate-500 mt-2 block">10 mins ago</span>
+        </div>
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-white/5">
+          <div class="text-xs font-semibold text-white">Salary Credited</div>
+          <p class="text-[11px] text-slate-400 mt-1">₹45,000 has been deposited to your primary account.</p>
+          <span class="text-[10px] text-slate-500 mt-2 block">2 hours ago</span>
+        </div>
       </div>
 
-      <button 
-        type="button" 
-        onclick="handleLogout()" 
-        class="py-2 px-5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-[0.98] text-[11px] font-semibold text-slate-300 transition-all border border-slate-700 focus:outline-none"
-      >
+      <button onclick="closePanel('notificationPanel')" class="w-full py-2 rounded-xl bg-slate-800 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition-colors">
+        Mark all as read
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================================== -->
+  <!-- 15. PROFILE DRAWER -->
+  <!-- ========================================================== -->
+  <div id="profilePanel" class="fixed inset-0 z-50 pointer-events-none opacity-0 transition-opacity duration-300">
+    <div class="modal-backdrop absolute inset-0" onclick="closePanel('profilePanel')"></div>
+    <div class="drawer-panel absolute top-0 right-0 bottom-0 w-full max-w-sm bg-[#070D16] border-l border-white/10 p-6 flex flex-col translate-x-full custom-scroll overflow-y-auto">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-base font-bold text-white">Profile Settings</h3>
+        <button onclick="closePanel('profilePanel')" class="text-slate-400 hover:text-white p-1">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <!-- User Card -->
+      <div class="flex items-center gap-3 p-3.5 rounded-xl bg-slate-900/80 border border-white/5 mb-6">
+        <div class="w-11 h-11 rounded-xl bg-emerald-500 text-gray-950 font-bold flex items-center justify-center text-base">A</div>
+        <div>
+          <h4 class="text-sm font-bold text-white">Aryan</h4>
+          <p class="text-xs text-slate-400">Personal Account • Pro Tier</p>
+        </div>
+      </div>
+
+      <!-- Options -->
+      <div class="space-y-1 text-xs font-medium text-slate-300 flex-1">
+        <button onclick="alert('Account settings')" class="w-full text-left py-2.5 px-3 rounded-lg hover:bg-white/5 transition-colors">Account Settings</button>
+        <button onclick="alert('Security settings')" class="w-full text-left py-2.5 px-3 rounded-lg hover:bg-white/5 transition-colors">Security & Privacy</button>
+        <button onclick="alert('Currency settings')" class="w-full text-left py-2.5 px-3 rounded-lg hover:bg-white/5 transition-colors">Currency (INR ₹)</button>
+        <button onclick="alert('Appearance settings')" class="w-full text-left py-2.5 px-3 rounded-lg hover:bg-white/5 transition-colors">Dark Appearance</button>
+        <button onclick="alert('Help center')" class="w-full text-left py-2.5 px-3 rounded-lg hover:bg-white/5 transition-colors">Help & Support</button>
+      </div>
+
+      <button onclick="handleAppLogout()" class="w-full py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs font-bold text-red-400 hover:bg-red-500/20 transition-colors mt-6">
         Sign Out
       </button>
     </div>
-  </section>
+  </div>
 
-  <!-- Scripts -->
+  <!-- ========================================================== -->
+  <!-- ACTION MODAL SYSTEM -->
+  <!-- ========================================================== -->
+  <div id="actionModal" class="fixed inset-0 z-50 pointer-events-none opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
+    <div class="modal-backdrop absolute inset-0" onclick="closeModal()"></div>
+    <div class="fintech-card relative z-10 w-full max-w-sm rounded-2xl p-6 border border-white/10">
+      <h3 id="modalTitle" class="text-base font-bold text-white mb-2">Modal Action</h3>
+      <p class="text-xs text-slate-400 mb-5">Interface container ready. Form actions and database mutations will hook here seamlessly.</p>
+      
+      <div class="space-y-3 mb-5">
+        <input type="number" placeholder="Enter amount (₹)" class="w-full bg-[#060B13] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400">
+        <input type="text" placeholder="Description / Note" class="w-full bg-[#060B13] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400">
+      </div>
+
+      <div class="flex gap-2">
+        <button onclick="closeModal()" class="flex-1 py-2 rounded-xl bg-slate-800 text-xs font-semibold text-slate-300">Cancel</button>
+        <button onclick="closeModal()" class="flex-1 py-2 rounded-xl btn-action text-xs font-bold text-gray-950">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================== -->
+  <!-- INTERACTION SCRIPTS -->
+  <!-- ========================================================== -->
   <script>
-    const AUTH_CONFIG = {
-      username: 'aryan',
-      password: '123'
-    };
+    let isMasked = false;
+    const realBalance = "₹1,24,580.00";
 
-    // Staggered Entrance Orchestration
-    document.addEventListener('DOMContentLoaded', () => {
-      const staggerElements = [
-        'el-logo',
-        'el-title',
-        'el-subtitle',
-        'el-user',
-        'el-pass',
-        'el-options',
-        'el-button',
-        'el-hint'
-      ];
+    // Set Dynamic Header Greeting
+    function updateGreeting() {
+      const hour = new Date().getHours();
+      const el = document.getElementById('greetingText');
+      if (!el) return;
+      if (hour < 12) el.textContent = "Good Morning";
+      else if (hour < 17) el.textContent = "Good Afternoon";
+      else el.textContent = "Good Evening";
+    }
 
-      staggerElements.forEach((id, index) => {
-        const el = document.getElementById(id);
-        if (el) {
-          setTimeout(() => {
-            el.classList.add('stagger-visible');
-          }, 60 + index * 45);
-        }
-      });
-    });
+    // Toggle Total Balance Eye
+    function toggleBalanceMask() {
+      isMasked = !isMasked;
+      const display = document.getElementById('balanceDisplay');
+      const eyeShow = document.getElementById('eyeShowBal');
+      const eyeHide = document.getElementById('eyeHideBal');
 
-    // Password Visibility Toggle
-    function togglePasswordVisibility() {
-      const passwordInput = document.getElementById('passwordInput');
-      const eyeIcon = document.getElementById('eyeIcon');
-      const eyeOffIcon = document.getElementById('eyeOffIcon');
-
-      if (passwordInput.type === 'password') {
-        passwordInput.type = 'text';
-        eyeIcon.classList.add('hidden');
-        eyeOffIcon.classList.remove('hidden');
+      if (isMasked) {
+        display.textContent = "₹ ••••••";
+        eyeShow.classList.add('hidden');
+        eyeHide.classList.remove('hidden');
       } else {
-        passwordInput.type = 'password';
-        eyeIcon.classList.remove('hidden');
-        eyeOffIcon.classList.add('hidden');
+        display.textContent = realBalance;
+        eyeHide.classList.add('hidden');
+        eyeShow.classList.remove('hidden');
       }
     }
 
-    function handleForgotPassword() {
-      showError("Temporary mode active: use username 'aryan' and password '123'.");
-    }
-
-    // High-Fidelity Error Choreography
-    function showError(message) {
-      const alert = document.getElementById('errorAlert');
-      const errorText = document.getElementById('errorMessage');
-      const loginCard = document.getElementById('loginCard');
-      const userInput = document.getElementById('usernameInput');
-      const passInput = document.getElementById('passwordInput');
-
-      errorText.textContent = message;
-      alert.classList.remove('hidden');
-
-      // Highlight input error state
-      userInput.classList.add('field-error-state');
-      passInput.classList.add('field-error-state');
-
-      // Shake animation
-      loginCard.classList.remove('shake-anim');
-      void loginCard.offsetWidth; // Trigger reflow
-      loginCard.classList.add('shake-anim');
-
-      setTimeout(() => {
-        userInput.classList.remove('field-error-state');
-        passInput.classList.remove('field-error-state');
-      }, 2500);
-    }
-
-    function clearError() {
-      document.getElementById('errorAlert').classList.add('hidden');
-      document.getElementById('usernameInput').classList.remove('field-error-state');
-      document.getElementById('passwordInput').classList.remove('field-error-state');
-    }
-
-    // Login Flow
-    function handleLogin(e) {
+    // Login Handler & Smooth Staggered Transition
+    function handleAppLogin(e) {
       e.preventDefault();
-      clearError();
+      const u = document.getElementById('loginUser').value.trim();
+      const p = document.getElementById('loginPass').value;
+      const btn = document.getElementById('loginSubmitBtn');
+      const err = document.getElementById('loginErrorAlert');
 
-      const userVal = document.getElementById('usernameInput').value.trim();
-      const passVal = document.getElementById('passwordInput').value;
-      const loginBtn = document.getElementById('loginBtn');
-      const btnText = document.getElementById('btnText');
-      const btnSpinner = document.getElementById('btnSpinner');
-
-      // Enter Loading State
-      loginBtn.disabled = true;
-      btnText.textContent = "Verifying...";
-      btnSpinner.classList.remove('hidden');
+      btn.disabled = true;
+      btn.innerText = "Verifying...";
 
       setTimeout(() => {
-        if (userVal === AUTH_CONFIG.username && passVal === AUTH_CONFIG.password) {
-          btnText.textContent = "Authenticated";
-          
+        if (u === 'aryan' && p === '123') {
+          // Fade out login overlay
+          const wrapper = document.getElementById('loginScreenWrapper');
+          wrapper.style.opacity = '0';
+          wrapper.style.transform = 'scale(0.96)';
+
           setTimeout(() => {
-            const loginScreen = document.getElementById('loginScreen');
-            const homeScreen = document.getElementById('homeScreen');
+            wrapper.style.display = 'none';
+            const dash = document.getElementById('mainDashboard');
+            dash.style.opacity = '1';
 
-            loginScreen.style.transition = 'opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
-            loginScreen.style.opacity = '0';
-            loginScreen.style.transform = 'scale(0.96)';
-
-            setTimeout(() => {
-              loginScreen.classList.add('hidden');
-              homeScreen.classList.remove('hidden');
-              
-              void homeScreen.offsetWidth;
-              homeScreen.style.opacity = '1';
-              homeScreen.style.transform = 'scale(1)';
-            }, 300);
-          }, 300);
+            // Trigger Staggered Dashboard Items
+            document.querySelectorAll('.dash-stagger').forEach((el, index) => {
+              setTimeout(() => {
+                el.classList.add('dash-visible');
+              }, 80 * index);
+            });
+            updateGreeting();
+          }, 450);
 
         } else {
-          loginBtn.disabled = false;
-          btnText.textContent = "Sign In";
-          btnSpinner.classList.add('hidden');
-          showError("Invalid username or password.");
+          btn.disabled = false;
+          btn.innerText = "Sign In";
+          err.classList.remove('hidden');
         }
-      }, 550);
+      }, 500);
     }
 
-    // Logout Flow
-    function handleLogout() {
-      const loginScreen = document.getElementById('loginScreen');
-      const homeScreen = document.getElementById('homeScreen');
-      const passwordInput = document.getElementById('passwordInput');
-      const loginBtn = document.getElementById('loginBtn');
-      const btnText = document.getElementById('btnText');
-      const btnSpinner = document.getElementById('btnSpinner');
+    // Sign Out / Return to Login
+    function handleAppLogout() {
+      closePanel('profilePanel');
+      const wrapper = document.getElementById('loginScreenWrapper');
+      const dash = document.getElementById('mainDashboard');
 
-      passwordInput.value = '';
-      loginBtn.disabled = false;
-      btnText.textContent = "Sign In";
-      btnSpinner.classList.add('hidden');
-      clearError();
+      dash.style.opacity = '0';
+      wrapper.style.display = 'flex';
+      
+      void wrapper.offsetWidth;
+      wrapper.style.opacity = '1';
+      wrapper.style.transform = 'scale(1)';
 
-      homeScreen.style.opacity = '0';
-      homeScreen.style.transform = 'scale(0.96)';
-
-      setTimeout(() => {
-        homeScreen.classList.add('hidden');
-        loginScreen.classList.remove('hidden');
-
-        void loginScreen.offsetWidth;
-        loginScreen.style.opacity = '1';
-        loginScreen.style.transform = 'scale(1)';
-      }, 300);
+      document.getElementById('loginSubmitBtn').disabled = false;
+      document.getElementById('loginSubmitBtn').innerText = "Sign In";
     }
+
+    // Drawer Panels
+    function openPanel(id) {
+      const panel = document.getElementById(id);
+      panel.classList.remove('pointer-events-none');
+      panel.style.opacity = '1';
+      panel.querySelector('.drawer-panel').style.transform = 'translateX(0)';
+    }
+
+    function closePanel(id) {
+      const panel = document.getElementById(id);
+      panel.style.opacity = '0';
+      panel.querySelector('.drawer-panel').style.transform = 'translateX(100%)';
+      setTimeout(() => panel.classList.add('pointer-events-none'), 300);
+    }
+
+    // Action Modals
+    function openModal(title) {
+      document.getElementById('modalTitle').textContent = title;
+      const modal = document.getElementById('actionModal');
+      modal.classList.remove('pointer-events-none');
+      modal.style.opacity = '1';
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('actionModal');
+      modal.style.opacity = '0';
+      setTimeout(() => modal.classList.add('pointer-events-none'), 300);
+    }
+
+    // Timeframe Switcher
+    function switchTimeframe(btn, tf) {
+      const container = btn.parentElement;
+      container.querySelectorAll('button').forEach(b => {
+        b.className = "px-2.5 py-1 text-xs font-semibold text-slate-400 hover:text-white transition-all";
+      });
+      btn.className = "px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-500 text-gray-950 transition-all";
+    }
+
+    // Bottom Navigation Active State
+    function setTab(btn) {
+      document.querySelectorAll('nav button').forEach(b => {
+        b.classList.remove('nav-active');
+        b.classList.add('text-slate-400');
+      });
+      btn.classList.add('nav-active');
+      btn.classList.remove('text-slate-400');
+    }
+
+    document.addEventListener('DOMContentLoaded', updateGreeting);
   </script>
 </body>
 </html>
