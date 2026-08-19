@@ -11,45 +11,60 @@ async function renderAdminTransactions(container) {
     state.loadedTransactions = Array.isArray(txns) ? txns : [];
 
     container.innerHTML = `
-      <div class="space-y-6 font-mono text-xs pb-12 w-full max-w-full">
-        <div>
-          <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight font-sans">TRANSACTIONS & PAYMENTS</h1>
-          <p class="text-slate-400 text-xs mt-0.5">Verify customer payment proofs and fulfill orders.</p>
+      <div class="space-y-6 font-sans text-xs pb-12 w-full max-w-full animate-fadeIn">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">TRANSACTIONS & PAYMENTS</h1>
+            <p class="text-slate-400 text-xs mt-0.5 font-mono">Verify customer payment proofs and fulfill orders instantly.</p>
+          </div>
+          <span class="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[10px] font-bold w-fit">${state.loadedTransactions.length} Total Transactions</span>
         </div>
 
-        <!-- Fully Responsive Transaction Cards (Mobile & Desktop Friendly) -->
-        <div class="space-y-3">
+        <!-- Mobile & Desktop Responsive Transaction Cards -->
+        <div class="grid grid-cols-1 gap-4">
           ${state.loadedTransactions.length === 0 ? `
-            <div class="admin-card rounded-2xl p-8 text-center text-slate-500 font-mono">No transactions recorded yet.</div>
+            <div class="admin-card rounded-3xl p-12 text-center text-slate-500 font-mono">No transactions recorded yet.</div>
           ` : state.loadedTransactions.map(t => `
-            <div class="admin-card rounded-2xl p-4 sm:p-5 space-y-3 transition-all border border-admin-border hover:border-emerald-500/30">
-              <div class="flex items-center justify-between gap-2">
-                <span class="text-white font-bold font-mono text-xs bg-surface-950 px-2.5 py-1 rounded-lg border border-admin-border">${t.txn_id}</span>
-                <span class="px-2.5 py-0.5 rounded-full uppercase text-[9px] font-bold font-mono ${t.status === 'SUCCESS' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">${t.status}</span>
+            <div class="admin-card rounded-3xl p-5 sm:p-6 space-y-4 border border-admin-border hover:border-emerald-500/30 transition-all duration-300 shadow-xl relative overflow-hidden group">
+              
+              <!-- Top Row: ID & Status Badge -->
+              <div class="flex flex-wrap items-center justify-between gap-2 border-b border-admin-border pb-3">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full ${t.status === 'SUCCESS' ? 'bg-emerald-400 shadow-lg shadow-emerald-500/50' : 'bg-amber-400 animate-pulse'}"></span>
+                  <span class="text-white font-black font-mono text-xs sm:text-sm tracking-wide">${t.txn_id}</span>
+                </div>
+                <span class="px-3 py-1 rounded-full uppercase text-[10px] font-bold font-mono ${t.status === 'SUCCESS' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">
+                  ${t.status}
+                </span>
               </div>
 
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-sans pt-1">
-                <div>
-                  <span class="text-slate-500 text-[10px] uppercase font-mono block">Customer</span>
-                  <strong class="text-white block truncate">${t.customer_name}</strong>
-                  <span class="text-slate-400 text-[11px] block truncate">${t.customer_email || 'N/A'}</span>
+              <!-- Content Grid -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-sans">
+                <div class="space-y-0.5">
+                  <span class="text-slate-500 text-[10px] uppercase font-mono block">Customer Profile</span>
+                  <strong class="text-white text-sm block truncate">${t.customer_name}</strong>
+                  <span class="text-slate-400 text-[11px] block truncate font-mono">${t.customer_email || 'No email provided'}</span>
                 </div>
-                <div>
-                  <span class="text-slate-500 text-[10px] uppercase font-mono block">Product</span>
-                  <span class="text-slate-200 block truncate">${t.product_name}</span>
+                <div class="space-y-0.5">
+                  <span class="text-slate-500 text-[10px] uppercase font-mono block">Purchased Item(s)</span>
+                  <span class="text-slate-200 font-bold block line-clamp-2">${t.product_name}</span>
                 </div>
-                <div>
-                  <span class="text-slate-500 text-[10px] uppercase font-mono block">Amount</span>
-                  <span class="text-emerald-400 font-mono font-black text-sm block">₹${t.amount}</span>
+                <div class="space-y-0.5 sm:text-right">
+                  <span class="text-slate-500 text-[10px] uppercase font-mono block">Amount Paid</span>
+                  <span class="text-emerald-400 font-mono font-black text-base sm:text-lg block">₹${t.amount}</span>
+                  <span class="text-[10px] text-slate-500 font-mono uppercase">${t.payment_method || 'UPI'}</span>
                 </div>
               </div>
 
-              <div class="pt-3 border-t border-admin-border flex items-center justify-between">
+              <!-- Bottom Toolbar -->
+              <div class="pt-3 border-t border-admin-border flex flex-col sm:flex-row items-center justify-between gap-3">
                 <span class="text-[10px] text-slate-500 font-mono">${new Date(t.created_at || Date.now()).toLocaleString()}</span>
-                <button onclick="openVerifyTransactionModal('${t._id}')" class="px-4 py-2 bg-emerald-500 text-gray-950 rounded-xl font-black font-mono text-[10px] uppercase shadow-lg shadow-emerald-500/20 hover:bg-emerald-400 active:scale-95 transition-all">
-                  Verify & Fulfill →
+                <button onclick="openVerifyTransactionModal('${t._id}')" class="w-full sm:w-auto px-6 py-2.5 bg-emerald-500 text-gray-950 rounded-2xl font-black font-mono text-[10px] uppercase shadow-lg shadow-emerald-500/20 hover:bg-emerald-400 active:scale-95 transition-all flex items-center justify-center gap-2">
+                  <span>Verify Payment Proof</span>
+                  <span>→</span>
                 </button>
               </div>
+
             </div>
           `).join('')}
         </div>
@@ -69,41 +84,52 @@ async function openVerifyTransactionModal(txnId) {
   modal.classList.remove('hidden'); modal.classList.add('flex');
 
   content.innerHTML = `
-    <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+    <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white p-2">✕</button>
     <div class="space-y-6 font-sans text-xs">
+      
+      <!-- Header -->
       <div>
-        <h2 class="text-base font-black text-white">Verify Payment: ${t.txn_id}</h2>
-        <p class="text-slate-400 text-xs">Customer: ${t.customer_name} (${t.customer_email || 'N/A'})</p>
+        <span class="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[10px] font-bold uppercase">Order Verification Hub</span>
+        <h2 class="text-lg sm:text-xl font-black text-white mt-1">Transaction: ${t.txn_id}</h2>
+        <p class="text-slate-400 text-xs font-mono">Customer: ${t.customer_name} &lt;${t.customer_email || 'N/A'}&gt;</p>
       </div>
 
-      <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-3 font-mono">
-        <div class="flex justify-between"><span class="text-slate-400">Product:</span><span class="text-white font-bold text-right">${t.product_name}</span></div>
-        <div class="flex justify-between"><span class="text-slate-400">Amount:</span><span class="text-emerald-400 font-black text-sm">₹${t.amount}</span></div>
-        <div class="flex justify-between"><span class="text-slate-400">Method:</span><span class="text-white">${t.payment_method || 'UPI'}</span></div>
-        <div class="flex justify-between"><span class="text-slate-400">Status:</span><span class="text-amber-400 font-bold">${t.status}</span></div>
+      <!-- Details Summary Card -->
+      <div class="p-4 sm:p-5 rounded-2xl bg-surface-950 border border-admin-border space-y-3 font-mono">
+        <div class="flex justify-between items-center"><span class="text-slate-400">Product(s):</span><span class="text-white font-bold text-right">${t.product_name}</span></div>
+        <div class="flex justify-between items-center"><span class="text-slate-400">Total Amount:</span><span class="text-emerald-400 font-black text-base">₹${t.amount}</span></div>
+        <div class="flex justify-between items-center"><span class="text-slate-400">Payment Gateway:</span><span class="text-white">${t.payment_method || 'UPI'}</span></div>
+        <div class="flex justify-between items-center"><span class="text-slate-400">Current Status:</span><span class="text-amber-400 font-bold uppercase">${t.status}</span></div>
       </div>
 
+      <!-- Payment Proof Screenshot Viewer -->
       <div class="space-y-2">
-        <label class="text-slate-400 font-mono block">Payment Proof Screenshot:</label>
-        <div class="p-3 rounded-2xl bg-surface-950 border border-admin-border flex justify-center items-center min-h-[220px]">
+        <label class="text-slate-400 font-mono block font-bold">Attached Payment Proof Screenshot:</label>
+        <div class="p-3 rounded-2xl bg-surface-950 border border-admin-border flex flex-col items-center justify-center min-h-[260px] relative group overflow-hidden">
           ${t.proof_screenshot ? `
-            <a href="${t.proof_screenshot}" target="_blank" title="Click to view full image">
-              <img src="${t.proof_screenshot}" class="max-h-72 rounded-xl object-contain border border-admin-border cursor-zoom-in">
+            <a href="${t.proof_screenshot}" target="_blank" title="Click to open full screenshot" class="w-full flex justify-center">
+              <img src="${t.proof_screenshot}" class="max-h-80 w-auto rounded-xl object-contain border border-admin-border shadow-2xl cursor-zoom-in hover:scale-[1.02] transition-transform duration-300">
             </a>
+            <span class="text-[10px] text-slate-500 font-mono mt-2">Tap image to open full size</span>
           ` : `
-            <span class="text-slate-500 font-mono italic">No screenshot uploaded by customer.</span>
+            <div class="text-center py-10 space-y-2">
+              <span class="text-2xl block">⚠️</span>
+              <span class="text-slate-500 font-mono italic block">No screenshot was uploaded by the customer for this order.</span>
+            </div>
           `}
         </div>
       </div>
 
+      <!-- Action Buttons -->
       <div class="flex flex-col sm:flex-row gap-3 pt-2">
-        <button onclick="confirmTransactionPayment('${t._id}')" class="w-full sm:flex-1 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black uppercase tracking-wider shadow-lg font-sans text-center cursor-pointer">
-          ✓ Confirm Payment & Deliver
+        <button onclick="confirmTransactionPayment('${t._id}')" class="w-full sm:flex-1 py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black uppercase tracking-wider shadow-lg shadow-emerald-500/25 font-sans text-center cursor-pointer active:scale-95 transition-all text-xs">
+          ✓ Confirm Payment & Deliver Credentials
         </button>
-        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-white/5 text-slate-300 font-bold font-sans text-center">
+        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="w-full sm:w-auto px-6 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold font-sans text-center transition-all">
           Close
         </button>
       </div>
+
     </div>
   `;
 }
