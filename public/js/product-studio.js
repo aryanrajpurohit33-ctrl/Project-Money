@@ -150,7 +150,6 @@ async function openProductStudioModal(productId) {
   const isNew = productId === 'new';
   const modal = document.getElementById('globalModal');
   const content = document.getElementById('globalModalContent');
-  state.productStudioDirty = false;
   modal.classList.remove('hidden'); modal.classList.add('flex');
 
   let p = {
@@ -172,7 +171,7 @@ async function openProductStudioModal(productId) {
         <p class="text-slate-400 text-xs">Configure professional details, pricing, and digital delivery.</p>
       </div>
 
-      <form id="productStudioForm" onsubmit="handleProductFormSubmit(event, '${productId}')" class="space-y-4 font-mono">
+      <form onsubmit="handleProductFormSubmit(event, '${productId}')" class="space-y-4 font-mono">
         <div>
           <label class="text-slate-400 block mb-1">Product Title *</label>
           <input type="text" id="pName" required value="${p.name || ''}" placeholder="Product Title" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs font-bold">
@@ -218,7 +217,7 @@ async function openProductStudioModal(productId) {
           <input type="text" id="pImage" value="${p.images?.[0] || ''}" placeholder="https://..." class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs">
         </div>
 
-        <button type="submit" id="saveProductSubmitBtn" class="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95 transition-all text-xs cursor-pointer">
+        <button type="submit" id="saveProductSubmitBtn" class="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/25 active:scale-95 transition-all text-xs cursor-pointer">
           ${isNew ? 'CREATE PRODUCT' : 'SAVE CHANGES'}
         </button>
       </form>
@@ -232,7 +231,7 @@ async function handleProductFormSubmit(e, productId) {
   const btn = document.getElementById('saveProductSubmitBtn');
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = `${SVG_SPINNER} Saving...`;
+    btn.textContent = 'Saving Product...';
   }
 
   const imgUrl = document.getElementById('pImage').value.trim();
@@ -247,7 +246,7 @@ async function handleProductFormSubmit(e, productId) {
   };
 
   try {
-    const result = await fetchJSON(isNew ? '/api/admin/products' : `/api/admin/products/${productId}`, {
+    await fetchJSON(isNew ? '/api/admin/products' : `/api/admin/products/${productId}`, {
       method: isNew ? 'POST' : 'PUT',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
       body: JSON.stringify(payload)
@@ -259,7 +258,7 @@ async function handleProductFormSubmit(e, productId) {
   } catch (err) {
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = isNew ? 'CREATE PRODUCT' : 'SAVE CHANGES';
+      btn.textContent = isNew ? 'CREATE PRODUCT' : 'SAVE CHANGES';
     }
     showToast(err.message, 'error');
   }
