@@ -221,7 +221,7 @@
     function renderStorefrontLayout(viewport, view, params) {
       viewport.innerHTML = `
         <div class="flex flex-1 min-h-screen relative w-full bg-surface-950 animate-fadeIn">
-          <aside id="customerSidebar" class="fixed lg:static top-0 bottom-0 left-0 w-64 bg-surface-900 border-r border-white/5 z-50 flex flex-col justify-between transition-transform duration-300 -translate-x-full lg:translate-x-0 shadow-2xl">
+          <aside id="customerSidebar" onclick="event.stopPropagation()" class="fixed lg:static top-0 bottom-0 left-0 w-64 bg-surface-900 border-r border-white/5 z-50 flex flex-col justify-between transition-transform duration-300 -translate-x-full lg:translate-x-0 shadow-2xl">
             <div>
               <div class="p-6 border-b border-white/5 flex items-center justify-between">
                 <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('home')">
