@@ -99,7 +99,7 @@ const TransactionSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   payment_method: { type: String, default: 'UPI' },
   proof_screenshot: { type: String, default: '' },
-  status: { type: String, default: 'PENDING_PAYMENT' },
+  status: { type: String, default: 'PROCESSING' },
   created_at: { type: Date, default: Date.now }
 });
 
@@ -108,9 +108,14 @@ const OrderSchema = new mongoose.Schema({
   user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   customer_name: String,
   customer_email: String,
-  items: [{ product_id: mongoose.Schema.Types.ObjectId, name: String, price: Number }],
+  items: [{ 
+    product_id: mongoose.Schema.Types.ObjectId, 
+    name: String, 
+    price: Number,
+    delivered_data: { email: String, password: String }
+  }],
   total_amount: { type: Number, required: true },
-  payment_status: { type: String, default: 'Pending' },
+  payment_status: { type: String, default: 'Processing' },
   created_at: { type: Date, default: Date.now }
 });
 
@@ -144,6 +149,15 @@ async function initializeSystem() {
     const ps = await PaymentSettings.findOne();
     if (!ps) await PaymentSettings.create({});
   } catch (e) {}
+}
+
+function authCustomer(req, res, next) {
+  const h = req.headers['authorization'];
+  if (!h) return res.status(401).json({ error: 'Auth required' });
+  try {
+    req.user = jwt.verify(h.split(' ')[1], JWT_SECRET);
+    next();
+  } catch (e) { res.status(401).json({ error: 'Invalid session' }); }
 }
 
 app.post('/api/admin/login', async (req, res) => {
@@ -225,6 +239,71 @@ app.get('/api/products/:id', async (req, res) => {
     if (!p) return res.status(404).json({ error: 'Not found' });
     res.json({ ...p.toObject(), in_stock: p.unlimited_stock || p.stock_quantity > 0 });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ----------------------------------------------------
+// CHECKOUT & CUSTOMER ORDERS ENDPOINTS
+// ----------------------------------------------------
+app.post('/api/checkout/initiate-order', authCustomer, async (req, res) => {
+  try {
+    const { items, payment_method, proof_screenshot } = req.body;
+    if (!items || !items.length) return res.status(400).json({ error: 'Cart is empty' });
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    let totalAmount = 0;
+    const orderItems = [];
+
+    for (const item of items) {
+      const prod = await Product.findById(item.product_id);
+      if (prod) {
+        totalAmount += prod.sale_price;
+        orderItems.push({ product_id: prod._id, name: prod.name, price: prod.sale_price });
+      }
+    }
+
+    const orderNumber = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
+    const order = await Order.create({
+      order_number: orderNumber,
+      user_id: user._id,
+      customer_name: user.username,
+      customer_email: user.email,
+      items: orderItems,
+      total_amount: totalAmount,
+      payment_status: 'Processing'
+    });
+
+    const txnId = 'TXN-' + Math.floor(100000 + Math.random() * 900000);
+    const txn = await Transaction.create({
+      txn_id: txnId,
+      order_id: order._id,
+      user_id: user._id,
+      customer_name: user.username,
+      customer_email: user.email,
+      product_name: orderItems.map(i => i.name).join(', '),
+      amount: totalAmount,
+      payment_method: payment_method || 'UPI',
+      proof_screenshot: proof_screenshot || '',
+      status: 'PROCESSING'
+    });
+
+    order.transaction_id = txn._id;
+    await order.save();
+
+    res.status(201).json({ success: true, order_number: orderNumber, txn_id: txnId });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.get('/api/customer/orders', authCustomer, async (req, res) => {
+  try {
+    const orders = await Order.find({ user_id: req.user.id }).sort({ created_at: -1 });
+    res.json(orders);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.get('/api/admin/products', async (req, res) => {
