@@ -78,7 +78,32 @@
 <body class="min-h-screen flex flex-col antialiased">
 
   <div id="toastHub" class="fixed top-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
-  <div id="appBackdrop" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/60 z-30 hidden transition-opacity duration-200"></div>
+  
+  <!-- Backdrop -->
+  <div id="appBackdrop" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/60 z-40 hidden transition-opacity duration-200"></div>
+
+  <!-- Persistent Customer Sidebar Drawer -->
+  <aside id="customerSidebar" class="fixed top-0 bottom-0 left-0 w-64 bg-surface-900 border-r border-white/5 z-50 flex flex-col justify-between transition-transform duration-300 -translate-x-full shadow-2xl">
+    <div>
+      <div class="p-6 border-b border-white/5 flex items-center justify-between">
+        <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('home')">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center font-black text-gray-950 shadow-lg shadow-emerald-500/20">N</div>
+          <div><span class="font-extrabold text-sm tracking-wider text-white block">NEXUS</span><span class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">DIGITAL VAULT</span></div>
+        </div>
+        <button onclick="toggleCustomerDrawer(false)" class="text-slate-400 hover:text-white p-2 font-bold text-base">✕</button>
+      </div>
+      <nav class="p-4 space-y-1.5 text-xs font-semibold">
+        <button onclick="navigate('home')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/10 transition-colors"><span>🏠</span> Home</button>
+        <button onclick="navigate('products')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/10 transition-colors"><span>🛍</span> All Products</button>
+        <button onclick="navigate('orders')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/10 transition-colors"><span>📦</span> Purchased Items</button>
+        <button onclick="navigate('account')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/10 transition-colors"><span>👤</span> Account</button>
+      </nav>
+    </div>
+    <div class="p-4 border-t border-white/5 text-slate-500 text-[10px] font-mono text-center">
+      Nexus Digital Vault v2.6
+    </div>
+  </aside>
+
   <div id="mainViewport" class="flex flex-1 min-h-screen"></div>
 
   <div id="globalModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-2 sm:p-4">
@@ -187,8 +212,6 @@
       const drop = document.getElementById('appBackdrop');
       if (open) { 
         side.classList.remove('-translate-x-full'); 
-        side.classList.remove('z-30');
-        side.classList.add('z-50');
         drop.classList.remove('hidden'); 
       }
       else { 
@@ -220,31 +243,9 @@
 
     function renderStorefrontLayout(viewport, view, params) {
       viewport.innerHTML = `
-        <div class="flex flex-1 min-h-screen relative w-full bg-surface-950 animate-fadeIn">
-          <aside id="customerSidebar" onclick="event.stopPropagation()" class="fixed lg:static top-0 bottom-0 left-0 w-64 bg-surface-900 border-r border-white/5 z-50 flex flex-col justify-between transition-transform duration-300 -translate-x-full lg:translate-x-0 shadow-2xl">
-            <div>
-              <div class="p-6 border-b border-white/5 flex items-center justify-between">
-                <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('home')">
-                  <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center font-black text-gray-950 shadow-lg shadow-emerald-500/20">N</div>
-                  <div><span class="font-extrabold text-sm tracking-wider text-white block">NEXUS</span><span class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">DIGITAL VAULT</span></div>
-                </div>
-                <button onclick="toggleCustomerDrawer(false)" class="lg:hidden text-slate-400 p-2 font-bold text-base">✕</button>
-              </div>
-              <nav class="p-4 space-y-1.5 text-xs font-semibold">
-                <button onclick="navigate('home')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/10 transition-colors"><span>🏠</span> Home</button>
-                <button onclick="navigate('products')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/10 transition-colors"><span>🛍</span> All Products</button>
-                <button onclick="navigate('orders')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/10 transition-colors"><span>📦</span> Purchased Items</button>
-                <button onclick="navigate('account')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/10 transition-colors"><span>👤</span> Account</button>
-              </nav>
-            </div>
-            <div class="p-4 border-t border-white/5 text-slate-500 text-[10px] font-mono text-center">
-              Nexus Digital Vault v2.6
-            </div>
-          </aside>
-          <div class="flex-1 flex flex-col min-w-0">
-            <div id="storeHeaderContainer"></div>
-            <main id="storeContent" class="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-8"></main>
-          </div>
+        <div class="flex flex-1 min-h-screen relative w-full bg-surface-950 animate-fadeIn flex-col">
+          <div id="storeHeaderContainer"></div>
+          <main id="storeContent" class="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-8"></main>
         </div>
       `;
 
