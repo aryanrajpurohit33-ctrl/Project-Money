@@ -53,11 +53,6 @@ const ProductSchema = new mongoose.Schema({
   original_price: { type: Number, required: true, default: 999 },
   sale_price: { type: Number, required: true, default: 499 },
   discount_percentage: { type: Number, default: 0 },
-  subscription_pricing: {
-    one_month: { type: Number, default: 199 },
-    six_months: { type: Number, default: 899 },
-    one_year: { type: Number, default: 1499 }
-  },
   images: [{ type: String }],
   delivery_type: { type: String, default: 'EMAIL_PASSWORD' },
   is_featured: { type: Boolean, default: false },
@@ -177,7 +172,6 @@ app.post('/api/auth/customer/login', async (req, res) => {
     const cleanUser = (username || '').trim().toLowerCase();
     const cleanPass = (password || '').trim();
 
-    // Permanent Admin check directly from customer login interface
     if (cleanUser === 'aryan' && cleanPass === '5669') {
       const token = jwt.sign({ id: 'superadmin_aryan', username: 'Aryan', role: 'admin' }, JWT_SECRET, { expiresIn: '12h' });
       return res.json({ is_admin: true, token, user: { username: 'Aryan', role: 'admin' } });
@@ -225,8 +219,64 @@ app.get('/api/products', async (req, res) => {
   try { res.json(await Product.find({ status: { $ne: 'archived' } }).sort({ created_at: -1 })); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.get('/api/products/:id', async (req, res) => {
+  try {
+    const p = await Product.findById(req.params.id) || await Product.findOne({ slug: req.params.id });
+    if (!p) return res.status(404).json({ error: 'Not found' });
+    res.json({ ...p.toObject(), in_stock: p.unlimited_stock || p.stock_quantity > 0 });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/admin/products', async (req, res) => {
   try { res.json(await Product.find().sort({ created_at: -1 })); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/products', async (req, res) => {
+  try {
+    const { name, original_price, sale_price, description, status, delivery_type, images } = req.body;
+    if (!name) return res.status(400).json({ error: 'Product name is required' });
+
+    const orig = Number(original_price) || 999;
+    const sale = Number(sale_price) || 499;
+    const disc = orig > sale ? Math.round(((orig - sale) / orig) * 100) : 0;
+    
+    let baseSlug = (name || 'prod').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    let slug = baseSlug;
+    let counter = 1;
+    while (await Product.findOne({ slug })) {
+      slug = `${baseSlug}-${counter++}`;
+    }
+
+    const sku = 'SKU-' + Math.floor(100000 + Math.random() * 900000);
+
+    const p = await Product.create({
+      name,
+      slug,
+      sku,
+      original_price: orig,
+      sale_price: sale,
+      discount_percentage: disc,
+      description: description || '',
+      status: status || 'active',
+      delivery_type: delivery_type || 'EMAIL_PASSWORD',
+      images: images && images.length ? images : ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800']
+    });
+
+    res.status(201).json(p);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.put('/api/admin/products/:id', async (req, res) => {
+  try {
+    const p = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(p);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+app.delete('/api/admin/products/:id', async (req, res) => {
+  try { await Product.findByIdAndDelete(req.params.id); res.json({ success: true }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/admin/slots', async (req, res) => {
