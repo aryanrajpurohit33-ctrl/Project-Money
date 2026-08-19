@@ -37,8 +37,8 @@
     .admin-card { background-color: #0f1422; border: 1px solid #1c2438; }
     .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
     .custom-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 999px; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-    .animate-fadeIn { animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-fadeIn { animation: fadeIn 0.15s ease-out forwards; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased">
@@ -81,7 +81,7 @@
       adminSection: 'dashboard',
       dashboardRange: '30d',
       loadedProducts: [],
-      cachedProducts: null
+      cachedProducts: JSON.parse(localStorage.getItem('nexus_local_cache') || 'null')
     };
 
     function showToast(message, type = 'success') {
@@ -114,11 +114,11 @@
       } catch (err) { throw err; }
     }
 
-    // Pre-fetch products globally upon startup for instant page transitions
     async function prefetchGlobalData() {
       try {
         const products = await fetchJSON('/api/products');
         state.cachedProducts = products;
+        localStorage.setItem('nexus_local_cache', JSON.stringify(products));
       } catch (e) {}
     }
 
@@ -292,8 +292,13 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      await prefetchGlobalData();
+      // Render immediately with local storage cache for zero delay
       navigate('home');
+      // Fetch fresh in background
+      await prefetchGlobalData();
+      if (state.currentView === 'home' || state.currentView === 'products') {
+        renderStoreHome(document.getElementById('storeContent'));
+      }
     });
   </script>
 </body>
