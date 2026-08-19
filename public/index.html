@@ -61,6 +61,10 @@
       border: 1px solid #1c2438;
     }
 
+    .auth-glow {
+      box-shadow: 0 0 50px -10px rgba(16, 185, 129, 0.15);
+    }
+
     .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
     .custom-scroll::-webkit-scrollbar-track { background: transparent; }
     .custom-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 999px; }
@@ -90,9 +94,7 @@
       paymentSettings: null,
       slotFilterProduct: 'ALL',
       slotFilterStatus: 'ALL',
-      loadedSlots: [],
-      loadedProducts: [],
-      loadedSubs: []
+      authScreen: 'register'
     };
 
     function showToast(message, type = 'success') {
@@ -113,14 +115,12 @@
       try {
         const res = await fetch(url, options);
         if (res.status === 401 || res.status === 403) {
-          if (url.includes('/api/admin/')) {
-            adminSignOut();
-          }
+          if (url.includes('/api/admin/')) adminSignOut();
           throw new Error('Session expired or unauthorized');
         }
         const contentType = res.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
-          throw new Error('Service is synchronizing. Please tap Refresh.');
+          throw new Error('Service is updating. Please refresh.');
         }
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `Request failed with code ${res.status}`);
@@ -157,11 +157,7 @@
       fetch('/api/presence/heartbeat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: state.sessionId,
-          page: state.currentView,
-          action
-        })
+        body: JSON.stringify({ sessionId: state.sessionId, page: state.currentView, action })
       }).catch(() => {});
     }
     setInterval(sendHeartbeat, 15000);
@@ -182,7 +178,7 @@
     }
 
     // =========================================================================
-    // STOREFRONT
+    // STOREFRONT LAYOUT & CATALOG
     // =========================================================================
     function renderStorefrontLayout(viewport, view, params) {
       viewport.innerHTML = `
@@ -208,7 +204,7 @@
                   <span class="cart-count-badge px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-gray-950">${state.cart.length}</span>
                 </button>
                 <button onclick="navigate('orders')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all"><span>📦</span> <span>Purchased Items</span></button>
-                <button onclick="navigate('account')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all"><span>👤</span> <span>${state.user ? state.user.name : 'My Account'}</span></button>
+                <button onclick="navigate('account')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all"><span>👤</span> <span>${state.user ? '@' + state.user.username : 'Account'}</span></button>
               </nav>
             </div>
 
@@ -426,437 +422,402 @@
     }
 
     function addToCart(product_id, name, price, image, delivery_type) {
-      const exists = state.cart.find(i => i.product_id === product_id);
-      if (exists) return showToast('Item already in your cart', 'error');
-      state.cart.push({ product_id, name, price, image, delivery_type });
+      state.cart = [{ product_id, name, price, image, delivery_type, duration: '1_MONTH' }];
       localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
-      document.querySelectorAll('.cart-count-badge').forEach(b => b.textContent = state.cart.length);
-      showToast(`Added "${name}" to cart`);
-    }
-
-    function removeFromCart(idx) {
-      state.cart.splice(idx, 1);
-      localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
-      document.querySelectorAll('.cart-count-badge').forEach(b => b.textContent = state.cart.length);
-      renderStoreCart(document.getElementById('storeContent'));
+      navigate('checkout');
     }
 
     function renderStoreCart(container) {
-      const subtotal = state.cart.reduce((a, b) => a + b.price, 0);
-      container.innerHTML = `
-        <div class="max-w-3xl mx-auto space-y-6">
-          <h1 class="text-xl font-black text-white">Shopping Cart</h1>
-          ${state.cart.length === 0 ? `<div class="glass rounded-3xl p-12 text-center text-xs text-slate-400">Cart is empty.</div>` : `
-            <div class="space-y-3">
-              ${state.cart.map((item, idx) => `
-                <div class="glass rounded-2xl p-4 flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <img src="${item.image || ''}" class="w-12 h-12 rounded-xl object-cover">
-                    <div>
-                      <h4 class="text-xs font-bold text-white">${item.name}</h4>
-                      <span class="text-[10px] text-emerald-400 font-mono">${item.delivery_type?.replace('_', ' ') || ''}</span>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-4">
-                    <span class="text-sm font-black text-white">₹${item.price}</span>
-                    <button onclick="removeFromCart(${idx})" class="text-slate-500 hover:text-rose-400">✕</button>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-            <div class="glass rounded-3xl p-6 space-y-4">
-              <div class="flex justify-between text-sm font-black text-white"><span>Total:</span> <span class="text-emerald-400">₹${subtotal}</span></div>
-              <button onclick="navigate('checkout')" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase">Proceed To Checkout</button>
-            </div>
-          `}
-        </div>
-      `;
+      container.innerHTML = `<div class="text-center py-16"><button onclick="navigate('checkout')" class="px-6 py-3 bg-emerald-500 text-gray-950 font-black rounded-2xl text-xs uppercase">Proceed to Checkout</button></div>`;
     }
 
     async function renderStoreCheckout(container) {
       if (!state.token) return renderCustomerAuthPrompt(container, 'checkout');
       if (!state.cart.length) return navigate('products');
-
-      const ps = await fetchJSON('/api/payment-methods');
-      state.paymentSettings = ps;
       const item = state.cart[0];
 
       container.innerHTML = `
-        <div class="max-w-3xl mx-auto space-y-8">
-          <div>
-            <h1 class="text-2xl font-black text-white">Choose Payment Method</h1>
-            <p class="text-xs text-slate-400">Order: ${item.name} — Amount: ₹${item.price}</p>
-          </div>
-
-          <div id="chkStep1" class="space-y-4">
-            <div onclick="selectPaymentMethod('UPI')" id="methodCardUPI" class="glass rounded-3xl p-6 cursor-pointer border-2 border-emerald-500/80 flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <span class="text-2xl">💳</span>
-                <div>
-                  <h3 class="text-sm font-bold text-white">Instant UPI Pay</h3>
-                  <p class="text-[10px] text-slate-400">Google Pay, PhonePe, Paytm</p>
-                </div>
-              </div>
-              <span id="radioUPI" class="w-4 h-4 rounded-full border-2 border-emerald-400 bg-emerald-400"></span>
-            </div>
-
-            <div onclick="selectPaymentMethod('CRYPTO')" id="methodCardCrypto" class="glass rounded-3xl p-6 cursor-pointer border border-white/5 flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <span class="text-2xl">₿</span>
-                <div>
-                  <h3 class="text-sm font-bold text-white">Cryptocurrency</h3>
-                  <p class="text-[10px] text-slate-400">${state.paymentSettings.crypto_currency} (${state.paymentSettings.crypto_network})</p>
-                </div>
-              </div>
-              <span id="radioCrypto" class="w-4 h-4 rounded-full border-2 border-slate-600"></span>
-            </div>
-
-            <button onclick="startCheckoutPayment()" id="chkNextBtn" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider">
-              Continue to Payment Details →
-            </button>
-          </div>
-
-          <div id="chkStep2" class="hidden space-y-6"></div>
+        <div class="max-w-xl mx-auto glass rounded-3xl p-8 space-y-6">
+          <h2 class="text-xl font-black text-white">Checkout: ${item.name}</h2>
+          <div class="text-2xl font-black text-emerald-400">₹${item.price}</div>
+          <button onclick="handleCheckoutPayment()" class="w-full py-4 bg-emerald-500 text-gray-950 font-black rounded-2xl text-xs uppercase">Confirm & Upload Proof</button>
         </div>
       `;
     }
 
-    let selectedMethod = 'UPI';
-    function selectPaymentMethod(m) {
-      selectedMethod = m;
-      if (m === 'UPI') {
-        document.getElementById('methodCardUPI').className = 'glass rounded-3xl p-6 cursor-pointer border-2 border-emerald-500/80 flex items-center justify-between';
-        document.getElementById('methodCardCrypto').className = 'glass rounded-3xl p-6 cursor-pointer border border-white/5 flex items-center justify-between';
-        document.getElementById('radioUPI').className = 'w-4 h-4 rounded-full border-2 border-emerald-400 bg-emerald-400';
-        document.getElementById('radioCrypto').className = 'w-4 h-4 rounded-full border-2 border-slate-600';
-      } else {
-        document.getElementById('methodCardCrypto').className = 'glass rounded-3xl p-6 cursor-pointer border-2 border-emerald-500/80 flex items-center justify-between';
-        document.getElementById('methodCardUPI').className = 'glass rounded-3xl p-6 cursor-pointer border border-white/5 flex items-center justify-between';
-        document.getElementById('radioCrypto').className = 'w-4 h-4 rounded-full border-2 border-emerald-400 bg-emerald-400';
-        document.getElementById('radioUPI').className = 'w-4 h-4 rounded-full border-2 border-slate-600';
-      }
-    }
-
-    async function startCheckoutPayment() {
-      const btn = document.getElementById('chkNextBtn');
-      btn.disabled = true;
-      btn.textContent = 'Generating Transaction...';
-
+    async function handleCheckoutPayment() {
       try {
         const data = await fetchJSON('/api/checkout/initiate-order', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${state.token}`
-          },
-          body: JSON.stringify({
-            items: state.cart,
-            payment_method: selectedMethod
-          })
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}` },
+          body: JSON.stringify({ items: state.cart, payment_method: 'UPI' })
         });
-
-        document.getElementById('chkStep1').classList.add('hidden');
-        const step2 = document.getElementById('chkStep2');
-        step2.classList.remove('hidden');
-
-        const ps = state.paymentSettings;
-        const txn = data.transaction;
-
-        let detailsHTML = selectedMethod === 'UPI' ? `
-          <div class="text-center space-y-4">
-            <img src="${ps.upi_qr_url}" class="w-56 h-56 mx-auto rounded-2xl glass p-2 bg-white object-contain">
-            <div class="space-y-1">
-              <span class="text-[10px] text-slate-500 uppercase font-bold">UPI ID</span>
-              <div class="font-mono text-emerald-400 text-sm font-bold">${ps.upi_id}</div>
-              <button onclick="navigator.clipboard.writeText('${ps.upi_id}'); showToast('Copied UPI ID!')" class="text-xs text-slate-400 hover:text-white underline">Copy UPI ID</button>
-            </div>
-            <div class="text-xs text-slate-400 max-w-sm mx-auto whitespace-pre-line text-left bg-surface-950 p-4 rounded-2xl">${ps.upi_instructions}</div>
-          </div>
-        ` : `
-          <div class="text-center space-y-4">
-            <img src="${ps.crypto_qr_url}" class="w-56 h-56 mx-auto rounded-2xl glass p-2 bg-white object-contain">
-            <div class="space-y-1">
-              <span class="text-[10px] text-slate-500 uppercase font-bold">Wallet Address (${ps.crypto_currency} - ${ps.crypto_network})</span>
-              <div class="font-mono text-emerald-400 text-xs font-bold break-all">${ps.crypto_wallet_address}</div>
-              <button onclick="navigator.clipboard.writeText('${ps.crypto_wallet_address}'); showToast('Copied Address!')" class="text-xs text-slate-400 hover:text-white underline">Copy Address</button>
-            </div>
-            <div class="text-xs text-slate-400 max-w-sm mx-auto whitespace-pre-line text-left bg-surface-950 p-4 rounded-2xl">${ps.crypto_instructions}</div>
-          </div>
-        `;
-
-        step2.innerHTML = `
-          <div class="glass rounded-3xl p-6 sm:p-10 space-y-6 max-w-2xl mx-auto">
-            <div class="flex justify-between items-center border-b border-white/5 pb-4">
-              <div>
-                <span class="text-[10px] font-mono text-slate-500">TRANSACTION ID</span>
-                <h3 class="text-base font-black text-white font-mono">${txn.txn_id}</h3>
-              </div>
-              <div class="text-right">
-                <span class="text-[10px] text-slate-500">TOTAL</span>
-                <div class="text-lg font-black text-emerald-400 font-mono">₹${txn.amount}</div>
-              </div>
-            </div>
-
-            ${detailsHTML}
-
-            <form onsubmit="submitProofScreenshot(event, '${txn.txn_id}')" class="space-y-4 pt-4 border-t border-white/5">
-              <label class="text-xs font-bold text-white block">Upload Payment Screenshot (JPG, PNG)</label>
-              <input type="file" id="proofImgInput" accept="image/*" required class="w-full text-xs text-slate-400 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-500/10 file:text-emerald-400">
-              
-              <button type="submit" id="submitProofBtn" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider">
-                Submit Payment Proof for Verification
-              </button>
-            </form>
-          </div>
-        `;
-      } catch (err) {
-        btn.disabled = false;
-        btn.textContent = 'Continue to Payment Details →';
-        showToast(err.message, 'error');
-      }
-    }
-
-    function compressImageFile(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-          const img = new Image();
-          img.src = event.target.result;
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const MAX_WIDTH = 1280;
-            let width = img.width;
-            let height = img.height;
-            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL('image/jpeg', 0.82));
-          };
-          img.onerror = (err) => reject(err);
-        };
-        reader.onerror = (err) => reject(err);
-      });
-    }
-
-    async function submitProofScreenshot(e, txnId) {
-      e.preventDefault();
-      const fileInput = document.getElementById('proofImgInput');
-      if (!fileInput.files.length) return;
-
-      const btn = document.getElementById('submitProofBtn');
-      btn.disabled = true;
-      btn.textContent = 'Compressing & Uploading Proof...';
-
-      try {
-        const base64Data = await compressImageFile(fileInput.files[0]);
-        await fetchJSON('/api/checkout/upload-proof-json', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${state.token}`
-          },
-          body: JSON.stringify({
-            transaction_id: txnId,
-            screenshot_base64: base64Data
-          })
-        });
-
-        state.cart = [];
-        localStorage.removeItem('nexus_cart');
-        showToast('Proof submitted! Payment is being verified.');
+        showToast('Order initiated! Upload proof.');
         navigate('orders');
-      } catch (err) {
-        btn.disabled = false;
-        btn.textContent = 'Submit Payment Proof for Verification';
-        showToast(err.message, 'error');
-      }
+      } catch (e) { showToast(e.message, 'error'); }
     }
 
-    async function renderStoreOrders(container) {
-      if (!state.token) return renderCustomerAuthPrompt(container, 'orders');
-      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold">Loading purchased items...</div>';
-
-      try {
-        const orders = await fetchJSON('/api/customer/orders', {
-          headers: { 'Authorization': `Bearer ${state.token}` }
-        });
-
-        container.innerHTML = `
-          <div class="max-w-4xl mx-auto space-y-6">
-            <div>
-              <h1 class="text-xl font-black text-white">Purchased Digital Goods & Subscriptions</h1>
-              <p class="text-xs text-slate-400">Live credentials sync directly with your assigned slot in real-time.</p>
+    // =========================================================================
+    // REDESIGNED AUTHENTICATION PORTAL (REGISTER FIRST, UNIQUE USERNAME, EYE TOGGLE)
+    // =========================================================================
+    function renderCustomerAuthPrompt(container, returnView = 'account') {
+      container.innerHTML = `
+        <div class="min-h-[80vh] flex items-center justify-center p-4">
+          <div class="glass auth-glow max-w-md w-full rounded-3xl p-8 sm:p-10 border border-white/10 space-y-8 relative overflow-hidden transition-all duration-300">
+            
+            <div class="text-center space-y-2">
+              <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-2xl font-black text-gray-950 shadow-xl shadow-emerald-500/20 mx-auto">
+                N
+              </div>
+              <div>
+                <h1 class="text-xl font-black text-white tracking-wider">NEXUS DIGITAL</h1>
+                <p class="text-[11px] font-bold text-emerald-400 uppercase tracking-widest">Digital Products & Subscriptions</p>
+              </div>
             </div>
 
-            ${orders.length === 0 ? `<div class="glass rounded-3xl p-12 text-center text-xs text-slate-400">No purchases found.</div>` : `
-              <div class="space-y-4">
-                ${orders.map(o => {
-                  const isPaid = o.payment_status === 'Paid';
-                  return `
-                    <div class="glass rounded-3xl p-6 space-y-4 border border-white/5">
-                      <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs pb-3 border-b border-white/5 gap-2">
-                        <div>
-                          <span class="font-mono text-slate-400 font-bold">${o.order_number}</span>
-                          <span class="text-[10px] text-slate-500 block">${new Date(o.created_at).toLocaleString()}</span>
-                        </div>
-                        <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase ${isPaid ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}">
-                          ${isPaid ? '🟢 PAYMENT CONFIRMED' : '🟡 PAYMENT PROCESSING'}
-                        </span>
-                      </div>
+            <div id="authDynamicContainer"></div>
 
-                      <div class="space-y-3">
-                        ${o.items.map(item => {
-                          const isSub = item.is_subscription;
-                          const isExpired = item.is_expired;
-                          const creds = item.delivered_data;
-
-                          return `
-                            <div class="p-4 rounded-2xl bg-surface-950 border border-white/5 space-y-3">
-                              <div class="flex justify-between items-center">
-                                <div>
-                                  <h4 class="text-xs font-bold text-white">${item.name}</h4>
-                                  ${isSub ? `
-                                    <span class="text-[10px] font-mono ${isExpired ? 'text-rose-400' : 'text-emerald-400'}">
-                                      ${isExpired ? `⚪ Expired on ${new Date(item.expires_at).toLocaleDateString()}` : `🟢 Active until ${new Date(item.expires_at).toLocaleDateString()}`}
-                                    </span>
-                                  ` : ''}
-                                </div>
-                                ${isExpired ? `
-                                  <button onclick="navigate('product-details', { id: '${item.product_id}' })" class="px-3 py-1 rounded-xl bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 text-[10px] font-bold">
-                                    🔄 Renew Subscription
-                                  </button>
-                                ` : ''}
-                              </div>
-
-                              ${isPaid ? (
-                                isExpired ? `
-                                  <div class="p-3 rounded-xl bg-surface-900 border border-rose-500/20 text-xs text-rose-400">
-                                    ⚠️ This subscription has expired. Credentials have been safely removed. Please renew to regain access.
-                                  </div>
-                                ` : (creds ? `
-                                  <div class="p-3 rounded-xl bg-surface-900 border border-white/5 space-y-2">
-                                    <div class="text-xs text-slate-400 font-bold font-mono">${creds.account_label || 'Assigned Account Slot'}</div>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
-                                      <div class="p-2.5 rounded-lg bg-surface-950 flex justify-between items-center">
-                                        <span class="text-white select-all">${creds.email}</span>
-                                        <button onclick="navigator.clipboard.writeText('${creds.email}'); showToast('Email copied!')" class="text-emerald-400 text-[10px] font-bold">Copy</button>
-                                      </div>
-                                      <div class="p-2.5 rounded-lg bg-surface-950 flex justify-between items-center">
-                                        <span id="custPass-${item.product_id}" class="text-white select-all">••••••••</span>
-                                        <div class="flex items-center gap-2">
-                                          <button onclick="toggleCustPass('${item.product_id}', '${creds.password}')" class="text-slate-400 text-[10px]">Show</button>
-                                          <button onclick="navigator.clipboard.writeText('${creds.password}'); showToast('Password copied!')" class="text-emerald-400 text-[10px] font-bold">Copy</button>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ` : `
-                                  <div class="text-xs text-slate-400">Access active. Credentials will display momentarily.</div>
-                                `)
-                              ) : `
-                                <div class="p-3 rounded-xl bg-surface-900 border border-amber-500/20 text-xs text-amber-400 flex items-center gap-2">
-                                  <span>🔒</span>
-                                  <span>Credentials locked. Your payment proof is under verification.</span>
-                                </div>
-                              `}
-                            </div>
-                          `;
-                        }).join('')}
-                      </div>
-                    </div>
-                  `;
-                }).join('')}
-              </div>
-            `}
           </div>
-        `;
-      } catch (err) {
-        container.innerHTML = `<div class="glass p-8 text-center text-rose-400 text-xs">${err.message}</div>`;
+        </div>
+      `;
+
+      switchAuthScreen(state.authScreen || 'register', returnView);
+    }
+
+    function switchAuthScreen(screen, returnView = 'account') {
+      state.authScreen = screen;
+      const container = document.getElementById('authDynamicContainer');
+      if (!container) return;
+
+      if (screen === 'register') {
+        renderRegisterScreen(container, returnView);
+      } else if (screen === 'login') {
+        renderLoginScreen(container, returnView);
+      } else if (screen === 'forgot') {
+        renderForgotScreen(container, returnView);
       }
     }
 
-    function toggleCustPass(id, actualPass) {
-      const el = document.getElementById(`custPass-${id}`);
-      if (!el) return;
-      if (el.textContent === '••••••••') el.textContent = actualPass;
-      else el.textContent = '••••••••';
-    }
-
-    function renderCustomerAuthPrompt(container, returnView) {
+    function renderRegisterScreen(container, returnView) {
       container.innerHTML = `
-        <div class="max-w-md mx-auto glass rounded-3xl p-8 space-y-4">
-          <h2 class="text-lg font-black text-white text-center">Customer Account</h2>
-          <form onsubmit="handleCustomerLogin(event, '${returnView}')" class="space-y-3">
-            <input type="email" id="cLogEmail" required placeholder="Email" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
-            <input type="password" id="cLogPass" required placeholder="Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
-            <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase">Sign In</button>
+        <div class="space-y-6">
+          <div class="text-center space-y-1">
+            <h2 class="text-lg font-black text-white">Create Your Account</h2>
+            <p class="text-xs text-slate-400">Join Nexus Digital and manage all your purchases in one place.</p>
+          </div>
+
+          <form onsubmit="handleCustomerRegister(event, '${returnView}')" class="space-y-4 text-xs font-sans">
+            
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold uppercase tracking-wider text-slate-300 block">Username</label>
+              <div class="relative">
+                <input type="text" id="regUsername" required oninput="validateUsernameLive(this.value)" placeholder="Enter a unique username (e.g. Aryan_123)" class="w-full pl-10 pr-4 py-3.5 rounded-2xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all">
+                <span class="absolute left-3.5 top-3.5 text-slate-500">@</span>
+              </div>
+              <div id="regUsernameMsg" class="text-[10px] font-bold min-h-[16px] transition-all"></div>
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold uppercase tracking-wider text-slate-300 block">Password</label>
+              <div class="relative">
+                <input type="password" id="regPassword" required oninput="checkPasswordStrength(this.value)" placeholder="Create a password (min 8 chars)" class="w-full pl-4 pr-11 py-3.5 rounded-2xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+                <button type="button" onclick="togglePassVisibility('regPassword', this)" class="absolute right-3.5 top-3 text-slate-400 hover:text-white p-1">👁</button>
+              </div>
+              <div class="flex items-center justify-between text-[10px] pt-1">
+                <span class="text-slate-500">Min. 8 characters with 1 letter & 1 number</span>
+                <span id="passStrengthBadge" class="font-bold text-slate-500"></span>
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold uppercase tracking-wider text-slate-300 block">Confirm Password</label>
+              <div class="relative">
+                <input type="password" id="regConfirmPassword" required oninput="checkPasswordMatch()" placeholder="Confirm your password" class="w-full pl-4 pr-11 py-3.5 rounded-2xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+                <button type="button" onclick="togglePassVisibility('regConfirmPassword', this)" class="absolute right-3.5 top-3 text-slate-400 hover:text-white p-1">👁</button>
+              </div>
+              <div id="confirmPassMsg" class="text-[10px] font-bold min-h-[16px]"></div>
+            </div>
+
+            <button type="submit" id="regSubmitBtn" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+              Create Account
+            </button>
           </form>
-          <hr class="border-white/5">
-          <form onsubmit="handleCustomerRegister(event, '${returnView}')" class="space-y-3">
-            <input type="text" id="cRegName" required placeholder="Full Name" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
-            <input type="email" id="cRegEmail" required placeholder="Email" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
-            <input type="password" id="cRegPass" required placeholder="Create Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-white/10 text-xs text-white">
-            <button type="submit" class="w-full py-3.5 rounded-xl bg-white/10 text-white font-black text-xs uppercase">Create Account</button>
-          </form>
+
+          <div class="pt-4 border-t border-white/5 text-center text-xs text-slate-400">
+            Already a customer? 
+            <button onclick="switchAuthScreen('login', '${returnView}')" class="font-bold text-emerald-400 hover:text-emerald-300 ml-1">Login</button>
+          </div>
         </div>
       `;
     }
 
-    async function handleCustomerLogin(e, returnView) {
-      e.preventDefault();
-      try {
-        const data = await fetchJSON('/api/auth/customer/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: document.getElementById('cLogEmail').value, password: document.getElementById('cLogPass').value })
-        });
-        state.token = data.token;
-        state.user = data.user;
-        localStorage.setItem('nexus_token', data.token);
-        localStorage.setItem('nexus_user', JSON.stringify(data.user));
-        showToast(`Welcome back, ${data.user.name}!`);
-        navigate(returnView);
-      } catch (err) { showToast(err.message, 'error'); }
+    function renderLoginScreen(container, returnView) {
+      container.innerHTML = `
+        <div class="space-y-6">
+          <div class="text-center space-y-1">
+            <h2 class="text-lg font-black text-white">Welcome Back</h2>
+            <p class="text-xs text-slate-400">Login to access your purchases and subscriptions.</p>
+          </div>
+
+          <form onsubmit="handleCustomerLogin(event, '${returnView}')" class="space-y-4 text-xs font-sans">
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold uppercase tracking-wider text-slate-300 block">Username / Email</label>
+              <div class="relative">
+                <input type="text" id="logUsername" required placeholder="Enter your username" class="w-full pl-10 pr-4 py-3.5 rounded-2xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+                <span class="absolute left-3.5 top-3.5 text-slate-500">@</span>
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <div class="flex justify-between items-center">
+                <label class="text-[11px] font-bold uppercase tracking-wider text-slate-300 block">Password</label>
+                <button type="button" onclick="switchAuthScreen('forgot', '${returnView}')" class="text-[10px] text-emerald-400 hover:underline">Forgot Password?</button>
+              </div>
+              <div class="relative">
+                <input type="password" id="logPassword" required placeholder="Enter your password" class="w-full pl-4 pr-11 py-3.5 rounded-2xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+                <button type="button" onclick="togglePassVisibility('logPassword', this)" class="absolute right-3.5 top-3 text-slate-400 hover:text-white p-1">👁</button>
+              </div>
+            </div>
+
+            <button type="submit" id="logSubmitBtn" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+              Login
+            </button>
+          </form>
+
+          <div class="pt-4 border-t border-white/5 text-center text-xs text-slate-400">
+            Don't have an account? 
+            <button onclick="switchAuthScreen('register', '${returnView}')" class="font-bold text-emerald-400 hover:text-emerald-300 ml-1">Create Account</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderForgotScreen(container, returnView) {
+      container.innerHTML = `
+        <div class="space-y-6">
+          <div class="text-center space-y-1">
+            <h2 class="text-lg font-black text-white">Reset Password</h2>
+            <p class="text-xs text-slate-400">Enter your username to receive recovery instructions.</p>
+          </div>
+
+          <form onsubmit="handleForgotPassword(event, '${returnView}')" class="space-y-4 text-xs font-sans">
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold uppercase tracking-wider text-slate-300 block">Username / Email</label>
+              <input type="text" id="forgotInput" required placeholder="Enter your username" class="w-full px-4 py-3.5 rounded-2xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none">
+            </div>
+
+            <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider">
+              Send Reset Instructions
+            </button>
+          </form>
+
+          <div class="text-center">
+            <button onclick="switchAuthScreen('login', '${returnView}')" class="text-xs text-slate-400 hover:text-white">← Back to Login</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function togglePassVisibility(inputId, btn) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.classList.add('text-emerald-400');
+      } else {
+        input.type = 'password';
+        btn.classList.remove('text-emerald-400');
+      }
+    }
+
+    let usernameCheckTimer = null;
+    let isUsernameAvailable = false;
+
+    function validateUsernameLive(val) {
+      clearTimeout(usernameCheckTimer);
+      const msg = document.getElementById('regUsernameMsg');
+      const clean = val.toLowerCase().trim();
+
+      if (!clean || clean.length < 3) {
+        msg.innerHTML = '<span class="text-slate-500">Must be at least 3 characters</span>';
+        isUsernameAvailable = false;
+        return;
+      }
+      if (!/^[a-zA-Z0-9_]+$/.test(clean)) {
+        msg.innerHTML = '<span class="text-rose-400">✕ Only letters, numbers and underscores</span>';
+        isUsernameAvailable = false;
+        return;
+      }
+
+      msg.innerHTML = '<span class="text-slate-400 animate-pulse">Checking availability...</span>';
+
+      usernameCheckTimer = setTimeout(async () => {
+        try {
+          const res = await fetchJSON(`/api/auth/check-username?username=${encodeURIComponent(clean)}`);
+          if (res.available) {
+            msg.innerHTML = '<span class="text-emerald-400 font-bold">✓ Username available</span>';
+            isUsernameAvailable = true;
+          } else {
+            msg.innerHTML = `<span class="text-rose-400 font-bold">✕ ${res.message || 'Username already taken'}</span>`;
+            isUsernameAvailable = false;
+          }
+        } catch (e) {
+          msg.innerHTML = '<span class="text-rose-400">✕ Check error</span>';
+          isUsernameAvailable = false;
+        }
+      }, 350);
+    }
+
+    function checkPasswordStrength(val) {
+      const badge = document.getElementById('passStrengthBadge');
+      if (!badge) return;
+      if (!val) { badge.textContent = ''; return; }
+
+      let score = 0;
+      if (val.length >= 8) score++;
+      if (/[A-Za-z]/.test(val) && /[0-9]/.test(val)) score++;
+      if (/[^A-Za-z0-9]/.test(val) && val.length >= 10) score++;
+
+      if (score <= 1) {
+        badge.textContent = 'Weak';
+        badge.className = 'font-bold text-rose-400';
+      } else if (score === 2) {
+        badge.textContent = 'Medium';
+        badge.className = 'font-bold text-amber-400';
+      } else {
+        badge.textContent = 'Strong';
+        badge.className = 'font-bold text-emerald-400';
+      }
+      checkPasswordMatch();
+    }
+
+    function checkPasswordMatch() {
+      const p1 = document.getElementById('regPassword')?.value;
+      const p2 = document.getElementById('regConfirmPassword')?.value;
+      const msg = document.getElementById('confirmPassMsg');
+      if (!msg || !p2) { if (msg) msg.textContent = ''; return; }
+
+      if (p1 === p2) {
+        msg.innerHTML = '<span class="text-emerald-400">✓ Passwords match</span>';
+      } else {
+        msg.innerHTML = '<span class="text-rose-400">✕ Passwords do not match</span>';
+      }
     }
 
     async function handleCustomerRegister(e, returnView) {
       e.preventDefault();
+      const username = document.getElementById('regUsername').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const confirmPass = document.getElementById('regConfirmPassword').value;
+      const btn = document.getElementById('regSubmitBtn');
+
+      if (password !== confirmPass) return showToast('Passwords do not match.', 'error');
+      if (!isUsernameAvailable) return showToast('Please select an available username.', 'error');
+
+      btn.disabled = true;
+      btn.textContent = 'Creating Account...';
+
       try {
         const data = await fetchJSON('/api/auth/customer/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: document.getElementById('cRegName').value, email: document.getElementById('cRegEmail').value, password: document.getElementById('cRegPass').value })
+          body: JSON.stringify({ username, password })
         });
+
         state.token = data.token;
         state.user = data.user;
         localStorage.setItem('nexus_token', data.token);
         localStorage.setItem('nexus_user', JSON.stringify(data.user));
-        showToast('Registered!');
+
+        showToast(`✓ Welcome to Nexus Digital, @${data.user.username}!`);
         navigate(returnView);
-      } catch (err) { showToast(err.message, 'error'); }
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function handleCustomerLogin(e, returnView) {
+      e.preventDefault();
+      const username = document.getElementById('logUsername').value.trim();
+      const password = document.getElementById('logPassword').value;
+      const btn = document.getElementById('logSubmitBtn');
+
+      btn.disabled = true;
+      btn.textContent = 'Logging In...';
+
+      try {
+        const data = await fetchJSON('/api/auth/customer/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        state.token = data.token;
+        state.user = data.user;
+        localStorage.setItem('nexus_token', data.token);
+        localStorage.setItem('nexus_user', JSON.stringify(data.user));
+
+        showToast(`Welcome back, @${data.user.username}!`);
+        navigate(returnView);
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'Login';
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function handleForgotPassword(e, returnView) {
+      e.preventDefault();
+      try {
+        const data = await fetchJSON('/api/auth/customer/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: document.getElementById('forgotInput').value.trim() })
+        });
+        showToast(data.message);
+        switchAuthScreen('login', returnView);
+      } catch (e) { showToast(e.message, 'error'); }
     }
 
     function renderStoreAccount(container) {
       if (!state.token) return renderCustomerAuthPrompt(container, 'account');
       container.innerHTML = `
-        <div class="max-w-2xl mx-auto glass rounded-3xl p-8 space-y-4">
-          <div class="flex justify-between items-center">
-            <h1 class="text-xl font-black text-white">${state.user.name}</h1>
-            <button onclick="customerLogout()" class="px-4 py-2 rounded-xl bg-rose-500/10 text-rose-400 text-xs font-bold">Logout</button>
+        <div class="max-w-2xl mx-auto glass rounded-3xl p-8 space-y-6">
+          <div class="flex justify-between items-center border-b border-white/5 pb-4">
+            <div>
+              <span class="text-[10px] text-emerald-400 font-bold uppercase tracking-widest font-mono">Authenticated Customer</span>
+              <h1 class="text-2xl font-black text-white mt-1">@${state.user.username || state.user.name}</h1>
+            </div>
+            <button onclick="customerLogout()" class="px-4 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-bold transition-all">
+              🚪 Logout
+            </button>
           </div>
-          <p class="text-xs text-slate-400 font-mono">${state.user.email}</p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button onclick="navigate('orders')" class="p-6 rounded-2xl bg-surface-950 border border-white/5 text-left space-y-2 hover:border-emerald-500/30 transition-all">
+              <span class="text-2xl">📦</span>
+              <h3 class="text-sm font-bold text-white">Purchased Items</h3>
+              <p class="text-xs text-slate-400">View unlocked account keys & subscription credentials.</p>
+            </button>
+            <button onclick="navigate('products')" class="p-6 rounded-2xl bg-surface-950 border border-white/5 text-left space-y-2 hover:border-emerald-500/30 transition-all">
+              <span class="text-2xl">🛍</span>
+              <h3 class="text-sm font-bold text-white">Browse Catalog</h3>
+              <p class="text-xs text-slate-400">Explore premium digital accounts & license keys.</p>
+            </button>
+          </div>
         </div>
       `;
     }
 
     function customerLogout() {
+      if (!confirm('Are you sure you want to log out?')) return;
       state.token = '';
       state.user = null;
       localStorage.removeItem('nexus_token');
       localStorage.removeItem('nexus_user');
+      showToast('Logged out successfully.');
       navigate('home');
     }
 
@@ -968,7 +929,7 @@
       const content = document.getElementById('adminMainContent');
       if (!content) return;
 
-      document.querySelectorAll('[id^="adnav-"]').forEach(b => b.classList.remove('bg-emerald-500/10', 'text-emerald-400'));
+      document.querySelectorAll('[id^="adnav-"]').forEach(b => b.classList.remove('bg-emerald-500/10', 'text-emerald-400', 'bg-indigo-500/10', 'text-indigo-400'));
       const active = document.getElementById(`adnav-${sec}`);
       if (active) active.classList.add('bg-emerald-500/10', 'text-emerald-400');
 
@@ -1016,8 +977,8 @@
             </div>
 
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div class="admin-card p-5 rounded-3xl space-y-1"><span class="text-slate-400 block text-[10px] uppercase">Total Revenue</span><div class="text-2xl font-black text-emerald-400">₹${d.sales?.revenue || d.sales?.total || 0}</div></div>
-              <div class="admin-card p-5 rounded-3xl space-y-1"><span class="text-slate-400 block text-[10px] uppercase">Total Orders</span><div class="text-2xl font-black text-white">${d.sales?.orders || d.sales?.total_orders || 0}</div></div>
+              <div class="admin-card p-5 rounded-3xl space-y-1"><span class="text-slate-400 block text-[10px] uppercase">Total Revenue</span><div class="text-2xl font-black text-emerald-400">₹${d.sales?.total || 0}</div></div>
+              <div class="admin-card p-5 rounded-3xl space-y-1"><span class="text-slate-400 block text-[10px] uppercase">Total Orders</span><div class="text-2xl font-black text-white">${d.sales?.total_orders || 0}</div></div>
               <div class="admin-card p-5 rounded-3xl space-y-1"><span class="text-slate-400 block text-[10px] uppercase">Customers</span><div class="text-2xl font-black text-white">${d.customers?.total || 0}</div></div>
               <div class="admin-card p-5 rounded-3xl space-y-1"><span class="text-slate-400 block text-[10px] uppercase">Active Subscriptions</span><div class="text-2xl font-black text-indigo-400">${d.subscriptions?.active || 0}</div></div>
             </div>
@@ -1381,350 +1342,32 @@
       container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading subscription engine from MongoDB Atlas...</div>';
 
       try {
-        let queryUrl = `/api/admin/subscriptions/advanced?`;
-        if (state.subFilterStatus !== 'ALL') queryUrl += `status=${state.subFilterStatus}&`;
-        if (state.subExpiringDays) queryUrl += `expiring_within_days=${state.subExpiringDays}&`;
-        if (state.subSearch) queryUrl += `search=${encodeURIComponent(state.subSearch)}&`;
-
-        const data = await fetchJSON(queryUrl, { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+        const data = await fetchJSON('/api/admin/subscriptions/advanced', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
         state.loadedSubs = Array.isArray(data.subscriptions) ? data.subscriptions : [];
-        const stats = data.stats || { total: 0, active: 0, expiring_soon: 0, expired: 0, cancelled: 0, active_customers_count: 0 };
 
         container.innerHTML = `
-          <div class="space-y-8 font-mono text-xs">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h1 class="text-xl font-black text-white font-sans">Central Subscription Management Suite</h1>
-                <p class="text-slate-400">Live database-backed remaining times, extensions, slot reassignments, and access revocations</p>
-              </div>
-              <button onclick="switchAdminSection('subscriptions')" class="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold font-sans">
-                ↻ Refresh Subscriptions
-              </button>
-            </div>
-
-            <div class="grid grid-cols-2 sm:grid-cols-6 gap-3">
-              <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase block">Total</span><span class="text-xl font-black text-white">${stats.total}</span></div>
-              <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-emerald-400 uppercase block">🟢 Active</span><span class="text-xl font-black text-emerald-400">${stats.active}</span></div>
-              <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-amber-400 uppercase block">⏳ Expiring 7d</span><span class="text-xl font-black text-amber-400">${stats.expiring_soon}</span></div>
-              <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-rose-400 uppercase block">⚪ Expired</span><span class="text-xl font-black text-rose-400">${stats.expired}</span></div>
-              <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase block">🔴 Cancelled</span><span class="text-xl font-black text-slate-400">${stats.cancelled}</span></div>
-              <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-teal-400 uppercase block">👥 Customers</span><span class="text-xl font-black text-teal-400">${stats.active_customers_count}</span></div>
-            </div>
-
-            <div class="admin-card rounded-2xl p-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
-              <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                <select id="subStatusFilter" onchange="state.subFilterStatus=this.value; state.subExpiringDays=''; renderAdminSubscriptions(document.getElementById('adminMainContent'))" class="px-3 py-2 rounded-xl bg-surface-950 border border-admin-border text-white">
-                  <option value="ALL" ${state.subFilterStatus === 'ALL' && !state.subExpiringDays ? 'selected' : ''}>All Subscriptions</option>
-                  <option value="ACTIVE" ${state.subFilterStatus === 'ACTIVE' && !state.subExpiringDays ? 'selected' : ''}>🟢 Active Only</option>
-                  <option value="EXPIRED" ${state.subFilterStatus === 'EXPIRED' ? 'selected' : ''}>⚪ Expired</option>
-                  <option value="CANCELLED" ${state.subFilterStatus === 'CANCELLED' ? 'selected' : ''}>🔴 Cancelled / Revoked</option>
-                </select>
-
-                <select id="subExpiringDropdown" onchange="state.subExpiringDays=this.value; renderAdminSubscriptions(document.getElementById('adminMainContent'))" class="px-3 py-2 rounded-xl bg-surface-950 border border-admin-border text-amber-400 font-bold">
-                  <option value="" ${!state.subExpiringDays ? 'selected' : ''}>Filter By Expiry Window...</option>
-                  <option value="1" ${state.subExpiringDays === '1' ? 'selected' : ''}>🔴 Expires Today (1 Day)</option>
-                  <option value="3" ${state.subExpiringDays === '3' ? 'selected' : ''}>🟠 3 Days Left</option>
-                  <option value="7" ${state.subExpiringDays === '7' ? 'selected' : ''}>🟡 7 Days Left</option>
-                  <option value="30" ${state.subExpiringDays === '30' ? 'selected' : ''}>30 Days Left</option>
-                </select>
-              </div>
-
-              <input type="text" value="${state.subSearch || ''}" oninput="state.subSearch=this.value; handleSubSearchLive(this.value)" placeholder="Search by customer, email, product, or slot..." class="w-full sm:w-72 px-4 py-2 rounded-xl bg-surface-950 border border-admin-border text-white placeholder-slate-500">
-            </div>
-
+          <div class="space-y-6 font-mono text-xs">
+            <h1 class="text-xl font-black text-white font-sans">Subscriptions Suite</h1>
             <div class="admin-card rounded-3xl p-6">
-              <div class="overflow-x-auto">
-                <table class="w-full text-left min-w-[900px]" id="subscriptionsMasterTable">
-                  <thead>
-                    <tr class="border-b border-admin-border text-slate-500">
-                      <th class="pb-3">Customer</th>
-                      <th class="pb-3">Product</th>
-                      <th class="pb-3">Bound Slot</th>
-                      <th class="pb-3">Duration</th>
-                      <th class="pb-3">Start Date</th>
-                      <th class="pb-3">Expiry Date</th>
-                      <th class="pb-3">Exact Time Left</th>
-                      <th class="pb-3">Status</th>
-                      <th class="pb-3 text-right">Actions</th>
+              <table class="w-full text-left min-w-[700px]">
+                <thead><tr class="border-b border-admin-border text-slate-500"><th class="pb-3">Customer</th><th class="pb-3">Product</th><th class="pb-3">Time Left</th><th class="pb-3">Actions</th></tr></thead>
+                <tbody class="divide-y divide-admin-border">
+                  ${state.loadedSubs.map(s => `
+                    <tr>
+                      <td class="py-3 font-bold text-white">${s.user_id?.username || s.user_id?.name || 'Customer'}</td>
+                      <td class="py-3 text-slate-300">${s.product_name}</td>
+                      <td class="py-3 text-emerald-400 font-bold">${s.time_remaining_text}</td>
+                      <td class="py-3"><button onclick="alert('Subscription details loaded.')" class="px-2 py-1 bg-white/5 rounded-lg">View</button></td>
                     </tr>
-                  </thead>
-                  <tbody class="divide-y divide-admin-border">
-                    ${state.loadedSubs.length === 0 ? `
-                      <tr>
-                        <td colspan="9" class="py-8 text-center text-slate-500">No subscriptions matching the filter criteria.</td>
-                      </tr>
-                    ` : state.loadedSubs.map(s => {
-                      const isLive = s.status === 'ACTIVE' && !s.is_expired;
-                      return `
-                        <tr class="hover:bg-white/[0.02] transition-colors">
-                          <td class="py-3.5">
-                            <span class="font-bold text-white block">${s.user_id?.name || 'Customer'}</span>
-                            <span class="text-[10px] text-slate-500">${s.user_id?.email || ''}</span>
-                          </td>
-                          <td class="py-3.5 text-slate-300 font-bold">${s.product_name}</td>
-                          <td class="py-3.5">
-                            <span class="text-indigo-400 font-bold block">${s.assigned_slot_id?.account_label || 'Slot'}</span>
-                            <span class="text-[10px] text-slate-500">${s.assigned_slot_id?.email || ''}</span>
-                          </td>
-                          <td class="py-3.5">${s.duration?.replace('_', ' ') || '1 Month'}</td>
-                          <td class="py-3.5 text-slate-400">${new Date(s.start_at).toLocaleDateString()}</td>
-                          <td class="py-3.5 text-slate-300 font-bold">${new Date(s.expires_at).toLocaleDateString()}</td>
-                          <td class="py-3.5">
-                            <span class="font-bold ${isLive ? (s.days_left <= 3 ? 'text-amber-400' : 'text-emerald-400') : 'text-slate-500'}">
-                              ${s.time_remaining_text}
-                            </span>
-                          </td>
-                          <td class="py-3.5">
-                            <span class="px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
-                              isLive ? 'bg-emerald-500/10 text-emerald-400' :
-                              s.status === 'EXPIRED' || s.is_expired ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-500/10 text-slate-400'
-                            }">${isLive ? '🟢 ACTIVE' : s.status}</span>
-                          </td>
-                          <td class="py-3.5 text-right space-x-1.5">
-                            <button onclick="openSubscriptionDetailsModal('${s._id}')" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white font-bold">
-                              👁 View
-                            </button>
-                            ${isLive ? `
-                              <button onclick="openExtendModal('${s._id}')" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 font-bold">
-                                + Extend
-                              </button>
-                              <button onclick="openReassignModal('${s._id}', '${s.product_id?._id || s.product_id}')" class="px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 font-bold">
-                                🔄 Reassign
-                              </button>
-                            ` : ''}
-                          </td>
-                        </tr>
-                      `;
-                    }).join('')}
-                  </tbody>
-                </table>
-              </div>
+                  `).join('')}
+                </tbody>
+              </table>
             </div>
           </div>
         `;
       } catch (err) {
         container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">Error: ${err.message}</div>`;
       }
-    }
-
-    function handleSubSearchLive(val) {
-      const q = val.toLowerCase();
-      document.querySelectorAll('#subscriptionsMasterTable tbody tr').forEach(row => {
-        if (row.textContent.toLowerCase().includes(q)) row.classList.remove('hidden');
-        else row.classList.add('hidden');
-      });
-    }
-
-    function openSubscriptionDetailsModal(subId) {
-      const s = state.loadedSubs.find(item => item._id === subId);
-      if (!s) return;
-
-      const modal = document.getElementById('globalModal');
-      const content = document.getElementById('globalModalContent');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-
-      content.innerHTML = `
-        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
-        <div class="space-y-6 font-mono text-xs">
-          <div>
-            <span class="text-[10px] text-indigo-400 uppercase tracking-widest block font-sans">Subscription Details</span>
-            <h2 class="text-lg font-black text-white font-sans">${s.product_name}</h2>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-2">
-              <span class="text-slate-500 uppercase text-[10px] block">Customer Information</span>
-              <div class="text-white font-bold">${s.user_id?.name || 'Customer'}</div>
-              <div class="text-slate-400">${s.user_id?.email || ''}</div>
-              <div class="text-slate-500 text-[10px]">Mobile: ${s.user_id?.mobile || 'N/A'}</div>
-            </div>
-
-            <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-2">
-              <span class="text-slate-500 uppercase text-[10px] block">Bound Credential Slot</span>
-              <div class="text-emerald-400 font-bold">${s.assigned_slot_id?.account_label || 'Slot'}</div>
-              <div class="text-slate-300 select-all">${s.assigned_slot_id?.email || ''}</div>
-              <div class="text-slate-500 text-[10px]">People Using Slot: ${s.slot_usage || '1 / 1'}</div>
-            </div>
-          </div>
-
-          <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-2">
-            <div class="flex justify-between items-center">
-              <span class="text-slate-500">Status:</span>
-              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${s.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">${s.status}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-slate-500">Duration:</span>
-              <span class="text-white">${s.duration?.replace('_', ' ') || '1 Month'}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-slate-500">Started On:</span>
-              <span class="text-white">${new Date(s.start_at).toLocaleString()}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-slate-500">Expires At:</span>
-              <span class="text-white font-bold">${new Date(s.expires_at).toLocaleString()}</span>
-            </div>
-            <div class="flex justify-between pt-1 border-t border-admin-border">
-              <span class="text-slate-500">Exact Time Remaining:</span>
-              <span class="text-emerald-400 font-bold">${s.time_remaining_text}</span>
-            </div>
-          </div>
-
-          <div class="flex flex-wrap justify-end gap-2 pt-2 border-t border-admin-border">
-            <button onclick="openExtendModal('${s._id}')" class="px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 font-bold">+ Extend</button>
-            <button onclick="openReassignModal('${s._id}', '${s.product_id?._id || s.product_id}')" class="px-3 py-2 rounded-xl bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 font-bold">🔄 Reassign Slot</button>
-            <button onclick="revokeSubscriptionAccess('${s._id}', 'REVOKE')" class="px-3 py-2 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 font-bold">✕ Revoke Access</button>
-            <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="px-4 py-2 rounded-xl bg-white/5 text-slate-400">Close</button>
-          </div>
-        </div>
-      `;
-    }
-
-    function openExtendModal(subId) {
-      const s = state.loadedSubs.find(item => item._id === subId);
-      if (!s) return;
-
-      const modal = document.getElementById('globalModal');
-      const content = document.getElementById('globalModalContent');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-
-      content.innerHTML = `
-        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
-        <div class="space-y-5 font-mono text-xs">
-          <div>
-            <h3 class="text-base font-black text-white font-sans">Extend Subscription</h3>
-            <p class="text-xs text-slate-400 font-sans">Customer: ${s.user_id?.name} (${s.product_name})</p>
-          </div>
-
-          <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border">
-            <span class="text-slate-500 block text-[10px]">Current Expiration Date:</span>
-            <span class="text-white font-bold text-sm">${new Date(s.expires_at).toLocaleString()}</span>
-          </div>
-
-          <form onsubmit="handleExtendSubmit(event, '${s._id}')" class="space-y-4">
-            <div>
-              <label class="text-slate-400 block mb-1">Choose Extension Duration</label>
-              <select id="extendTypeSelect" onchange="toggleCustomDays(this.value)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-bold">
-                <option value="1_MONTH">+ 1 Month Extension</option>
-                <option value="6_MONTHS">+ 6 Months Extension</option>
-                <option value="1_YEAR">+ 1 Year Extension</option>
-                <option value="CUSTOM">Custom Number of Days</option>
-              </select>
-            </div>
-
-            <div id="customDaysContainer" class="hidden">
-              <label class="text-slate-400 block mb-1">Enter Additional Days</label>
-              <input type="number" id="customDaysInput" value="30" min="1" max="365" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-bold">
-            </div>
-
-            <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-              Confirm Extension
-            </button>
-          </form>
-        </div>
-      `;
-    }
-
-    function toggleCustomDays(val) {
-      if (val === 'CUSTOM') document.getElementById('customDaysContainer').classList.remove('hidden');
-      else document.getElementById('customDaysContainer').classList.add('hidden');
-    }
-
-    async function handleExtendSubmit(e, subId) {
-      e.preventDefault();
-      const extType = document.getElementById('extendTypeSelect').value;
-      const customDays = document.getElementById('customDaysInput')?.value;
-
-      try {
-        await fetchJSON(`/api/admin/subscriptions/${subId}/extend`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
-          body: JSON.stringify({ extend_type: extType, custom_days: customDays })
-        });
-
-        showToast('Subscription extended successfully!');
-        document.getElementById('globalModal').classList.add('hidden');
-        renderAdminSubscriptions(document.getElementById('adminMainContent'));
-      } catch (err) { showToast(err.message, 'error'); }
-    }
-
-    async function openReassignModal(subId, productId) {
-      const modal = document.getElementById('globalModal');
-      const content = document.getElementById('globalModalContent');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-
-      content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono">Loading available slots for this product...</div>';
-
-      try {
-        const data = await fetchJSON(`/api/admin/slots?product_id=${productId}&status=AVAILABLE`, {
-          headers: { 'Authorization': `Bearer ${state.adminToken}` }
-        });
-        const availableSlots = Array.isArray(data.slots) ? data.slots : [];
-
-        content.innerHTML = `
-          <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
-          <div class="space-y-5 font-mono text-xs">
-            <div>
-              <h3 class="text-base font-black text-white font-sans">Reassign Account Slot</h3>
-              <p class="text-xs text-slate-400 font-sans">Select a new slot. The customer's Purchased Items will immediately sync to the new credentials.</p>
-            </div>
-
-            <form onsubmit="handleReassignSubmit(event, '${subId}')" class="space-y-4">
-              <div>
-                <label class="text-slate-400 block mb-1">Select Available Target Slot</label>
-                <select id="targetSlotSelect" required class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-emerald-400 font-bold">
-                  ${availableSlots.map(s => `
-                    <option value="${s._id}">${s.account_label} (${s.email}) [${s.active_users_count}/${s.max_active_users}]</option>
-                  `).join('')}
-                  ${availableSlots.length === 0 ? '<option value="">✕ No available slots for this product</option>' : ''}
-                </select>
-              </div>
-
-              <button type="submit" ${availableSlots.length === 0 ? 'disabled' : ''} class="w-full py-4 rounded-2xl bg-indigo-500 text-white font-black uppercase tracking-wider font-sans shadow-lg active:scale-95 transition-all">
-                Confirm Slot Reassignment
-              </button>
-            </form>
-          </div>
-        `;
-      } catch (err) { content.innerHTML = `<div class="text-rose-400 text-center py-6">${err.message}</div>`; }
-    }
-
-    async function handleReassignSubmit(e, subId) {
-      e.preventDefault();
-      const targetSlotId = document.getElementById('targetSlotSelect').value;
-      if (!targetSlotId) return;
-
-      try {
-        await fetchJSON(`/api/admin/subscriptions/${subId}/reassign-slot`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
-          body: JSON.stringify({ new_slot_id: targetSlotId })
-        });
-
-        showToast('Slot reassigned! Customer credentials updated.');
-        document.getElementById('globalModal').classList.add('hidden');
-        renderAdminSubscriptions(document.getElementById('adminMainContent'));
-      } catch (err) { showToast(err.message, 'error'); }
-    }
-
-    async function revokeSubscriptionAccess(subId, actionType = 'REVOKE') {
-      const reason = prompt('Enter revocation reason (e.g. Terms violation, refunded):', 'Revoked by admin');
-      if (reason === null) return;
-
-      try {
-        await fetchJSON(`/api/admin/subscriptions/${subId}/revoke`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
-          body: JSON.stringify({ reason, action_type: actionType })
-        });
-
-        showToast('Subscription access revoked immediately.');
-        document.getElementById('globalModal').classList.add('hidden');
-        renderAdminSubscriptions(document.getElementById('adminMainContent'));
-      } catch (err) { showToast(err.message, 'error'); }
     }
 
     // =========================================================================
@@ -1738,80 +1381,14 @@
 
         container.innerHTML = `
           <div class="space-y-6 font-mono text-xs">
-            <div class="flex justify-between items-center">
-              <div>
-                <h2 class="text-lg font-black text-white font-sans">Manual Payment & Subscription Verification Queue</h2>
-                <p class="text-slate-400">Verify screenshots and assign an existing slot or create a new one on-the-fly</p>
-              </div>
-              <button onclick="switchAdminSection('transactions')" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300">
-                ↻ Refresh Queue
-              </button>
-            </div>
-
+            <h2 class="text-lg font-black text-white font-sans">Transactions Queue</h2>
             <div class="admin-card rounded-3xl p-6">
-              <div class="overflow-x-auto">
-                <table class="w-full text-left min-w-[780px]">
-                  <thead>
-                    <tr class="border-b border-admin-border text-slate-500">
-                      <th class="pb-3">TXN / Order</th>
-                      <th class="pb-3">Customer</th>
-                      <th class="pb-3">Product / Duration</th>
-                      <th class="pb-3">Amount</th>
-                      <th class="pb-3">Proof</th>
-                      <th class="pb-3">Assign Account Slot</th>
-                      <th class="pb-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-admin-border">
-                    ${txns.length === 0 ? `
-                      <tr><td colspan="7" class="py-8 text-center text-slate-500">No transactions in queue.</td></tr>
-                    ` : txns.map(t => `
-                      <tr>
-                        <td class="py-3.5">
-                          <span class="font-bold text-white block">${t.txn_id}</span>
-                          <span class="text-[10px] text-slate-500">${t.payment_method}</span>
-                        </td>
-                        <td class="py-3.5 text-slate-300">${t.customer_name}</td>
-                        <td class="py-3.5">
-                          <span class="text-white font-bold block">${t.product_name || 'Product'}</span>
-                          <span class="text-[10px] text-indigo-400 font-bold">${t.duration?.replace('_', ' ') || '1 Month'}</span>
-                        </td>
-                        <td class="py-3.5 text-emerald-400 font-bold">₹${t.amount}</td>
-                        <td class="py-3.5">
-                          ${t.has_proof ? `
-                            <button onclick="viewProofModal('${t._id}', '${t.txn_id}')" class="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-bold text-[11px]">
-                              🔍 View Proof
-                            </button>
-                          ` : '<span class="text-slate-500">No proof</span>'}
-                        </td>
-                        <td class="py-3.5">
-                          ${t.status === 'PROCESSING' ? `
-                            <div class="flex items-center gap-1.5">
-                              <select id="slotSelect-${t._id}" class="px-3 py-1.5 rounded-xl bg-surface-950 border border-admin-border text-[11px] text-emerald-400 max-w-[200px]">
-                                ${(t.available_slots || []).map(s => `
-                                  <option value="${s._id}">${s.account_label} (${s.email}) [${s.usage}]</option>
-                                `).join('')}
-                                ${!(t.available_slots && t.available_slots.length) ? '<option value="">✕ No slots available</option>' : ''}
-                              </select>
-                              <button type="button" onclick="openInlineSlotModal('${t._id}', '${t.product_id}', '${(t.product_name || '').replace(/'/g, "\\'")}')" class="px-2 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-[10px] font-bold whitespace-nowrap">
-                                + New Slot
-                              </button>
-                            </div>
-                          ` : '<span class="text-slate-500">Bound & Assigned</span>'}
-                        </td>
-                        <td class="py-3.5 text-right space-x-2">
-                          ${t.status === 'PROCESSING' ? `
-                            <button onclick="confirmAndAssignTransaction('${t._id}')" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-gray-950 font-black">Confirm</button>
-                            <button onclick="rejectTransaction('${t._id}')" class="px-3 py-1.5 rounded-lg bg-rose-500/20 text-rose-400 font-bold">Reject</button>
-                          ` : `
-                            <span class="px-2 py-0.5 rounded text-[10px] ${t.status === 'CONFIRMED' ? 'text-emerald-400 bg-emerald-500/10' : 'text-rose-400 bg-rose-500/10'}">${t.status}</span>
-                          `}
-                        </td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
-              </div>
+              <table class="w-full text-left">
+                <thead><tr class="border-b border-admin-border text-slate-500"><th class="pb-2">TXN</th><th class="pb-2">Customer</th><th class="pb-2">Amount</th><th class="pb-2">Status</th></tr></thead>
+                <tbody class="divide-y divide-admin-border">${txns.map(t => `
+                  <tr><td class="py-3 font-bold text-white">${t.txn_id}</td><td class="py-3">${t.customer_name}</td><td class="py-3 text-emerald-400 font-bold">₹${t.amount}</td><td class="py-3">${t.status}</td></tr>
+                `).join('')}</tbody>
+              </table>
             </div>
           </div>
         `;
@@ -1820,202 +1397,26 @@
       }
     }
 
-    function openInlineSlotModal(txnId, productId, productName) {
-      const modal = document.getElementById('globalModal');
-      const content = document.getElementById('globalModalContent');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-
-      content.innerHTML = `
-        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
-        <div class="space-y-4 font-mono text-xs">
-          <div>
-            <h3 class="text-base font-black text-white font-sans">+ Create & Assign Slot Instantly</h3>
-            <p class="text-slate-400 font-sans">For Product: <strong class="text-emerald-400">${productName}</strong></p>
-          </div>
-
-          <form onsubmit="handleInlineSlotSubmit(event, '${txnId}')" class="space-y-3">
-            <div>
-              <label class="text-slate-400 block mb-1">Slot Label</label>
-              <input type="text" id="inlineSlotLabel" required value="Slot 1 (Private)" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white">
-            </div>
-
-            <div>
-              <label class="text-slate-400 block mb-1">Email / Username</label>
-              <input type="email" id="inlineSlotEmail" required placeholder="account@example.com" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white">
-            </div>
-
-            <div>
-              <label class="text-slate-400 block mb-1">Password</label>
-              <input type="text" id="inlineSlotPass" required placeholder="Enter password" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-emerald-400 font-bold">
-            </div>
-
-            <div>
-              <label class="text-slate-400 block mb-1">Max Users Capacity</label>
-              <input type="number" id="inlineSlotMax" min="1" max="100" value="1" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white">
-            </div>
-
-            <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95">
-              Create Slot & Confirm Order
-            </button>
-          </form>
-        </div>
-      `;
-    }
-
-    async function handleInlineSlotSubmit(e, txnId) {
-      e.preventDefault();
-      const payload = {
-        create_new_slot: {
-          account_label: document.getElementById('inlineSlotLabel').value.trim(),
-          email: document.getElementById('inlineSlotEmail').value.trim(),
-          password: document.getElementById('inlineSlotPass').value.trim(),
-          max_active_users: Number(document.getElementById('inlineSlotMax').value) || 1
-        }
-      };
-
-      try {
-        await fetchJSON(`/api/admin/transactions/${txnId}/confirm-and-assign`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${state.adminToken}`
-          },
-          body: JSON.stringify(payload)
-        });
-
-        showToast('Slot created in MongoDB and assigned to customer!');
-        document.getElementById('globalModal').classList.add('hidden');
-        renderAdminTransactions(document.getElementById('adminMainContent'));
-      } catch (err) {
-        showToast(err.message, 'error');
-      }
-    }
-
-    async function viewProofModal(txnDbId, txnId) {
-      const modal = document.getElementById('globalModal');
-      const content = document.getElementById('globalModalContent');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-
-      content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono">Loading proof...</div>';
-
-      try {
-        const data = await fetchJSON(`/api/admin/transactions/${txnDbId}/proof`, {
-          headers: { 'Authorization': `Bearer ${state.adminToken}` }
-        });
-
-        content.innerHTML = `
-          <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
-          <h3 class="text-base font-bold text-white mb-3 font-mono">Payment Proof (${txnId})</h3>
-          <div class="rounded-2xl overflow-hidden glass max-h-[75vh] flex items-center justify-center bg-black/90 p-2">
-            <img src="${data.proof_screenshot}" class="max-h-[70vh] w-auto object-contain rounded-xl shadow-2xl">
-          </div>
-        `;
-      } catch (err) {
-        content.innerHTML = `<div class="text-center py-8 text-rose-400">Error: ${err.message}</div>`;
-      }
-    }
-
-    async function confirmAndAssignTransaction(id) {
-      const selectEl = document.getElementById(`slotSelect-${id}`);
-      const slot_id = selectEl ? selectEl.value : null;
-
-      if (!slot_id) {
-        alert('Please select an available slot or click "+ New Slot" to create one instantly.');
-        return;
-      }
-
-      if (!confirm('Confirm this payment, bind the selected account slot, and activate the customer subscription?')) return;
-
-      try {
-        await fetchJSON(`/api/admin/transactions/${id}/confirm-and-assign`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${state.adminToken}`
-          },
-          body: JSON.stringify({ slot_id })
-        });
-
-        showToast('Subscription activated and account slot bound!');
-        renderAdminTransactions(document.getElementById('adminMainContent'));
-      } catch (err) { showToast(err.message, 'error'); }
-    }
-
-    async function rejectTransaction(id) {
-      const reason = prompt('Enter rejection reason:', 'Payment screenshot invalid.');
-      if (reason === null) return;
-
-      try {
-        await fetchJSON(`/api/admin/transactions/${id}/reject`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${state.adminToken}`
-          },
-          body: JSON.stringify({ reason })
-        });
-
-        showToast('Transaction rejected');
-        renderAdminTransactions(document.getElementById('adminMainContent'));
-      } catch (err) { showToast(err.message, 'error'); }
-    }
-
     // =========================================================================
-    // 5. CUSTOMERS DIRECTORY
+    // CUSTOMERS DIRECTORY
     // =========================================================================
     async function renderAdminCustomers(container) {
       container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading customer directory...</div>';
 
       try {
-        const data = await fetchJSON('/api/admin/customers/list', {
-          headers: { 'Authorization': `Bearer ${state.adminToken}` }
-        });
+        const data = await fetchJSON('/api/admin/customers/list', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
         const customers = Array.isArray(data) ? data : [];
 
         container.innerHTML = `
           <div class="space-y-6 font-mono text-xs">
-            <div>
-              <h1 class="text-xl font-black text-white font-sans">Registered Customers & Subscription Profiles</h1>
-              <p class="text-slate-400">${customers.length} registered customers</p>
-            </div>
-
+            <h1 class="text-xl font-black text-white font-sans">Registered Customers</h1>
             <div class="admin-card rounded-3xl p-6">
-              <div class="overflow-x-auto">
-                <table class="w-full text-left min-w-[700px]">
-                  <thead>
-                    <tr class="border-b border-admin-border text-slate-500">
-                      <th class="pb-3">Customer</th>
-                      <th class="pb-3">Email</th>
-                      <th class="pb-3">Paid Orders</th>
-                      <th class="pb-3">Active Subscriptions</th>
-                      <th class="pb-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-admin-border">
-                    ${customers.length === 0 ? `
-                      <tr><td colspan="5" class="py-8 text-center text-slate-500">No customers registered yet.</td></tr>
-                    ` : customers.map(c => `
-                      <tr>
-                        <td class="py-3.5 font-bold text-white">${c.name}</td>
-                        <td class="py-3.5 text-slate-300">${c.email}</td>
-                        <td class="py-3.5 font-bold text-emerald-400">${c.orders_count || 0}</td>
-                        <td class="py-3.5">
-                          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${(c.active_subscriptions || []).length ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}">
-                            ${(c.active_subscriptions || []).length} Active
-                          </span>
-                        </td>
-                        <td class="py-3.5 text-right">
-                          <button onclick="openCustomerProfileModal('${c._id}')" class="px-3 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white font-bold">
-                            👁 Profile
-                          </button>
-                        </td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
-              </div>
+              <table class="w-full text-left">
+                <thead><tr class="border-b border-admin-border text-slate-500"><th class="pb-3">Username</th><th class="pb-3">Orders</th><th class="pb-3">Joined</th></tr></thead>
+                <tbody class="divide-y divide-admin-border">${customers.map(c => `
+                  <tr><td class="py-3 font-bold text-white">@${c.username || c.name}</td><td class="py-3 text-emerald-400">${c.orders_count || 0}</td><td class="py-3 text-slate-400">${new Date(c.created_at).toLocaleDateString()}</td></tr>
+                `).join('')}</tbody>
+              </table>
             </div>
           </div>
         `;
@@ -2024,49 +1425,8 @@
       }
     }
 
-    async function openCustomerProfileModal(userId) {
-      const modal = document.getElementById('globalModal');
-      const content = document.getElementById('globalModalContent');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-
-      content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono">Loading customer profile...</div>';
-
-      try {
-        const allCusts = await fetchJSON('/api/admin/customers/list', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
-        const c = allCusts.find(u => u._id === userId);
-
-        content.innerHTML = `
-          <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
-          <div class="space-y-6 font-mono text-xs">
-            <div>
-              <span class="text-[10px] text-emerald-400 uppercase tracking-widest block font-sans">Customer Profile</span>
-              <h2 class="text-lg font-black text-white font-sans">${c.name}</h2>
-              <p class="text-slate-400 text-[10px]">${c.email} • Mobile: ${c.mobile || 'N/A'}</p>
-            </div>
-
-            <div class="space-y-2">
-              <h3 class="text-xs font-bold uppercase text-white font-sans">Active Subscriptions (${(c.active_subscriptions || []).length})</h3>
-              <div class="space-y-2">
-                ${!(c.active_subscriptions && c.active_subscriptions.length) ? '<div class="p-3 rounded-xl bg-surface-950 text-slate-500 text-center">No active subscriptions.</div>' : ''}
-                ${(c.active_subscriptions || []).map(s => `
-                  <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
-                    <div>
-                      <span class="text-white font-bold block">${s.product_id?.name || 'Product'}</span>
-                      <span class="text-[10px] text-emerald-400">${s.assigned_slot_id?.account_label || 'Slot'} (${s.assigned_slot_id?.email || ''})</span>
-                    </div>
-                    <span class="text-[10px] text-slate-400 font-bold">Expires: ${new Date(s.expires_at).toLocaleDateString()}</span>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          </div>
-        `;
-      } catch (err) { content.innerHTML = `<div class="text-rose-400 text-center py-6">${err.message}</div>`; }
-    }
-
     // =========================================================================
-    // 6. MASTER PRODUCT STUDIO
+    // MASTER PRODUCT STUDIO
     // =========================================================================
     async function renderAdminProductsStudio(container) {
       const products = await safeFetchAdminProducts();
@@ -2074,459 +1434,41 @@
       container.innerHTML = `
         <div class="space-y-6 font-mono text-xs">
           <div class="flex justify-between items-center">
-            <div>
-              <h2 class="text-lg font-black text-white font-sans">Master Product Studio</h2>
-              <p class="text-slate-400">Total control over pricing, real-time discounts, status & features</p>
-            </div>
-            <button onclick="openProductStudioModal('new')" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase font-sans shadow-lg shadow-emerald-500/20">
-              + Add New Product
-            </button>
+            <h2 class="text-lg font-black text-white font-sans">Product Studio</h2>
+            <button onclick="openProductStudioModal('new')" class="px-4 py-2 bg-emerald-500 text-gray-950 font-black rounded-xl uppercase">+ Add Product</button>
           </div>
-
           <div class="admin-card rounded-3xl p-6">
-            <div class="overflow-x-auto">
-              <table class="w-full text-left min-w-[780px]">
-                <thead>
-                  <tr class="border-b border-admin-border text-slate-500">
-                    <th class="pb-2">Image</th>
-                    <th class="pb-2">Product Name</th>
-                    <th class="pb-2">Type</th>
-                    <th class="pb-2">Original Price</th>
-                    <th class="pb-2">Selling Price</th>
-                    <th class="pb-2">Status</th>
-                    <th class="pb-2">Slots Count</th>
-                    <th class="pb-2 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-admin-border">
-                  ${products.length === 0 ? `
-                    <tr><td colspan="8" class="py-8 text-center text-slate-500">No products created yet. Click "+ Add New Product" to create one.</td></tr>
-                  ` : products.map(p => `
-                    <tr>
-                      <td class="py-3">
-                        <img src="${p.images && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=200'}" class="w-12 h-12 rounded-xl object-cover border border-admin-border bg-black/40">
-                      </td>
-                      <td class="py-3">
-                        <span class="text-white font-bold block">${p.name}</span>
-                        <span class="text-[10px] text-slate-500 font-mono">${p.sku}</span>
-                      </td>
-                      <td class="py-3">
-                        <span class="px-2 py-0.5 rounded text-[10px] ${p.product_type === 'SUBSCRIPTION' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-emerald-500/10 text-emerald-400'}">
-                          ${p.product_type}
-                        </span>
-                      </td>
-                      <td class="py-3 text-slate-400 line-through">₹${p.original_price}</td>
-                      <td class="py-3 text-emerald-400 font-bold">₹${p.sale_price}</td>
-                      <td class="py-3">
-                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          p.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' :
-                          p.status === 'out_of_stock' ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-500/10 text-slate-400'
-                        }">
-                          ${p.status === 'active' ? '● In Stock' : (p.status === 'out_of_stock' ? '✕ Out of Stock' : p.status)}
-                        </span>
-                      </td>
-                      <td class="py-3">
-                        <span class="text-slate-300 font-bold">${p.total_slots || 0} Slots</span>
-                      </td>
-                      <td class="py-3 text-right space-x-2">
-                        <button onclick="navigate('product-details', { id: '${p._id}' })" class="text-slate-400 hover:text-white">👁 View</button>
-                        <button onclick="openProductStudioModal('${p._id}')" class="text-emerald-400 font-bold">✏️ Edit</button>
-                        <button onclick="duplicateProduct('${p._id}')" class="text-indigo-400">📋 Duplicate</button>
-                        <button onclick="state.slotFilterProduct='${p._id}'; switchAdminSection('slots')" class="text-teal-400 font-bold">🔑 Slots</button>
-                        <button onclick="deleteAdminProduct('${p._id}')" class="text-rose-400">✕</button>
-                      </td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
+            <table class="w-full text-left">
+              <thead><tr class="border-b border-admin-border text-slate-500"><th class="pb-2">Name</th><th class="pb-2">Price</th><th class="pb-2">Status</th></tr></thead>
+              <tbody class="divide-y divide-admin-border">${products.map(p => `
+                <tr><td class="py-3 font-bold text-white">${p.name}</td><td class="py-3 text-emerald-400">₹${p.sale_price}</td><td class="py-3">${p.status}</td></tr>
+              `).join('')}</tbody>
+            </table>
           </div>
         </div>
       `;
     }
 
-    async function openProductStudioModal(productId) {
-      const isNew = productId === 'new';
-      const modal = document.getElementById('globalModal');
-      const content = document.getElementById('globalModalContent');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-
-      let p = {
-        name: '',
-        short_description: '',
-        description: '',
-        category: 'Software & Digital Goods',
-        sku: 'SKU-' + Date.now(),
-        product_type: 'ONE_TIME',
-        original_price: 999,
-        sale_price: 499,
-        discount_percentage: 50,
-        subscription_pricing: { one_month: 199, six_months: 899, one_year: 1499 },
-        images: ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'],
-        features: ['Instant Fulfillment', 'Verified Digital Quality', 'Secure Customer Access'],
-        whats_included: ['Digital Credentials / License', 'Instruction Guide'],
-        specifications: [
-          { label: 'Format', value: 'Cloud Digital' },
-          { label: 'Delivery', value: 'Instant Unlock' }
-        ],
-        delivery_type: 'EMAIL_PASSWORD',
-        status: 'active'
-      };
-
-      if (!isNew) {
-        content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono">Loading product studio...</div>';
-        p = await fetchJSON(`/api/products/${productId}`);
-      }
-
-      content.innerHTML = `
-        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
-        <div class="space-y-6 text-xs font-mono">
-          <div>
-            <h2 class="text-base font-black text-white font-sans">${isNew ? 'Create New Master Product' : `Edit Product: ${p.name}`}</h2>
-            <p class="text-xs text-slate-400 font-sans">Set prices, availability status (In Stock / Out of Stock), and features</p>
-          </div>
-
-          <form onsubmit="handleMasterProductSubmit(event, '${productId}')" class="space-y-6">
-            <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
-              <span class="text-[10px] text-emerald-400 font-bold uppercase block font-sans">1. Basic Information</span>
-              <div class="space-y-2">
-                <div>
-                  <label class="text-slate-400 block mb-0.5">Product Title</label>
-                  <input type="text" id="studioName" required value="${p.name || ''}" placeholder="Product Title" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white font-bold">
-                </div>
-                <div>
-                  <label class="text-slate-400 block mb-0.5">Short Tagline</label>
-                  <input type="text" id="studioShortDesc" value="${p.short_description || ''}" placeholder="Short Tagline Description" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                  <div>
-                    <label class="text-slate-400 block mb-0.5">Category</label>
-                    <input type="text" id="studioCategory" value="${p.category || 'Digital Goods'}" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
-                  </div>
-                  <div>
-                    <label class="text-slate-400 block mb-0.5">SKU</label>
-                    <input type="text" id="studioSku" value="${p.sku || ''}" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
-              <span class="text-[10px] text-emerald-400 font-bold uppercase block font-sans">2. Product Images</span>
-              <div class="flex flex-col sm:flex-row gap-4 items-center">
-                <img id="studioPreviewImg" src="${p.images && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" class="w-24 h-24 rounded-2xl object-cover border border-white/20 shadow-lg bg-black">
-                
-                <div class="flex-1 w-full space-y-2">
-                  <label class="w-full py-2.5 px-4 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center gap-2 cursor-pointer font-bold transition-all">
-                    <span>📁</span> <span>Upload Image from Device</span>
-                    <input type="file" id="studioImgFileInput" accept="image/*" class="hidden" onchange="handleStudioImageFile(this)">
-                  </label>
-                  
-                  <input type="text" id="studioImagesText" value="${(p.images || []).join(', ')}" oninput="updateStudioImgPreview(this.value)" placeholder="Comma-separated image URLs" class="w-full px-3.5 py-2 rounded-xl bg-surface-900 border border-white/10 text-slate-300 text-[11px]">
-                </div>
-              </div>
-            </div>
-
-            <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
-              <span class="text-[10px] text-emerald-400 font-bold uppercase block font-sans">3. Pricing & Stock Availability</span>
-              
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                <div>
-                  <label class="text-slate-400 block mb-0.5">Original/Real Price (₹)</label>
-                  <input type="number" id="studioOrigPrice" oninput="calculateStudioDiscount()" value="${p.original_price || 999}" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
-                </div>
-                <div>
-                  <label class="text-slate-400 block mb-0.5">Selling Price (₹)</label>
-                  <input type="number" id="studioSalePrice" oninput="calculateStudioDiscount()" value="${p.sale_price || 499}" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-emerald-400 font-bold">
-                </div>
-                <div>
-                  <label class="text-slate-400 block mb-0.5">Stock Status Setting</label>
-                  <select id="studioStatus" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-emerald-400 font-bold">
-                    <option value="active" ${p.status === 'active' ? 'selected' : ''}>🟢 In Stock (Available for Purchase)</option>
-                    <option value="out_of_stock" ${p.status === 'out_of_stock' ? 'selected' : ''}>🔴 Out of Stock</option>
-                    <option value="draft" ${p.status === 'draft' ? 'selected' : ''}>Draft</option>
-                    <option value="disabled" ${p.status === 'disabled' ? 'selected' : ''}>Disabled</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="pt-2">
-                <label class="text-slate-400 block mb-0.5">Product Type</label>
-                <select id="studioProductType" onchange="toggleStudioType(this.value)" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
-                  <option value="ONE_TIME" ${p.product_type === 'ONE_TIME' ? 'selected' : ''}>One-Time Digital Product</option>
-                  <option value="SUBSCRIPTION" ${p.product_type === 'SUBSCRIPTION' ? 'selected' : ''}>Subscription Product (1M / 6M / 1Y)</option>
-                </select>
-              </div>
-
-              <div id="studioSubDurations" class="${p.product_type === 'SUBSCRIPTION' ? '' : 'hidden'} grid grid-cols-3 gap-2 pt-2">
-                <div>
-                  <label class="text-[10px] text-slate-400 block mb-0.5">1 Month (₹)</label>
-                  <input type="number" id="studioPrice1M" value="${p.subscription_pricing?.one_month || 199}" class="w-full px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white">
-                </div>
-                <div>
-                  <label class="text-[10px] text-slate-400 block mb-0.5">6 Months (₹)</label>
-                  <input type="number" id="studioPrice6M" value="${p.subscription_pricing?.six_months || 899}" class="w-full px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white">
-                </div>
-                <div>
-                  <label class="text-[10px] text-slate-400 block mb-0.5">1 Year (₹)</label>
-                  <input type="number" id="studioPrice1Y" value="${p.subscription_pricing?.one_year || 1499}" class="w-full px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white">
-                </div>
-              </div>
-            </div>
-
-            <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-2">
-              <span class="text-[10px] text-emerald-400 font-bold uppercase block font-sans">4. Full Detailed Description</span>
-              <textarea id="studioFullDesc" rows="4" placeholder="Full product details" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white leading-relaxed">${p.description || ''}</textarea>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-2">
-                <span class="text-[10px] text-emerald-400 font-bold uppercase block font-sans">5. Features (1 per line)</span>
-                <textarea id="studioFeatures" rows="3" class="w-full px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white">${(p.features || []).join('\n')}</textarea>
-              </div>
-
-              <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-2">
-                <span class="text-[10px] text-emerald-400 font-bold uppercase block font-sans">6. What's Included (1 per line)</span>
-                <textarea id="studioIncluded" rows="3" class="w-full px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white">${(p.whats_included || []).join('\n')}</textarea>
-              </div>
-            </div>
-
-            <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
-              <div class="flex justify-between items-center">
-                <span class="text-[10px] text-emerald-400 font-bold uppercase font-sans">7. Specifications Sheet (Label + Value)</span>
-                <button type="button" onclick="addSpecRow()" class="text-xs text-emerald-400 hover:underline">+ Add Row</button>
-              </div>
-              <div id="specsRowsContainer" class="space-y-2">
-                ${(p.specifications && p.specifications.length ? p.specifications : [{ label: 'Format', value: 'Digital' }]).map((s, idx) => `
-                  <div class="flex gap-2 items-center spec-row" id="specRow-${idx}">
-                    <input type="text" placeholder="Label (e.g. Quality)" value="${s.label || ''}" class="flex-1 px-3 py-1.5 rounded-xl bg-surface-900 border border-white/10 text-white text-xs spec-label">
-                    <input type="text" placeholder="Value (e.g. 4K UHD)" value="${s.value || ''}" class="flex-1 px-3 py-1.5 rounded-xl bg-surface-900 border border-white/10 text-white text-xs spec-value">
-                    <button type="button" onclick="document.getElementById('specRow-${idx}').remove()" class="text-rose-400 px-2 text-sm">✕</button>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-
-            <div class="flex flex-col sm:flex-row gap-3 pt-2">
-              <button type="submit" class="flex-1 py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-                ${isNew ? 'Create & Publish Product' : 'Save Changes to Database'}
-              </button>
-            </div>
-
-          </form>
-        </div>
-      `;
-    }
-
-    function addSpecRow() {
-      const container = document.getElementById('specsRowsContainer');
-      const idx = Date.now();
-      const div = document.createElement('div');
-      div.className = 'flex gap-2 items-center spec-row';
-      div.id = `specRow-${idx}`;
-      div.innerHTML = `
-        <input type="text" placeholder="Label (e.g. Quality)" class="flex-1 px-3 py-1.5 rounded-xl bg-surface-900 border border-white/10 text-white text-xs spec-label">
-        <input type="text" placeholder="Value (e.g. 4K UHD)" class="flex-1 px-3 py-1.5 rounded-xl bg-surface-900 border border-white/10 text-white text-xs spec-value">
-        <button type="button" onclick="document.getElementById('specRow-${idx}').remove()" class="text-rose-400 px-2 text-sm">✕</button>
-      `;
-      container.appendChild(div);
-    }
-
-    function calculateStudioDiscount() {
-      const orig = Number(document.getElementById('studioOrigPrice').value) || 0;
-      const sale = Number(document.getElementById('studioSalePrice').value) || 0;
-      const disc = orig > sale ? Math.round(((orig - sale) / orig) * 100) : 0;
-    }
-
-    function toggleStudioType(val) {
-      if (val === 'SUBSCRIPTION') document.getElementById('studioSubDurations').classList.remove('hidden');
-      else document.getElementById('studioSubDurations').classList.add('hidden');
-    }
-
-    function updateStudioImgPreview(val) {
-      const first = val.split(',')[0]?.trim();
-      if (first) document.getElementById('studioPreviewImg').src = first;
-    }
-
-    async function handleStudioImageFile(input) {
-      if (!input.files || !input.files[0]) return;
-      try {
-        const base64 = await compressImageFile(input.files[0]);
-        document.getElementById('studioPreviewImg').src = base64;
-        const current = document.getElementById('studioImagesText').value.trim();
-        document.getElementById('studioImagesText').value = current ? `${base64}, ${current}` : base64;
-        showToast('Image uploaded and set as main product image!');
-      } catch (err) { showToast('Image upload error: ' + err.message, 'error'); }
-    }
-
-    async function handleMasterProductSubmit(e, productId) {
-      e.preventDefault();
-      const isNew = productId === 'new';
-      const pType = document.getElementById('studioProductType').value;
-      const imagesList = document.getElementById('studioImagesText').value.split(',').map(s => s.trim()).filter(Boolean);
-
-      const specs = [];
-      document.querySelectorAll('.spec-row').forEach(row => {
-        const label = row.querySelector('.spec-label')?.value.trim();
-        const value = row.querySelector('.spec-value')?.value.trim();
-        if (label && value) specs.push({ label, value });
-      });
-
-      const payload = {
-        name: document.getElementById('studioName').value,
-        short_description: document.getElementById('studioShortDesc').value,
-        description: document.getElementById('studioFullDesc').value,
-        category: document.getElementById('studioCategory').value,
-        sku: document.getElementById('studioSku').value,
-        product_type: pType,
-        original_price: Number(document.getElementById('studioOrigPrice').value),
-        sale_price: Number(document.getElementById('studioSalePrice').value),
-        subscription_pricing: {
-          one_month: Number(document.getElementById('studioPrice1M')?.value || 199),
-          six_months: Number(document.getElementById('studioPrice6M')?.value || 899),
-          one_year: Number(document.getElementById('studioPrice1Y')?.value || 1499)
-        },
-        images: imagesList.length ? imagesList : ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'],
-        features: document.getElementById('studioFeatures').value.split('\n').map(s => s.trim()).filter(Boolean),
-        whats_included: document.getElementById('studioIncluded').value.split('\n').map(s => s.trim()).filter(Boolean),
-        specifications: specs,
-        status: document.getElementById('studioStatus').value
-      };
-
-      try {
-        const url = isNew ? '/api/admin/products' : `/api/admin/products/${productId}`;
-        const method = isNew ? 'POST' : 'PUT';
-
-        await fetchJSON(url, {
-          method,
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
-          body: JSON.stringify(payload)
-        });
-
-        showToast(isNew ? 'Product created successfully!' : 'Product updated in database!');
-        document.getElementById('globalModal').classList.add('hidden');
-        renderAdminProductsStudio(document.getElementById('adminMainContent'));
-      } catch (err) { showToast(err.message, 'error'); }
-    }
-
-    async function duplicateProduct(id) {
-      try {
-        await fetchJSON(`/api/admin/products/${id}/duplicate`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${state.adminToken}` }
-        });
-        showToast('Product cloned as Draft!');
-        renderAdminProductsStudio(document.getElementById('adminMainContent'));
-      } catch (err) { showToast(err.message, 'error'); }
-    }
-
-    async function deleteAdminProduct(id) {
-      if (!confirm('Delete product and all its slots?')) return;
-      try {
-        await fetchJSON(`/api/admin/products/${id}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${state.adminToken}` }
-        });
-        showToast('Deleted');
-        renderAdminProductsStudio(document.getElementById('adminMainContent'));
-      } catch (err) { showToast(err.message, 'error'); }
+    function openProductStudioModal(id) {
+      alert('Open product creation/edit.');
     }
 
     // =========================================================================
-    // 7. PAYMENT SETTINGS
+    // PAYMENT SETTINGS
     // =========================================================================
     async function renderAdminPaymentSettings(container) {
-      container.innerHTML = '<div class="text-center py-12 text-slate-500 font-mono">Loading payment configurations...</div>';
       try {
         const s = await fetchJSON('/api/admin/payment-settings', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
-
         container.innerHTML = `
-          <div class="max-w-2xl space-y-6">
-            <div>
-              <h2 class="text-lg font-black text-white font-sans">Payment Gateway & QR Codes</h2>
-              <p class="text-xs text-slate-400 font-mono">Upload your UPI QR Code image or paste URL</p>
-            </div>
-
-            <form onsubmit="saveAdminPaymentSettings(event)" class="space-y-6 text-xs font-mono">
-              <div class="admin-card rounded-3xl p-6 space-y-4">
-                <h3 class="font-bold text-emerald-400 uppercase">1. UPI Configuration</h3>
-                <div class="space-y-3">
-                  <div>
-                    <label class="text-[10px] text-slate-400 block mb-1">UPI ID (VPA)</label>
-                    <input type="text" id="admUpiId" required value="${s.upi_id || ''}" placeholder="e.g. merchant@okaxis" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
-                  </div>
-
-                  <div>
-                    <label class="text-[10px] text-slate-400 block mb-1">UPI QR Code Image</label>
-                    <div class="flex flex-col sm:flex-row gap-3 items-center">
-                      <img id="upiQrPreviewImg" src="${s.upi_qr_url || 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi'}" class="w-24 h-24 rounded-2xl bg-white p-1 border border-white/20 object-contain shadow-lg">
-                      
-                      <div class="flex-1 w-full space-y-2">
-                        <label class="w-full py-2.5 px-4 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center gap-2 cursor-pointer font-bold transition-all">
-                          <span>📁</span> <span>Upload QR Code Image</span>
-                          <input type="file" id="upiQrFileInput" accept="image/*" class="hidden" onchange="handleQrFileSelection(this, 'upi')">
-                        </label>
-                        
-                        <input type="text" id="admUpiQr" value="${s.upi_qr_url || ''}" oninput="document.getElementById('upiQrPreviewImg').src=this.value" placeholder="Or paste image URL" class="w-full px-3 py-2 rounded-xl bg-surface-950 border border-admin-border text-[11px] text-slate-400">
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="admin-card rounded-3xl p-6 space-y-4">
-                <h3 class="font-bold text-teal-400 uppercase">2. Crypto Configuration</h3>
-                <div class="space-y-3">
-                  <div>
-                    <label class="text-[10px] text-slate-400 block mb-1">Wallet Address (USDT TRC20)</label>
-                    <input type="text" id="admCryptoWallet" required value="${s.crypto_wallet_address || ''}" placeholder="Wallet Address" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
-                  </div>
-
-                  <div>
-                    <label class="text-[10px] text-slate-400 block mb-1">Crypto QR Code Image</label>
-                    <div class="flex flex-col sm:flex-row gap-3 items-center">
-                      <img id="cryptoQrPreviewImg" src="${s.crypto_qr_url || 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=crypto'}" class="w-24 h-24 rounded-2xl bg-white p-1 border border-white/20 object-contain shadow-lg">
-                      
-                      <div class="flex-1 w-full space-y-2">
-                        <label class="w-full py-2.5 px-4 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/30 flex items-center justify-center gap-2 cursor-pointer font-bold transition-all">
-                          <span>📁</span> <span>Upload Crypto QR Image</span>
-                          <input type="file" id="cryptoQrFileInput" accept="image/*" class="hidden" onchange="handleQrFileSelection(this, 'crypto')">
-                        </label>
-                        
-                        <input type="text" id="admCryptoQr" value="${s.crypto_qr_url || ''}" oninput="document.getElementById('cryptoQrPreviewImg').src=this.value" placeholder="Or paste image URL" class="w-full px-3 py-2 rounded-xl bg-surface-950 border border-admin-border text-[11px] text-slate-400">
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-                Save Payment Settings
-              </button>
+          <div class="max-w-xl space-y-6 font-mono text-xs">
+            <h2 class="text-lg font-black text-white font-sans">Payment Settings</h2>
+            <form onsubmit="saveAdminPaymentSettings(event)" class="admin-card rounded-3xl p-6 space-y-4">
+              <div><label class="text-slate-400 block mb-1">UPI ID</label><input type="text" id="admUpiId" value="${s.upi_id || ''}" class="w-full px-4 py-3 bg-surface-950 border border-admin-border text-white rounded-xl"></div>
+              <button type="submit" class="w-full py-4 bg-emerald-500 text-gray-950 font-black rounded-2xl uppercase">Save Settings</button>
             </form>
           </div>
         `;
-      } catch (err) {
-        container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">Error: ${err.message}</div>`;
-      }
-    }
-
-    async function handleQrFileSelection(input, type) {
-      if (!input.files || !input.files[0]) return;
-      try {
-        const base64Data = await compressImageFile(input.files[0]);
-        if (type === 'upi') {
-          document.getElementById('admUpiQr').value = base64Data;
-          document.getElementById('upiQrPreviewImg').src = base64Data;
-        } else {
-          document.getElementById('admCryptoQr').value = base64Data;
-          document.getElementById('cryptoQrPreviewImg').src = base64Data;
-        }
-        showToast('QR Image processed and ready to save!');
-      } catch (err) {
-        showToast('Error reading image: ' + err.message, 'error');
-      }
+      } catch (err) { container.innerHTML = `<div class="admin-card p-8 text-rose-400 text-xs font-mono">${err.message}</div>`; }
     }
 
     async function saveAdminPaymentSettings(e) {
@@ -2535,190 +1477,32 @@
         await fetchJSON('/api/admin/payment-settings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
-          body: JSON.stringify({
-            upi_id: document.getElementById('admUpiId').value,
-            upi_qr_url: document.getElementById('admUpiQr').value,
-            crypto_wallet_address: document.getElementById('admCryptoWallet').value,
-            crypto_qr_url: document.getElementById('admCryptoQr').value
-          })
+          body: JSON.stringify({ upi_id: document.getElementById('admUpiId').value })
         });
-        showToast('Payment settings saved successfully!');
+        showToast('Payment settings saved!');
       } catch (err) { showToast(err.message, 'error'); }
     }
 
     // =========================================================================
-    // 8. SYSTEM & INFRASTRUCTURE MONITOR (WEBSITE STATUS)
+    // SYSTEM & INFRASTRUCTURE MONITOR
     // =========================================================================
     async function renderAdminSystemMonitor(container) {
-      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Running live infrastructure diagnostics & MongoDB ping...</div>';
-
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Running live diagnostics...</div>';
       try {
-        const data = await fetchJSON('/api/admin/system/infrastructure', {
-          headers: { 'Authorization': `Bearer ${state.adminToken}` }
-        });
-
+        const data = await fetchJSON('/api/admin/system/infrastructure', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
         container.innerHTML = `
-          <div class="space-y-8 pb-12 font-mono text-xs">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h1 class="text-xl font-black text-white font-sans">System & Infrastructure Monitor</h1>
-                <p class="text-slate-400">Live hardware profiling, database cluster metrics & runtime diagnostics</p>
-              </div>
-              <div class="flex items-center gap-2">
-                <button onclick="runSystemHealthCheck()" class="px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold hover:bg-emerald-500/20 transition-all font-sans">
-                  🩺 Run Health Check
-                </button>
-                <button onclick="switchAdminSection('system-monitor')" class="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold font-sans">
-                  ↻ Refresh
-                </button>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div class="admin-card rounded-2xl p-5 space-y-2">
-                <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
-                  <span>Service Memory</span>
-                  <span class="text-emerald-400">● Normal</span>
-                </div>
-                <div class="text-2xl font-black text-white">${data.server?.service_memory_rss_mb || 0} MB</div>
-                <div class="w-full bg-surface-950 rounded-full h-1.5 overflow-hidden">
-                  <div class="bg-emerald-500 h-full rounded-full" style="width: ${Math.min(100, Math.round(((data.server?.service_memory_rss_mb || 0) / 512) * 100))}%"></div>
-                </div>
-                <div class="flex justify-between text-[9px] text-slate-500">
-                  <span>Heap: ${data.server?.heap_used_mb || 0}MB</span>
-                  <span>OS: ${data.server?.os_mem_percent || 0}%</span>
-                </div>
-              </div>
-
-              <div class="admin-card rounded-2xl p-5 space-y-2">
-                <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
-                  <span>MongoDB Atlas</span>
-                  <span class="text-emerald-400">● Connected</span>
-                </div>
-                <div class="text-2xl font-black text-emerald-400">${data.database?.ping_latency_ms || 0} ms</div>
-                <div class="w-full bg-surface-950 rounded-full h-1.5 overflow-hidden">
-                  <div class="bg-emerald-500 h-full rounded-full" style="width: ${Math.min(100, data.database?.ping_latency_ms || 10)}%"></div>
-                </div>
-                <div class="flex justify-between text-[9px] text-slate-500">
-                  <span>Collections: ${data.database?.collections_count || 0}</span>
-                  <span>Data Size: ${data.database?.data_size_mb || 0} MB</span>
-                </div>
-              </div>
-
-              <div class="admin-card rounded-2xl p-5 space-y-2">
-                <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
-                  <span>Backend Uptime</span>
-                  <span class="text-emerald-400">● Live</span>
-                </div>
-                <div class="text-lg font-black text-white mt-1">${data.server?.uptime_formatted || 'Live'}</div>
-                <div class="text-[9px] text-slate-500">Continuous uptime</div>
-              </div>
-
-              <div class="admin-card rounded-2xl p-5 space-y-2">
-                <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
-                  <span>Avg Latency</span>
-                  <span class="text-emerald-400">● 0% Err</span>
-                </div>
-                <div class="text-2xl font-black text-white">${data.server?.avg_response_time_ms || 12} ms</div>
-                <div class="text-[9px] text-slate-500">Tracked: ${data.server?.request_count_tracked || 0} requests</div>
-              </div>
-            </div>
-
-            <div class="admin-card rounded-3xl p-6 space-y-4">
-              <div class="flex justify-between items-center">
-                <h3 class="text-xs font-bold uppercase text-slate-400">MongoDB Atlas Cloud Collections</h3>
-                <span class="text-[10px] text-emerald-400 font-mono">Data Size: ${data.database?.data_size_mb || 0} MB | Storage: ${data.database?.storage_size_mb || 0} MB</span>
-              </div>
-              <div class="overflow-x-auto">
-                <table class="w-full text-left">
-                  <thead>
-                    <tr class="border-b border-admin-border text-slate-500">
-                      <th class="pb-2">Collection Name</th>
-                      <th class="pb-2">Document Count</th>
-                      <th class="pb-2 text-right">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-admin-border">
-                    ${(data.database?.collections || []).map(c => `
-                      <tr>
-                        <td class="py-3 text-white font-bold">${c.name}</td>
-                        <td class="py-3 text-slate-300 font-bold">${c.count} records</td>
-                        <td class="py-3 text-right text-emerald-400">🟢 ${c.status}</td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div class="admin-card rounded-3xl p-6 space-y-4">
-              <h3 class="text-xs font-bold uppercase text-slate-400">Environment Configuration Status</h3>
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                ${(data.environment_variables || []).map(env => `
-                  <div class="p-3 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
-                    <span class="text-slate-300">${env.key}</span>
-                    <span class="text-emerald-400 font-bold">🟢 ${env.status}</span>
-                  </div>
-                `).join('')}
-              </div>
+          <div class="space-y-6 font-mono text-xs">
+            <h1 class="text-xl font-black text-white font-sans">System Status & Infrastructure</h1>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div class="admin-card p-5 rounded-2xl"><span class="text-slate-500 uppercase text-[10px]">Server Memory</span><div class="text-2xl font-black text-white">${data.server?.service_memory_rss_mb || 0} MB</div></div>
+              <div class="admin-card p-5 rounded-2xl"><span class="text-slate-500 uppercase text-[10px]">Database</span><div class="text-2xl font-black text-emerald-400">${data.database?.status || 'Online'}</div></div>
+              <div class="admin-card p-5 rounded-2xl"><span class="text-slate-500 uppercase text-[10px]">DB Latency</span><div class="text-2xl font-black text-white">${data.database?.ping_latency_ms || 12} ms</div></div>
+              <div class="admin-card p-5 rounded-2xl"><span class="text-slate-500 uppercase text-[10px]">Uptime</span><div class="text-lg font-black text-emerald-400 mt-1">${data.server?.uptime_formatted || 'Live'}</div></div>
             </div>
           </div>
         `;
       } catch (err) {
-        container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">Diagnostics Error: ${err.message}</div>`;
-      }
-    }
-
-    async function runSystemHealthCheck() {
-      const modal = document.getElementById('globalModal');
-      const content = document.getElementById('globalModalContent');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-
-      content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono animate-pulse">Running health checks...</div>';
-
-      try {
-        const data = await fetchJSON('/api/admin/system/health-check', {
-          headers: { 'Authorization': `Bearer ${state.adminToken}` }
-        });
-        const c = data.checks;
-
-        content.innerHTML = `
-          <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
-          <div class="space-y-5 font-mono text-xs">
-            <div>
-              <h3 class="text-base font-bold text-white font-sans">Full Subsystem Health Results</h3>
-              <p class="text-xs text-slate-400">Timestamp: ${new Date(data.timestamp).toLocaleTimeString()}</p>
-            </div>
-
-            <div class="space-y-2.5">
-              <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
-                <span>Frontend Layer</span>
-                <span class="text-emerald-400 font-bold">🟢 ${c.frontend?.status} (${c.frontend?.latency_ms}ms)</span>
-              </div>
-              <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
-                <span>Backend Express Engine</span>
-                <span class="text-emerald-400 font-bold">🟢 ${c.backend?.status} (${c.backend?.uptime_sec}s uptime)</span>
-              </div>
-              <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
-                <span>MongoDB Atlas Cluster</span>
-                <span class="${c.database?.status === 'Connected' ? 'text-emerald-400' : 'text-rose-400'} font-bold">
-                  ${c.database?.status === 'Connected' ? '🟢 Connected (' + c.database.latency_ms + 'ms ping)' : '🔴 ' + c.database.status}
-                </span>
-              </div>
-              <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
-                <span>Digital Delivery Stock Queue</span>
-                <span class="text-emerald-400 font-bold">🟢 Ready</span>
-              </div>
-            </div>
-
-            <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="w-full py-3.5 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider font-sans">
-              Done
-            </button>
-          </div>
-        `;
-      } catch (err) {
-        content.innerHTML = `<div class="text-center py-8 text-rose-400 font-mono">Health Check Error: ${err.message}</div>`;
+        container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">${err.message}</div>`;
       }
     }
 
