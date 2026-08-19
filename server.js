@@ -316,7 +316,7 @@ function authAdmin(req, res, next) {
 }
 
 // ----------------------------------------------------
-// CUSTOMER & STORE APIS
+// STORE & CUSTOMER APIS
 // ----------------------------------------------------
 app.get('/api/auth/check-username', async (req, res) => {
   try {
@@ -542,7 +542,7 @@ app.get('/api/customer/orders', authCustomer, async (req, res) => {
 });
 
 // ----------------------------------------------------
-// COMPLETE OVERVIEW DASHBOARD ANALYTICS AGGREGATION
+// COMPLETE OVERVIEW DASHBOARD ANALYTICS AGGREGATIONS
 // ----------------------------------------------------
 app.get('/api/admin/dashboard/full-overview', authAdmin, async (req, res) => {
   try {
@@ -561,8 +561,6 @@ app.get('/api/admin/dashboard/full-overview', authAdmin, async (req, res) => {
     } else if (range === 'yesterday') {
       startDate.setDate(now.getDate() - 1);
       startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(startDate);
-      endDate.setHours(23, 59, 59, 999);
       prevStartDate.setDate(now.getDate() - 2);
       prevStartDate.setHours(0, 0, 0, 0);
       prevEndDate.setDate(now.getDate() - 2);
@@ -735,7 +733,7 @@ app.get('/api/admin/dashboard/full-overview', authAdmin, async (req, res) => {
 });
 
 // ----------------------------------------------------
-// OTHER MODULES & SERVER BOOTSTRAP
+// PRODUCT STUDIO & OTHER ADMIN APIS
 // ----------------------------------------------------
 app.post('/api/admin/login', async (req, res) => {
   try {
@@ -752,17 +750,44 @@ app.post('/api/admin/login', async (req, res) => {
 app.get('/api/admin/products', authAdmin, async (req, res) => {
   try {
     const prods = await Product.find().sort({ created_at: -1 });
-    res.json(prods);
+    const list = await Promise.all(prods.map(async (p) => {
+      const totalSlots = await InventorySlot.countDocuments({ product_id: p._id });
+      const activeSales = await Order.countDocuments({ 'items.product_id': p._id, payment_status: 'Paid' });
+      return { 
+        ...p.toObject(), 
+        total_slots: totalSlots, 
+        sales_count: activeSales || p.sales_count || 0 
+      };
+    }));
+    res.json(list);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/admin/products', authAdmin, async (req, res) => {
   try {
     const { name, original_price, sale_price } = req.body;
-    const orig = Number(original_price) || 0;
-    const sale = Number(sale_price) || 0;
+    const orig = Math.max(0, Number(original_price) || 0);
+    const sale = Math.max(0, Number(sale_price) || 0);
     const discount = orig > sale ? Math.round(((orig - sale) / orig) * 100) : 0;
-    const product = await Product.create({ ...req.body, original_price: orig, sale_price: sale, discount_percentage: discount });
+    
+    let baseSlug = (req.body.slug || name || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    let slug = baseSlug;
+    let counter = 1;
+    while (await Product.findOne({ slug })) {
+      slug = `${baseSlug}-${counter++}`;
+    }
+
+    const product = await Product.create({ 
+      ...req.body, 
+      slug,
+      sku: req.body.sku || 'SKU-' + Date.now(), 
+      original_price: orig, 
+      sale_price: sale, 
+      discount_percentage: discount,
+      updated_at: new Date()
+    });
+
+    recordActivity('product_created', `Admin created product ${product.name}`);
     res.status(201).json(product);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
@@ -770,17 +795,63 @@ app.post('/api/admin/products', authAdmin, async (req, res) => {
 app.put('/api/admin/products/:id', authAdmin, async (req, res) => {
   try {
     const { original_price, sale_price } = req.body;
-    const orig = Number(original_price) || 0;
-    const sale = Number(sale_price) || 0;
+    const orig = Math.max(0, Number(original_price) || 0);
+    const sale = Math.max(0, Number(sale_price) || 0);
     const discount = orig > sale ? Math.round(((orig - sale) / orig) * 100) : 0;
-    const updated = await Product.findByIdAndUpdate(req.params.id, { ...req.body, original_price: orig, sale_price: sale, discount_percentage: discount }, { new: true });
+
+    const updated = await Product.findByIdAndUpdate(
+      req.params.id, 
+      { 
+        ...req.body, 
+        original_price: orig, 
+        sale_price: sale, 
+        discount_percentage: discount, 
+        updated_at: new Date() 
+      }, 
+      { new: true }
+    );
+
+    recordActivity('product_updated', `Admin updated product ${updated.name}`);
     res.json(updated);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+app.post('/api/admin/products/:id/duplicate', authAdmin, async (req, res) => {
+  try {
+    const original = await Product.findById(req.params.id);
+    if (!original) return res.status(404).json({ error: 'Original product not found' });
+
+    const cloneData = original.toObject();
+    delete cloneData._id; 
+    delete cloneData.created_at; 
+    delete cloneData.updated_at;
+    
+    cloneData.name = `${original.name} (Copy)`;
+    cloneData.slug = `${original.slug}-copy-${Date.now()}`;
+    cloneData.sku = `${original.sku}-COPY-${Math.floor(Math.random() * 1000)}`;
+    cloneData.status = 'draft';
+    cloneData.sales_count = 0;
+
+    const newProduct = await Product.create(cloneData);
+    recordActivity('product_duplicated', `Duplicated ${original.name} to ${newProduct.name}`);
+    res.status(201).json(newProduct);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.delete('/api/admin/products/:id', authAdmin, async (req, res) => {
   try {
+    const activePurchases = await Order.countDocuments({ 'items.product_id': req.params.id, payment_status: 'Paid' });
+    const activeSubs = await Subscription.countDocuments({ product_id: req.params.id, status: 'ACTIVE' });
+
+    if ((activePurchases > 0 || activeSubs > 0) && req.query.force !== 'true') {
+      return res.status(400).json({ 
+        error: `Product is linked to ${activePurchases} historical order(s) and ${activeSubs} active subscription(s). Please archive it instead to preserve audit logs.` 
+      });
+    }
+
     await Product.findByIdAndDelete(req.params.id);
+    await InventorySlot.deleteMany({ product_id: req.params.id });
+    recordActivity('product_deleted', `Deleted product ${req.params.id}`);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -788,29 +859,36 @@ app.delete('/api/admin/products/:id', authAdmin, async (req, res) => {
 app.get('/api/admin/slots', authAdmin, async (req, res) => {
   try {
     const slots = await InventorySlot.find().populate('product_id', 'name sku');
-    res.json({ slots, stats: { total: slots.length, available: slots.filter(s => s.status === 'AVAILABLE').length, assigned: slots.filter(s => s.status === 'ASSIGNED').length, full: slots.filter(s => s.status === 'FULL').length, disabled: slots.filter(s => s.status === 'DISABLED').length } });
+    res.json({ slots, stats: { total: slots.length, available: slots.filter(s => s.status === 'AVAILABLE').length, assigned: slots.filter(s => s.status === 'ASSIGNED').length, full: slots.filter(s => s.status === 'FULL').length, disabled: slots.filter(s => s.status === 'DISABLED').length, total_active_users: 0 } });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/admin/slots', authAdmin, async (req, res) => {
+  try { const slot = await InventorySlot.create(req.body); res.status(201).json(slot); } catch (err) { res.status(400).json({ error: err.message }); }
+});
+app.put('/api/admin/slots/:id', authAdmin, async (req, res) => {
+  try { const slot = await InventorySlot.findByIdAndUpdate(req.params.id, req.body, { new: true }); res.json(slot); } catch (err) { res.status(400).json({ error: err.message }); }
+});
+app.delete('/api/admin/slots/:id', authAdmin, async (req, res) => {
+  try { await InventorySlot.findByIdAndDelete(req.params.id); res.json({ success: true }); } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/admin/subscriptions/advanced', authAdmin, async (req, res) => {
   try {
     const subs = await Subscription.find().populate('user_id', 'username name email').populate('product_id', 'name');
-    res.json({ subscriptions: subs, stats: { total: subs.length, active: subs.filter(s => s.status === 'ACTIVE').length } });
+    res.json({ subscriptions: subs, stats: { total: subs.length, active: subs.filter(s => s.status === 'ACTIVE' && new Date(s.expires_at) > new Date()).length } });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/admin/transactions', authAdmin, async (req, res) => {
   try { res.json(await Transaction.find().select('-proof_screenshot')); } catch (err) { res.status(500).json({ error: err.message }); }
 });
-
 app.get('/api/admin/customers/list', authAdmin, async (req, res) => {
   try { res.json(await User.find().sort({ created_at: -1 })); } catch (err) { res.status(500).json({ error: err.message }); }
 });
-
 app.get('/api/admin/payment-settings', authAdmin, async (req, res) => {
   try { res.json(await PaymentSettings.findOne() || {}); } catch (err) { res.status(500).json({ error: err.message }); }
 });
-
 app.get('/api/admin/system/infrastructure', authAdmin, async (req, res) => {
   try { res.json({ server: { service_memory_rss_mb: Math.round(process.memoryUsage().rss / 1024 / 1024), uptime_formatted: '5h' }, database: { status: 'Connected', ping_latency_ms: 12 } }); } catch (err) { res.status(500).json({ error: err.message }); }
 });

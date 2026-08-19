@@ -48,7 +48,7 @@
   <div id="appBackdrop" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden transition-opacity duration-200"></div>
   <div id="mainViewport" class="flex flex-1 min-h-screen"></div>
 
-  <!-- Global Modal for Product Editor & Previews -->
+  <!-- Global Modal for Product Editor, Preview, and Actions -->
   <div id="globalModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-2 sm:p-4">
     <div class="glass max-w-5xl w-full rounded-3xl p-5 sm:p-8 relative max-h-[94vh] overflow-y-auto custom-scroll shadow-2xl border border-white/10" id="globalModalContent"></div>
   </div>
@@ -62,7 +62,7 @@
       adminUsername: localStorage.getItem('nexus_admin_user') || '',
       cart: JSON.parse(localStorage.getItem('nexus_cart') || '[]'),
       currentView: 'home',
-      adminSection: 'products',
+      adminSection: 'dashboard',
       dashboardRange: '30d',
       loadedProducts: [],
       productStudioDirty: false
@@ -138,7 +138,7 @@
     }
 
     // =========================================================================
-    // STOREFRONT LAYOUT & CUSTOMER STORE (PRESERVED)
+    // STOREFRONT LAYOUT & CUSTOMER STORE (UNCHANGED)
     // =========================================================================
     function renderStorefrontLayout(viewport, view, params) {
       viewport.innerHTML = `
@@ -177,7 +177,7 @@
     }
 
     // =========================================================================
-    // ADMIN AUTH & SAAS CONTAINER (PRESERVED)
+    // ADMIN AUTH & SAAS CONTAINER
     // =========================================================================
     function renderAdminLogin(viewport) {
       viewport.innerHTML = `
@@ -220,8 +220,8 @@
                 <button onclick="toggleAdminDrawer(false)" class="lg:hidden text-slate-400">✕</button>
               </div>
               <nav class="p-4 space-y-1 text-xs font-bold font-mono">
-                <button onclick="switchAdminSection('products')" id="adnav-products" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 bg-emerald-500/10 text-emerald-400">📦 Product Studio</button>
-                <button onclick="switchAdminSection('dashboard')" id="adnav-dashboard" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5">📊 Overview Dashboard</button>
+                <button onclick="switchAdminSection('dashboard')" id="adnav-dashboard" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 bg-emerald-500/10 text-emerald-400">📊 Overview Dashboard</button>
+                <button onclick="switchAdminSection('products')" id="adnav-products" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5">📦 Product Studio</button>
                 <button onclick="switchAdminSection('slots')" id="adnav-slots" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5">🔐 Account Slots</button>
                 <button onclick="switchAdminSection('subscriptions')" id="adnav-subscriptions" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5">👥 Subscriptions Suite</button>
                 <button onclick="switchAdminSection('transactions')" id="adnav-transactions" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5">💳 Transactions</button>
@@ -244,7 +244,7 @@
           </div>
         </div>
       `;
-      switchAdminSection(state.adminSection || 'products');
+      switchAdminSection(state.adminSection || 'dashboard');
     }
 
     function switchAdminSection(sec) {
@@ -255,8 +255,8 @@
       const active = document.getElementById(`adnav-${sec}`);
       if (active) active.classList.add('bg-emerald-500/10', 'text-emerald-400');
 
-      if (sec === 'products') renderAdminProductsStudio(content);
-      else if (sec === 'dashboard') renderAdminOverview(content);
+      if (sec === 'dashboard') renderAdminOverview(content);
+      else if (sec === 'products') renderAdminProductsStudio(content);
       else if (sec === 'slots') renderAdminAccountSlots(content);
       else if (sec === 'subscriptions') renderAdminSubscriptions(content);
       else if (sec === 'transactions') renderAdminTransactions(content);
@@ -272,7 +272,279 @@
     }
 
     // =========================================================================
-    // 📦 PRODUCT STUDIO — COMPLETE OVERHAUL (ISOLATED TARGET)
+    // 📊 OVERVIEW DASHBOARD — COMPLETE BUSINESS INTELLIGENCE COMMAND CENTER
+    // =========================================================================
+    async function renderAdminOverview(container) {
+      container.innerHTML = `
+        <div class="space-y-6 font-mono text-xs animate-pulse">
+          <div class="h-10 bg-surface-900 rounded-2xl w-1/3"></div>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="h-28 bg-surface-900 rounded-3xl"></div>
+            <div class="h-28 bg-surface-900 rounded-3xl"></div>
+            <div class="h-28 bg-surface-900 rounded-3xl"></div>
+            <div class="h-28 bg-surface-900 rounded-3xl"></div>
+          </div>
+          <div class="h-72 bg-surface-900 rounded-3xl"></div>
+        </div>
+      `;
+
+      try {
+        const d = await fetchJSON(`/api/admin/dashboard/full-overview?range=${state.dashboardRange}`, {
+          headers: { 'Authorization': `Bearer ${state.adminToken}` }
+        });
+
+        // Dynamic SVG Area / Line Chart
+        const points = d.revenue_timeline || [];
+        const maxVal = Math.max(...points.map(p => p.value), 100);
+        const svgW = 600, svgH = 160;
+        const coords = points.map((p, idx) => {
+          const x = (idx / Math.max(1, points.length - 1)) * (svgW - 40) + 20;
+          const y = svgH - 25 - (p.value / maxVal) * (svgH - 50);
+          return { x, y, ...p };
+        });
+        const pointsStr = coords.map(c => `${c.x},${c.y}`).join(' ');
+        const areaStr = coords.length ? `20,${svgH - 25} ${pointsStr} ${coords[coords.length - 1].x},${svgH - 25}` : '';
+
+        container.innerHTML = `
+          <div class="space-y-8 font-mono text-xs pb-12">
+            
+            <!-- 1. Top Live Visitor Bar (Real Data Only) -->
+            <div class="glass border-emerald-500/20 px-4 py-2.5 rounded-2xl flex justify-between items-center text-[11px] font-bold shadow-lg">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="text-emerald-400 font-sans">${d.live_visitors ? `🟢 ${d.live_visitors} LIVE VISITORS` : '🟢 Live visitors online'}</span>
+                <span class="text-slate-400 font-normal hidden sm:inline">• Website visitors right now</span>
+              </div>
+              <span class="text-slate-400">Updated just now</span>
+            </div>
+
+            <!-- 2. Dashboard Header & Date Range Controller -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 font-sans">
+              <div>
+                <h1 class="text-2xl font-black text-white tracking-tight">OVERVIEW DASHBOARD</h1>
+                <p class="text-slate-400 text-xs mt-0.5">Business performance and store analytics</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <select id="overviewDateSelect" onchange="state.dashboardRange=this.value; renderAdminOverview(document.getElementById('adminMainContent'))" class="px-4 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs font-bold outline-none focus:border-emerald-500 font-mono">
+                  <option value="today" ${state.dashboardRange==='today'?'selected':''}>Today</option>
+                  <option value="yesterday" ${state.dashboardRange==='yesterday'?'selected':''}>Yesterday</option>
+                  <option value="7d" ${state.dashboardRange==='7d'?'selected':''}>Last 7 Days</option>
+                  <option value="30d" ${state.dashboardRange==='30d'?'selected':''}>Last 30 Days</option>
+                  <option value="90d" ${state.dashboardRange==='90d'?'selected':''}>Last 90 Days</option>
+                  <option value="this_year" ${state.dashboardRange==='this_year'?'selected':''}>This Year</option>
+                  <option value="all" ${state.dashboardRange==='all'?'selected':''}>All Time</option>
+                </select>
+
+                <button onclick="renderAdminOverview(document.getElementById('adminMainContent'))" class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs flex items-center gap-1.5 transition-all font-mono">
+                  <span>↻</span> <span>Refresh</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 3. Primary KPI Cards (2-Col Mobile, 4-Col Desktop) -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 font-sans">
+              
+              <div class="admin-card p-5 rounded-3xl space-y-2 border border-admin-border hover:border-emerald-500/30 transition-all">
+                <span class="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">TOTAL REVENUE</span>
+                <div class="text-2xl font-black text-emerald-400 font-mono">₹${d.kpis.revenue.value.toLocaleString()}</div>
+                <div class="text-[10px] font-mono font-bold ${d.kpis.revenue.change !== null ? (d.kpis.revenue.change >= 0 ? 'text-emerald-400' : 'text-rose-400') : 'text-slate-500'}">
+                  ${d.kpis.revenue.change !== null ? `${d.kpis.revenue.change >= 0 ? '↑' : '↓'} ${Math.abs(d.kpis.revenue.change)}% vs prev period` : 'No previous-period data'}
+                </div>
+              </div>
+
+              <div class="admin-card p-5 rounded-3xl space-y-2 border border-admin-border hover:border-emerald-500/30 transition-all">
+                <span class="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">TOTAL ORDERS</span>
+                <div class="text-2xl font-black text-white font-mono">${d.kpis.orders.value}</div>
+                <div class="text-[10px] font-mono font-bold ${d.kpis.orders.change !== null ? (d.kpis.orders.change >= 0 ? 'text-emerald-400' : 'text-rose-400') : 'text-slate-500'}">
+                  ${d.kpis.orders.change !== null ? `${d.kpis.orders.change >= 0 ? '↑' : '↓'} ${Math.abs(d.kpis.orders.change)}% vs prev period` : 'Completed & active'}
+                </div>
+              </div>
+
+              <div class="admin-card p-5 rounded-3xl space-y-2 border border-admin-border hover:border-emerald-500/30 transition-all">
+                <span class="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">TOTAL CUSTOMERS</span>
+                <div class="text-2xl font-black text-white font-mono">${d.kpis.customers.value}</div>
+                <div class="text-[10px] font-mono font-bold ${d.kpis.customers.change !== null ? (d.kpis.customers.change >= 0 ? 'text-emerald-400' : 'text-rose-400') : 'text-slate-500'}">
+                  ${d.kpis.customers.change !== null ? `${d.kpis.customers.change >= 0 ? '↑' : '↓'} ${Math.abs(d.kpis.customers.change)}% vs prev period` : 'Registered user accounts'}
+                </div>
+              </div>
+
+              <div class="admin-card p-5 rounded-3xl space-y-2 border border-admin-border hover:border-emerald-500/30 transition-all">
+                <span class="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">ACTIVE SUBSCRIPTIONS</span>
+                <div class="text-2xl font-black text-indigo-400 font-mono">${d.kpis.subscriptions.value}</div>
+                <div class="text-[10px] text-indigo-400 font-mono font-bold">● Live active access</div>
+              </div>
+
+            </div>
+
+            <!-- 4. Revenue Analytics Area Chart & Order Breakdown -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              
+              <!-- Real Data Revenue Chart -->
+              <div class="lg:col-span-8 admin-card rounded-3xl p-6 space-y-4">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h3 class="text-base font-black text-white font-sans">Revenue Overview</h3>
+                    <p class="text-[10px] text-slate-400 font-mono">Confirmed store earnings across timeline</p>
+                  </div>
+                  <span class="text-xs font-bold text-emerald-400 font-mono">Gross: ₹${d.kpis.revenue.value}</span>
+                </div>
+
+                <div class="w-full overflow-x-auto custom-scroll">
+                  <svg viewBox="0 0 ${svgW} ${svgH}" class="w-full h-44 text-emerald-500 overflow-visible">
+                    <defs>
+                      <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#10b981" stop-opacity="0.35"/>
+                        <stop offset="100%" stop-color="#10b981" stop-opacity="0.0"/>
+                      </linearGradient>
+                    </defs>
+                    <line x1="20" y1="20" x2="${svgW-20}" y2="20" stroke="#1c2438" stroke-dasharray="3"/>
+                    <line x1="20" y1="75" x2="${svgW-20}" y2="75" stroke="#1c2438" stroke-dasharray="3"/>
+                    <line x1="20" y1="${svgH-25}" x2="${svgW-20}" y2="${svgH-25}" stroke="#1c2438"/>
+
+                    ${coords.length ? `<polygon points="${areaStr}" fill="url(#revGrad)" />` : ''}
+                    ${coords.length ? `<polyline points="${pointsStr}" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />` : ''}
+
+                    ${coords.map(c => `
+                      <circle cx="${c.x}" cy="${c.y}" r="3.5" fill="#0f1422" stroke="#10b981" stroke-width="2"/>
+                      <text x="${c.x}" y="${svgH-8}" text-anchor="middle" font-size="8" fill="#64748b" font-family="monospace">${c.label}</text>
+                    `).join('')}
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Order Analytics Distribution -->
+              <div class="lg:col-span-4 admin-card rounded-3xl p-6 space-y-4">
+                <h3 class="text-base font-black text-white font-sans">Orders Analytics</h3>
+                <div class="space-y-3 font-mono">
+                  <div>
+                    <div class="flex justify-between text-xs mb-1"><span class="text-emerald-400">Completed (Paid)</span><span class="font-bold text-white">${d.order_statuses.completed}</span></div>
+                    <div class="w-full bg-surface-950 h-2 rounded-full overflow-hidden"><div class="bg-emerald-500 h-full" style="width: ${d.kpis.orders.value ? (d.order_statuses.completed/d.kpis.orders.value)*100 : 0}%"></div></div>
+                  </div>
+                  <div>
+                    <div class="flex justify-between text-xs mb-1"><span class="text-indigo-400">Processing</span><span class="font-bold text-white">${d.order_statuses.processing}</span></div>
+                    <div class="w-full bg-surface-950 h-2 rounded-full overflow-hidden"><div class="bg-indigo-500 h-full" style="width: ${d.kpis.orders.value ? (d.order_statuses.processing/d.kpis.orders.value)*100 : 0}%"></div></div>
+                  </div>
+                  <div>
+                    <div class="flex justify-between text-xs mb-1"><span class="text-amber-400">Pending Verification</span><span class="font-bold text-white">${d.order_statuses.pending}</span></div>
+                    <div class="w-full bg-surface-950 h-2 rounded-full overflow-hidden"><div class="bg-amber-500 h-full" style="width: ${d.kpis.orders.value ? (d.order_statuses.pending/d.kpis.orders.value)*100 : 0}%"></div></div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- 5. Top Products & Payment Methods Analytics -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start font-sans">
+              
+              <!-- Top Products -->
+              <div class="lg:col-span-8 admin-card rounded-3xl p-6 space-y-4">
+                <div class="flex justify-between items-center">
+                  <h3 class="text-base font-black text-white">Top Best Selling Products</h3>
+                  <button onclick="switchAdminSection('products')" class="text-xs text-emerald-400 font-bold hover:underline font-mono">View Studio →</button>
+                </div>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left font-mono text-xs">
+                    <thead><tr class="border-b border-admin-border text-slate-500"><th class="pb-2">Rank</th><th class="pb-2">Product Name</th><th class="pb-2">Orders</th><th class="pb-2">Revenue</th></tr></thead>
+                    <tbody class="divide-y divide-admin-border">
+                      ${d.top_products.length === 0 ? `<tr><td colspan="4" class="py-6 text-center text-slate-500">No product sales in this period.</td></tr>` : d.top_products.map((p, i) => `
+                        <tr class="hover:bg-white/[0.02]">
+                          <td class="py-3 font-bold text-emerald-400">#${i+1}</td>
+                          <td class="py-3 text-white font-bold">${p.name}</td>
+                          <td class="py-3 text-slate-300">${p.orders}</td>
+                          <td class="py-3 text-emerald-400 font-bold">₹${p.revenue}</td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Payment Methods Distribution -->
+              <div class="lg:col-span-4 admin-card rounded-3xl p-6 space-y-4">
+                <h3 class="text-base font-black text-white">Payment Methods</h3>
+                <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-3 font-mono">
+                  <div class="flex justify-between items-center">
+                    <span class="text-white font-bold">UPI Pay</span>
+                    <span class="text-emerald-400 font-bold">₹${d.payment_methods.upi.amount} (${d.payment_methods.upi.count} txns)</span>
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <span class="text-white font-bold">Crypto USDT</span>
+                    <span class="text-teal-400 font-bold">₹${d.payment_methods.crypto.amount} (${d.payment_methods.crypto.count} txns)</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- 6. Account Slot Summary & Attention Required Alerts -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start font-sans">
+              
+              <!-- Account Slot Summary -->
+              <div class="lg:col-span-6 admin-card rounded-3xl p-6 space-y-4">
+                <div class="flex justify-between items-center">
+                  <h3 class="text-base font-black text-white">Account Slot Inventory</h3>
+                  <button onclick="switchAdminSection('slots')" class="text-xs text-emerald-400 font-bold hover:underline font-mono">Manage Slots →</button>
+                </div>
+                <div class="grid grid-cols-3 gap-2 font-mono text-center">
+                  <div class="p-3 bg-surface-950 rounded-2xl border border-admin-border"><span class="text-slate-500 text-[10px] block">TOTAL</span><span class="text-base font-black text-white">${d.slot_summary.total}</span></div>
+                  <div class="p-3 bg-surface-950 rounded-2xl border border-admin-border"><span class="text-emerald-400 text-[10px] block">AVAILABLE</span><span class="text-base font-black text-emerald-400">${d.slot_summary.available}</span></div>
+                  <div class="p-3 bg-surface-950 rounded-2xl border border-admin-border"><span class="text-indigo-400 text-[10px] block">ASSIGNED</span><span class="text-base font-black text-indigo-400">${d.slot_summary.assigned}</span></div>
+                </div>
+              </div>
+
+              <!-- Attention Required Alerts -->
+              <div class="lg:col-span-6 admin-card rounded-3xl p-6 space-y-4">
+                <h3 class="text-base font-black text-white">Attention Required</h3>
+                <div class="space-y-2">
+                  ${d.attention_items.length === 0 ? `
+                    <div class="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono">
+                      ✓ Everything looks good. No immediate action required.
+                    </div>
+                  ` : d.attention_items.map(item => `
+                    <div class="p-3 rounded-2xl bg-surface-950 border border-amber-500/30 flex justify-between items-center text-xs font-mono">
+                      <span class="text-amber-300">⚠ ${item.text}</span>
+                      <button onclick="switchAdminSection('${item.link}')" class="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 font-bold hover:bg-amber-500/20">Resolve</button>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+
+            </div>
+
+            <!-- 7. Recent Transactions (Compact) -->
+            <div class="admin-card rounded-3xl p-6 space-y-4">
+              <div class="flex justify-between items-center font-sans">
+                <h3 class="text-base font-black text-white">Recent Transactions</h3>
+                <button onclick="switchAdminSection('transactions')" class="text-xs text-emerald-400 font-bold hover:underline font-mono">View All Transactions →</button>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left font-mono text-xs">
+                  <thead><tr class="border-b border-admin-border text-slate-500"><th class="pb-2">Customer</th><th class="pb-2">Product</th><th class="pb-2">Amount</th><th class="pb-2">Method</th><th class="pb-2">Status</th><th class="pb-2">Date</th></tr></thead>
+                  <tbody class="divide-y divide-admin-border">
+                    ${d.recent_transactions.length === 0 ? `<tr><td colspan="6" class="py-6 text-center text-slate-500">No transactions recorded.</td></tr>` : d.recent_transactions.map(t => `
+                      <tr class="hover:bg-white/[0.02]">
+                        <td class="py-3 text-white font-bold">${t.customer_name}</td>
+                        <td class="py-3 text-slate-300">${t.product_name}</td>
+                        <td class="py-3 text-emerald-400 font-bold">₹${t.amount}</td>
+                        <td class="py-3 text-slate-400">${t.payment_method}</td>
+                        <td class="py-3"><span class="px-2 py-0.5 rounded text-[10px] ${t.status === 'CONFIRMED' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}">${t.status}</span></td>
+                        <td class="py-3 text-slate-500 text-[10px]">${new Date(t.created_at).toLocaleDateString()}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        `;
+      } catch (err) {
+        container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">Unable to load dashboard data. <button onclick="renderAdminOverview(document.getElementById('adminMainContent'))" class="ml-2 underline text-white">Retry</button></div>`;
+      }
+    }
+
+    // =========================================================================
+    // 📦 PRODUCT STUDIO — COMPLETE FULL IMPLEMENTATION
     // =========================================================================
     async function renderAdminProductsStudio(container) {
       container.innerHTML = `
@@ -316,7 +588,7 @@
               </button>
             </div>
 
-            <!-- Product Summary Cards (Real Database Data) -->
+            <!-- Product Summary Cards -->
             <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
               <div class="admin-card p-4 rounded-2xl space-y-1"><span class="text-slate-500 block text-[9px] uppercase font-bold">Total Products</span><div class="text-xl font-black text-white font-mono">${total}</div></div>
               <div class="admin-card p-4 rounded-2xl space-y-1"><span class="text-emerald-400 block text-[9px] uppercase font-bold">Published</span><div class="text-xl font-black text-emerald-400 font-mono">${published}</div></div>
@@ -388,7 +660,9 @@
                             <span class="text-emerald-400 font-black">₹${p.sale_price}</span>
                             ${p.original_price > p.sale_price ? `<span class="text-xs text-slate-500 line-through">₹${p.original_price}</span>` : ''}
                           </div>
-                          ${p.discount_percentage > 0 ? `<span class="text-[9px] text-rose-400 font-bold">${p.discount_percentage}% OFF</span>` : ''}
+                        </td>
+                        <td class="py-4 font-mono">
+                          ${p.discount_percentage > 0 ? `<span class="px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 font-bold text-[10px]">${p.discount_percentage}% OFF</span>` : '<span class="text-slate-500">None</span>'}
                         </td>
                         <td class="py-4">
                           <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${
@@ -408,7 +682,7 @@
                           <button onclick="openProductPreviewModal('${p._id}')" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 font-bold">👁 Preview</button>
                           <button onclick="openProductStudioModal('${p._id}')" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 font-bold hover:bg-emerald-500/20">Edit</button>
                           <button onclick="duplicateProduct('${p._id}')" class="px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 font-bold hover:bg-indigo-500/20">Duplicate</button>
-                          <button onclick="deleteProduct('${p._id}')" class="px-2.5 py-1 rounded-lg text-rose-400 hover:text-rose-300 font-bold">✕</button>
+                          <button onclick="deleteProduct('${p._id}')" class="px-2 py-1 rounded-lg text-rose-400 hover:text-rose-300 font-bold">✕</button>
                         </td>
                       </tr>
                     `).join('')}
@@ -456,7 +730,6 @@
       rows.forEach(r => tbody.appendChild(r));
     }
 
-    // Modal Editor with Tabs / Accordions
     async function openProductStudioModal(productId) {
       const isNew = productId === 'new';
       const modal = document.getElementById('globalModal');
@@ -489,12 +762,10 @@
           </div>
 
           <form onsubmit="handleProductFormSubmit(event, '${productId}')" oninput="state.productStudioDirty=true" class="space-y-6">
-            
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               
               <!-- Left Area -->
               <div class="lg:col-span-8 space-y-4">
-                
                 <div class="p-5 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
                   <span class="text-[11px] text-emerald-400 font-bold uppercase block">Section A — Basic Information</span>
                   <div class="space-y-3">
@@ -605,7 +876,6 @@
 
               <!-- Right Area -->
               <div class="lg:col-span-4 space-y-4">
-                
                 <div class="p-5 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
                   <span class="text-[11px] text-emerald-400 font-bold uppercase block">Publishing & Status</span>
                   <div class="space-y-3">
@@ -659,7 +929,6 @@
                   <input type="text" id="pSeoTitle" value="${p.seo_title || ''}" placeholder="SEO Title" class="w-full px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white text-[11px]">
                   <textarea id="pSeoDesc" rows="2" placeholder="SEO Description" class="w-full px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white text-[11px]">${p.seo_description || ''}</textarea>
                 </div>
-
               </div>
 
             </div>
@@ -842,29 +1111,8 @@
     // =========================================================================
     // OTHER ADMIN MODULES (PRESERVED IN FULL)
     // =========================================================================
-    async function renderAdminOverview(container) {
-      container.innerHTML = `<div class="p-8 text-center text-slate-400 font-mono text-xs">Loading Overview Dashboard...</div>`;
-      try {
-        const d = await fetchJSON(`/api/admin/dashboard/full-overview?range=${state.dashboardRange}`, { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
-        container.innerHTML = `
-          <div class="space-y-8 font-mono text-xs pb-12">
-            <div class="glass border-emerald-500/20 px-4 py-2.5 rounded-2xl flex justify-between items-center text-[11px] font-bold shadow-lg">
-              <span class="text-emerald-400 font-sans">🟢 ${d.live_visitors || 1} LIVE VISITORS ONLINE</span>
-              <span class="text-slate-400">Updated just now</span>
-            </div>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 font-sans">
-              <div class="admin-card p-5 rounded-3xl space-y-2"><span class="text-slate-400 block text-[10px] uppercase font-bold">TOTAL REVENUE</span><div class="text-2xl font-black text-emerald-400 font-mono">₹${d.kpis.revenue.value.toLocaleString()}</div></div>
-              <div class="admin-card p-5 rounded-3xl space-y-2"><span class="text-slate-400 block text-[10px] uppercase font-bold">TOTAL ORDERS</span><div class="text-2xl font-black text-white font-mono">${d.kpis.orders.value}</div></div>
-              <div class="admin-card p-5 rounded-3xl space-y-2"><span class="text-slate-400 block text-[10px] uppercase font-bold">TOTAL CUSTOMERS</span><div class="text-2xl font-black text-white font-mono">${d.kpis.customers.value}</div></div>
-              <div class="admin-card p-5 rounded-3xl space-y-2"><span class="text-slate-400 block text-[10px] uppercase font-bold">ACTIVE SUBSCRIPTIONS</span><div class="text-2xl font-black text-indigo-400 font-mono">${d.kpis.subscriptions.value}</div></div>
-            </div>
-          </div>
-        `;
-      } catch (e) { container.innerHTML = `<div class="admin-card p-8 text-rose-400 text-xs font-mono">${e.message}</div>`; }
-    }
-
     async function renderAdminAccountSlots(container) {
-      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading Account Slots...</div>';
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono">Loading Account Slots...</div>';
       try {
         const data = await fetchJSON('/api/admin/slots', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
         container.innerHTML = `
@@ -873,16 +1121,16 @@
             <div class="admin-card rounded-3xl p-6">
               <table class="w-full text-left">
                 <thead><tr class="border-b border-admin-border text-slate-500"><th class="pb-3">Slot</th><th class="pb-3">Email</th><th class="pb-3">Status</th></tr></thead>
-                <tbody class="divide-y divide-admin-border font-mono">${(data.slots || []).map(s => `<tr><td class="py-3 font-bold text-white">${s.account_label}</td><td class="py-3 text-slate-400">${s.email}</td><td class="py-3 text-emerald-400">${s.status}</td></tr>`).join('')}</tbody>
+                <tbody class="divide-y divide-admin-border">${(data.slots || []).map(s => `<tr><td class="py-3 font-bold text-white">${s.account_label}</td><td class="py-3 text-slate-400">${s.email}</td><td class="py-3 text-emerald-400">${s.status}</td></tr>`).join('')}</tbody>
               </table>
             </div>
           </div>
         `;
-      } catch (err) { container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">${err.message}</div>`; }
+      } catch (err) { container.innerHTML = `<div class="admin-card p-8 text-rose-400 text-xs font-mono">${err.message}</div>`; }
     }
 
     async function renderAdminSubscriptions(container) {
-      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading Subscriptions...</div>';
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono">Loading Subscriptions...</div>';
       try {
         const data = await fetchJSON('/api/admin/subscriptions/advanced', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
         container.innerHTML = `
