@@ -9,25 +9,20 @@ const compression = require('compression');
 
 const app = express();
 
-// Enable Gzip/Bratli compression for blazing fast load times
 app.use(compression());
-
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Serve static files with 1-day aggressive caching for maximum speed
 app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: '1d',
   etag: true
 }));
 
 const JWT_SECRET = process.env.JWT_SECRET || 'nexus_digital_super_secret_jwt_2026_key';
-const activeSessions = new Map();
 
 app.use((req, res, next) => {
   if (req.originalUrl && req.originalUrl.startsWith('/api/')) {
     res.setHeader('Content-Type', 'application/json');
-    // Prevent API response caching so admin panels and inventory are always live
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   }
   next();
@@ -381,8 +376,9 @@ app.get('/api/admin/subscriptions/advanced', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// FIXED: Include proof_screenshot in admin transactions list so it displays correctly
 app.get('/api/admin/transactions', async (req, res) => {
-  try { res.json(await Transaction.find().select('-proof_screenshot').lean()); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { res.json(await Transaction.find().lean()); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/admin/customers/list', async (req, res) => {
