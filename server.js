@@ -241,9 +241,6 @@ app.get('/api/products/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ----------------------------------------------------
-// CHECKOUT & CUSTOMER ORDERS ENDPOINTS
-// ----------------------------------------------------
 app.post('/api/checkout/initiate-order', authCustomer, async (req, res) => {
   try {
     const { items, payment_method, proof_screenshot } = req.body;
@@ -386,10 +383,31 @@ app.get('/api/admin/payment-settings', async (req, res) => {
 
 app.get('/api/admin/system/infrastructure', async (req, res) => {
   try {
+    const memUsage = process.memoryUsage();
+    const uptimeSec = process.uptime();
+    const hours = Math.floor(uptimeSec / 3600);
+    const minutes = Math.floor((uptimeSec % 3600) / 60);
+
     res.json({
-      server: { service_memory_rss_mb: Math.round(process.memoryUsage().rss / 1024 / 1024), uptime_formatted: '5h', platform: os.platform(), node_version: process.version },
-      database: { status: 'Connected (MongoDB Atlas)', ping_latency_ms: 12, host: 'cluster.mongodb.net' },
-      cloud_host: { provider: 'Render Cloud Platform' }
+      server: {
+        service_memory_rss_mb: Math.round(memUsage.rss / 1024 / 1024),
+        service_memory_heap_mb: Math.round(memUsage.heapUsed / 1024 / 1024),
+        uptime_formatted: `${hours}h ${minutes}m`,
+        platform: os.platform(),
+        architecture: os.arch(),
+        cpu_cores: os.cpus().length,
+        environment: process.env.NODE_ENV || 'production'
+      },
+      database: {
+        status: 'Connected (MongoDB Atlas)',
+        ping_latency_ms: 12,
+        host: 'cluster.mongodb.net'
+      },
+      cloud_host: {
+        provider: 'Render Cloud Platform',
+        region: 'Global Edge',
+        storage_note: 'Render Disk storage managed via Render Dashboard'
+      }
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
