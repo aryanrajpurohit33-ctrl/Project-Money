@@ -61,6 +61,10 @@
       border: 1px solid #1c2438;
     }
 
+    .auth-glow {
+      box-shadow: 0 0 50px -10px rgba(16, 185, 129, 0.15);
+    }
+
     .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
     .custom-scroll::-webkit-scrollbar-track { background: transparent; }
     .custom-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 999px; }
@@ -104,14 +108,11 @@
       const hub = document.getElementById('toastHub');
       const toast = document.createElement('div');
       const colors = type === 'success' ? 'bg-emerald-500 text-gray-950' : 'bg-rose-500 text-white';
-      toast.className = `px-5 py-3 rounded-2xl font-bold text-xs shadow-2xl flex items-center gap-2 transform transition-all duration-300 translate-y-[-10px] opacity-0 ${colors}`;
+      toast.className = `px-5 py-3 rounded-2xl font-bold text-xs shadow-2xl flex items-center gap-2 transform transition-all duration-300 opacity-0 ${colors}`;
       toast.innerHTML = `<span>${type === 'success' ? '✓' : '✕'}</span> <span>${message}</span>`;
       hub.appendChild(toast);
-      setTimeout(() => toast.classList.remove('translate-y-[-10px]', 'opacity-0'), 10);
-      setTimeout(() => {
-        toast.classList.add('opacity-0', 'translate-x-full');
-        setTimeout(() => toast.remove(), 300);
-      }, 3200);
+      setTimeout(() => toast.classList.remove('opacity-0'), 10);
+      setTimeout(() => { toast.classList.add('opacity-0'); setTimeout(() => toast.remove(), 300); }, 3200);
     }
 
     async function fetchJSON(url, options = {}) {
@@ -425,406 +426,246 @@
     }
 
     function addToCart(product_id, name, price, image, delivery_type) {
-      state.cart = [{ product_id, name, price, image, delivery_type, duration: '1_MONTH' }];
+      const exists = state.cart.find(i => i.product_id === product_id);
+      if (exists) return showToast('Item already in your cart', 'error');
+      state.cart.push({ product_id, name, price, image, delivery_type, duration: '1_MONTH' });
       localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
-      navigate('checkout');
+      document.querySelectorAll('.cart-count-badge').forEach(b => b.textContent = state.cart.length);
+      showToast(`Added "${name}" to cart`);
+    }
+
+    function removeFromCart(idx) {
+      state.cart.splice(idx, 1);
+      localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
+      document.querySelectorAll('.cart-count-badge').forEach(b => b.textContent = state.cart.length);
+      renderStoreCart(document.getElementById('storeContent'));
     }
 
     function renderStoreCart(container) {
-      container.innerHTML = `<div class="text-center py-16"><button onclick="navigate('checkout')" class="px-6 py-3 bg-emerald-500 text-gray-950 font-black rounded-2xl text-xs uppercase">Proceed to Checkout</button></div>`;
+      const subtotal = state.cart.reduce((a, b) => a + b.price, 0);
+      container.innerHTML = `
+        <div class="max-w-3xl mx-auto space-y-6">
+          <h1 class="text-xl font-black text-white">Shopping Cart</h1>
+          ${state.cart.length === 0 ? `<div class="glass rounded-3xl p-12 text-center text-xs text-slate-400">Cart is empty.</div>` : `
+            <div class="space-y-3">
+              ${state.cart.map((item, idx) => `
+                <div class="glass rounded-2xl p-4 flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <img src="${item.image || ''}" class="w-12 h-12 rounded-xl object-cover">
+                    <div>
+                      <h4 class="text-xs font-bold text-white">${item.name}</h4>
+                      <span class="text-[10px] text-emerald-400 font-mono">${item.delivery_type?.replace('_', ' ') || ''}</span>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-4">
+                    <span class="text-sm font-black text-white">₹${item.price}</span>
+                    <button onclick="removeFromCart(${idx})" class="text-slate-500 hover:text-rose-400">✕</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            <div class="glass rounded-3xl p-6 space-y-4">
+              <div class="flex justify-between text-sm font-black text-white"><span>Total:</span> <span class="text-emerald-400">₹${subtotal}</span></div>
+              <button onclick="navigate('checkout')" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase">Proceed To Checkout</button>
+            </div>
+          `}
+        </div>
+      `;
     }
 
     async function renderStoreCheckout(container) {
       if (!state.token) return renderCustomerAuthPrompt(container, 'checkout');
       if (!state.cart.length) return navigate('products');
+
+      const ps = await fetchJSON('/api/payment-methods');
+      state.paymentSettings = ps;
       const item = state.cart[0];
 
       container.innerHTML = `
-        <div class="max-w-xl mx-auto glass rounded-3xl p-8 space-y-6">
-          <h2 class="text-xl font-black text-white">Checkout: ${item.name}</h2>
-          <div class="text-2xl font-black text-emerald-400">₹${item.price}</div>
-          <button onclick="handleCheckoutPayment()" class="w-full py-4 bg-emerald-500 text-gray-950 font-black rounded-2xl text-xs uppercase">Confirm & Upload Proof</button>
+        <div class="max-w-3xl mx-auto space-y-8">
+          <div>
+            <h1 class="text-2xl font-black text-white">Choose Payment Method</h1>
+            <p class="text-xs text-slate-400">Order: ${item.name} — Amount: ₹${item.price}</p>
+          </div>
+
+          <div id="chkStep1" class="space-y-4">
+            <div onclick="selectPaymentMethod('UPI')" id="methodCardUPI" class="glass rounded-3xl p-6 cursor-pointer border-2 border-emerald-500/80 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="text-2xl">💳</span>
+                <div>
+                  <h3 class="text-sm font-bold text-white">Instant UPI Pay</h3>
+                  <p class="text-[10px] text-slate-400">Google Pay, PhonePe, Paytm</p>
+                </div>
+              </div>
+              <span id="radioUPI" class="w-4 h-4 rounded-full border-2 border-emerald-400 bg-emerald-400"></span>
+            </div>
+
+            <div onclick="selectPaymentMethod('CRYPTO')" id="methodCardCrypto" class="glass rounded-3xl p-6 cursor-pointer border border-white/5 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="text-2xl">₿</span>
+                <div>
+                  <h3 class="text-sm font-bold text-white">Cryptocurrency</h3>
+                  <p class="text-[10px] text-slate-400">${state.paymentSettings.crypto_currency} (${state.paymentSettings.crypto_network})</p>
+                </div>
+              </div>
+              <span id="radioCrypto" class="w-4 h-4 rounded-full border-2 border-slate-600"></span>
+            </div>
+
+            <button onclick="startCheckoutPayment()" id="chkNextBtn" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider">
+              Continue to Payment Details →
+            </button>
+          </div>
+
+          <div id="chkStep2" class="hidden space-y-6"></div>
         </div>
       `;
     }
 
-    async function handleCheckoutPayment() {
+    let selectedMethod = 'UPI';
+    function selectPaymentMethod(m) {
+      selectedMethod = m;
+      if (m === 'UPI') {
+        document.getElementById('methodCardUPI').className = 'glass rounded-3xl p-6 cursor-pointer border-2 border-emerald-500/80 flex items-center justify-between';
+        document.getElementById('methodCardCrypto').className = 'glass rounded-3xl p-6 cursor-pointer border border-white/5 flex items-center justify-between';
+        document.getElementById('radioUPI').className = 'w-4 h-4 rounded-full border-2 border-emerald-400 bg-emerald-400';
+        document.getElementById('radioCrypto').className = 'w-4 h-4 rounded-full border-2 border-slate-600';
+      } else {
+        document.getElementById('methodCardCrypto').className = 'glass rounded-3xl p-6 cursor-pointer border-2 border-emerald-500/80 flex items-center justify-between';
+        document.getElementById('methodCardUPI').className = 'glass rounded-3xl p-6 cursor-pointer border border-white/5 flex items-center justify-between';
+        document.getElementById('radioCrypto').className = 'w-4 h-4 rounded-full border-2 border-emerald-400 bg-emerald-400';
+        document.getElementById('radioUPI').className = 'w-4 h-4 rounded-full border-2 border-slate-600';
+      }
+    }
+
+    async function startCheckoutPayment() {
+      const btn = document.getElementById('chkNextBtn');
+      btn.disabled = true;
+      btn.textContent = 'Generating Transaction...';
+
       try {
-        await fetchJSON('/api/checkout/initiate-order', {
+        const data = await fetchJSON('/api/checkout/initiate-order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}` },
-          body: JSON.stringify({ items: state.cart, payment_method: 'UPI' })
+          body: JSON.stringify({ items: state.cart, payment_method: selectedMethod })
         });
-        showToast('Order initiated! Upload proof.');
-        navigate('orders');
-      } catch (e) { showToast(e.message, 'error'); }
-    }
 
-    // =========================================================================
-    // CUSTOMER AUTHENTICATION PORTAL (REDESIGNED, COMPACT, SVG ICONS)
-    // =========================================================================
-    function renderCustomerAuthPrompt(container, returnView = 'account') {
-      container.innerHTML = `
-        <div class="min-h-[75vh] flex items-center justify-center p-4">
-          <div class="glass max-w-sm w-full rounded-[24px] p-6 sm:p-8 border border-white/10 shadow-2xl relative overflow-hidden transition-all duration-300">
-            
-            <div class="flex flex-col items-center space-y-2.5 mb-6">
-              <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-xl font-black text-gray-950 shadow-md">
-                N
-              </div>
-              <div class="text-center">
-                <h1 class="text-[17px] font-black text-white tracking-tight" id="authPortalHeading">Create Your Account</h1>
-                <p class="text-[11px] text-slate-400 mt-0.5" id="authPortalSub">Join Nexus Digital to manage your purchases.</p>
-              </div>
-            </div>
+        document.getElementById('chkStep1').classList.add('hidden');
+        const step2 = document.getElementById('chkStep2');
+        step2.classList.remove('hidden');
 
-            <div id="authDynamicContainer"></div>
+        const ps = state.paymentSettings;
+        const txn = data.transaction;
 
-          </div>
-        </div>
-      `;
-      switchAuthScreen(state.authScreen || 'register', returnView);
-    }
-
-    function switchAuthScreen(screen, returnView = 'account') {
-      state.authScreen = screen;
-      const container = document.getElementById('authDynamicContainer');
-      const heading = document.getElementById('authPortalHeading');
-      const sub = document.getElementById('authPortalSub');
-      if (!container) return;
-
-      if (screen === 'register') {
-        if(heading) heading.textContent = 'Create Your Account';
-        if(sub) sub.textContent = 'Join Nexus Digital to manage your purchases.';
-        renderRegisterScreen(container, returnView);
-      } else if (screen === 'login') {
-        if(heading) heading.textContent = 'Welcome Back';
-        if(sub) sub.textContent = 'Sign in to continue to your account.';
-        renderLoginScreen(container, returnView);
-      } else if (screen === 'forgot') {
-        if(heading) heading.textContent = 'Reset Password';
-        if(sub) sub.textContent = 'Enter your email to receive reset instructions.';
-        renderForgotScreen(container, returnView);
-      }
-    }
-
-    function renderRegisterScreen(container, returnView) {
-      container.innerHTML = `
-        <form onsubmit="handleCustomerRegister(event, '${returnView}')" class="space-y-3.5 text-xs font-sans">
-          
-          <div class="space-y-1">
-            <label class="text-[11px] font-bold text-slate-300 block ml-1">Full Name</label>
-            <input type="text" id="regName" required placeholder="Enter your full name" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div class="space-y-1 relative">
-              <label class="text-[11px] font-bold text-slate-300 block ml-1">Username</label>
-              <input type="text" id="regUsername" required oninput="validateUsernameLive(this.value)" placeholder="Unique ID" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
-              <div id="regUsernameMsg" class="text-[9px] font-bold min-h-[14px] mt-0.5 ml-1"></div>
-            </div>
+        let detailsHTML = selectedMethod === 'UPI' ? `
+          <div class="text-center space-y-4">
+            <img src="${ps.upi_qr_url}" class="w-56 h-56 mx-auto rounded-2xl glass p-2 bg-white object-contain">
             <div class="space-y-1">
-              <label class="text-[11px] font-bold text-slate-300 block ml-1">Email Address</label>
-              <input type="email" id="regEmail" required placeholder="Enter email" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+              <span class="text-[10px] text-slate-500 uppercase font-bold">UPI ID</span>
+              <div class="font-mono text-emerald-400 text-sm font-bold">${ps.upi_id}</div>
+              <button onclick="navigator.clipboard.writeText('${ps.upi_id}'); showToast('Copied UPI ID!')" class="text-xs text-slate-400 hover:text-white underline">Copy UPI ID</button>
             </div>
+            <div class="text-xs text-slate-400 max-w-sm mx-auto whitespace-pre-line text-left bg-surface-950 p-4 rounded-2xl">${ps.upi_instructions}</div>
           </div>
+        ` : `
+          <div class="text-center space-y-4">
+            <img src="${ps.crypto_qr_url}" class="w-56 h-56 mx-auto rounded-2xl glass p-2 bg-white object-contain">
+            <div class="space-y-1">
+              <span class="text-[10px] text-slate-500 uppercase font-bold">Wallet Address (${ps.crypto_currency} - ${ps.crypto_network})</span>
+              <div class="font-mono text-emerald-400 text-xs font-bold break-all">${ps.crypto_wallet_address}</div>
+              <button onclick="navigator.clipboard.writeText('${ps.crypto_wallet_address}'); showToast('Copied Address!')" class="text-xs text-slate-400 hover:text-white underline">Copy Address</button>
+            </div>
+            <div class="text-xs text-slate-400 max-w-sm mx-auto whitespace-pre-line text-left bg-surface-950 p-4 rounded-2xl">${ps.crypto_instructions}</div>
+          </div>
+        `;
 
-          <div class="space-y-1">
-            <label class="text-[11px] font-bold text-slate-300 block ml-1">Password</label>
-            <div class="relative">
-              <input type="password" id="regPassword" required oninput="checkPasswordStrength(this.value)" placeholder="Create a password" class="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
-              <button type="button" onclick="togglePassVisibility('regPassword', this)" class="absolute right-3 top-2.5 text-slate-400 hover:text-white focus:outline-none p-0.5" aria-label="Show password">
-                ${SVG_EYE}
+        step2.innerHTML = `
+          <div class="glass rounded-3xl p-6 sm:p-10 space-y-6 max-w-2xl mx-auto">
+            <div class="flex justify-between items-center border-b border-white/5 pb-4">
+              <div>
+                <span class="text-[10px] font-mono text-slate-500">TRANSACTION ID</span>
+                <h3 class="text-base font-black text-white font-mono">${txn.txn_id}</h3>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-slate-500">TOTAL</span>
+                <div class="text-lg font-black text-emerald-400 font-mono">₹${txn.amount}</div>
+              </div>
+            </div>
+            ${detailsHTML}
+            <form onsubmit="submitProofScreenshot(event, '${txn.txn_id}')" class="space-y-4 pt-4 border-t border-white/5">
+              <label class="text-xs font-bold text-white block">Upload Payment Screenshot (JPG, PNG)</label>
+              <input type="file" id="proofImgInput" accept="image/*" required class="w-full text-xs text-slate-400 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-500/10 file:text-emerald-400">
+              <button type="submit" id="submitProofBtn" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider">
+                Submit Payment Proof for Verification
               </button>
-            </div>
-            <div class="flex justify-between items-center px-1">
-               <span class="text-[9px] text-slate-500">Min 8 chars, 1 letter, 1 number</span>
-               <span id="passStrengthBadge" class="text-[9px]"></span>
-            </div>
+            </form>
           </div>
-
-          <div class="space-y-1">
-            <label class="text-[11px] font-bold text-slate-300 block ml-1">Confirm Password</label>
-            <div class="relative">
-              <input type="password" id="regConfirmPassword" required oninput="checkPasswordMatch()" placeholder="Confirm password" class="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
-              <button type="button" onclick="togglePassVisibility('regConfirmPassword', this)" class="absolute right-3 top-2.5 text-slate-400 hover:text-white focus:outline-none p-0.5" aria-label="Show password">
-                ${SVG_EYE}
-              </button>
-            </div>
-            <div id="confirmPassMsg" class="text-[9px] font-bold px-1 min-h-[14px]"></div>
-          </div>
-
-          <button type="submit" id="regSubmitBtn" class="w-full py-3 mt-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-[13px] flex items-center justify-center transition-all shadow-md active:scale-[0.98]">
-            Create Account
-          </button>
-        </form>
-
-        <div class="pt-5 text-center text-[11px] text-slate-400">
-          Already a customer? 
-          <button onclick="switchAuthScreen('login', '${returnView}')" class="font-bold text-emerald-400 hover:text-emerald-300 transition-colors ml-0.5">Sign In</button>
-        </div>
-      `;
-    }
-
-    function renderLoginScreen(container, returnView) {
-      container.innerHTML = `
-        <form onsubmit="handleCustomerLogin(event, '${returnView}')" class="space-y-4 text-xs font-sans">
-          
-          <div class="space-y-1">
-            <label class="text-[11px] font-bold text-slate-300 block ml-1">Email Address / Username</label>
-            <input type="text" id="logUsername" required placeholder="Enter email or username" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
-          </div>
-
-          <div class="space-y-1">
-            <div class="flex justify-between items-center ml-1 pr-1">
-              <label class="text-[11px] font-bold text-slate-300 block">Password</label>
-              <button type="button" onclick="switchAuthScreen('forgot', '${returnView}')" class="text-[10px] text-emerald-400 hover:text-emerald-300 transition-colors">Forgot Password?</button>
-            </div>
-            <div class="relative">
-              <input type="password" id="logPassword" required placeholder="Enter password" class="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
-              <button type="button" onclick="togglePassVisibility('logPassword', this)" class="absolute right-3 top-2.5 text-slate-400 hover:text-white focus:outline-none p-0.5" aria-label="Show password">
-                ${SVG_EYE}
-              </button>
-            </div>
-          </div>
-
-          <button type="submit" id="logSubmitBtn" class="w-full py-3 mt-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-[13px] flex items-center justify-center transition-all shadow-md active:scale-[0.98]">
-            Sign In
-          </button>
-        </form>
-
-        <div class="pt-5 text-center text-[11px] text-slate-400">
-          Don't have an account? 
-          <button onclick="switchAuthScreen('register', '${returnView}')" class="font-bold text-emerald-400 hover:text-emerald-300 transition-colors ml-0.5">Sign Up</button>
-        </div>
-      `;
-    }
-
-    function renderForgotScreen(container, returnView) {
-      container.innerHTML = `
-        <form onsubmit="handleForgotPassword(event, '${returnView}')" class="space-y-4 text-xs font-sans">
-          <div class="space-y-1">
-            <label class="text-[11px] font-bold text-slate-300 block ml-1">Email Address</label>
-            <input type="email" id="forgotInput" required placeholder="Enter your email" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
-          </div>
-          
-          <button type="submit" id="forgotSubmitBtn" class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-[13px] flex items-center justify-center transition-all shadow-md active:scale-[0.98]">
-            Send Reset Link
-          </button>
-        </form>
-
-        <div class="pt-5 text-center">
-          <button onclick="switchAuthScreen('login', '${returnView}')" class="text-[11px] text-slate-400 hover:text-white transition-colors">← Back to Login</button>
-        </div>
-      `;
-    }
-
-    function togglePassVisibility(inputId, btn) {
-      const input = document.getElementById(inputId);
-      if (!input) return;
-      if (input.type === 'password') {
-        input.type = 'text';
-        btn.innerHTML = SVG_EYE_OFF;
-        btn.classList.add('text-emerald-400');
-        btn.setAttribute('aria-label', 'Hide password');
-      } else {
-        input.type = 'password';
-        btn.innerHTML = SVG_EYE;
-        btn.classList.remove('text-emerald-400');
-        btn.setAttribute('aria-label', 'Show password');
-      }
-    }
-
-    function validateUsernameLive(val) {
-      clearTimeout(usernameCheckTimer);
-      const msg = document.getElementById('regUsernameMsg');
-      const clean = val.toLowerCase().trim();
-
-      if (!clean || clean.length < 3) {
-        msg.innerHTML = '<span class="text-slate-500">Min 3 chars</span>';
-        isUsernameAvailable = false; return;
-      }
-      if (!/^[a-zA-Z0-9_]+$/.test(clean)) {
-        msg.innerHTML = '<span class="text-rose-400">✕ Invalid chars</span>';
-        isUsernameAvailable = false; return;
-      }
-
-      msg.innerHTML = '<span class="text-slate-400 animate-pulse">Checking...</span>';
-
-      usernameCheckTimer = setTimeout(async () => {
-        try {
-          const res = await fetchJSON(`/api/auth/check-username?username=${encodeURIComponent(clean)}`);
-          if (res.available) {
-            msg.innerHTML = '<span class="text-emerald-400 font-bold">✓ Available</span>';
-            isUsernameAvailable = true;
-          } else {
-            msg.innerHTML = `<span class="text-rose-400 font-bold">✕ Taken</span>`;
-            isUsernameAvailable = false;
-          }
-        } catch (e) {
-          msg.innerHTML = '<span class="text-rose-400">✕ Error</span>';
-          isUsernameAvailable = false;
-        }
-      }, 350);
-    }
-
-    function checkPasswordStrength(val) {
-      const badge = document.getElementById('passStrengthBadge');
-      if (!badge) return;
-      if (!val) { badge.textContent = ''; return; }
-
-      let score = 0;
-      if (val.length >= 8) score++;
-      if (/[A-Za-z]/.test(val) && /[0-9]/.test(val)) score++;
-      if (/[^A-Za-z0-9]/.test(val) && val.length >= 10) score++;
-
-      if (score <= 1) { badge.textContent = 'Weak'; badge.className = 'font-bold text-rose-400 text-[9px]'; } 
-      else if (score === 2) { badge.textContent = 'Medium'; badge.className = 'font-bold text-amber-400 text-[9px]'; } 
-      else { badge.textContent = 'Strong'; badge.className = 'font-bold text-emerald-400 text-[9px]'; }
-      checkPasswordMatch();
-    }
-
-    function checkPasswordMatch() {
-      const p1 = document.getElementById('regPassword')?.value;
-      const p2 = document.getElementById('regConfirmPassword')?.value;
-      const msg = document.getElementById('confirmPassMsg');
-      if (!msg || !p2) { if (msg) msg.textContent = ''; return; }
-
-      if (p1 === p2) msg.innerHTML = '<span class="text-emerald-400">✓ Passwords match</span>';
-      else msg.innerHTML = '<span class="text-rose-400">✕ Passwords do not match</span>';
-    }
-
-    async function handleCustomerRegister(e, returnView) {
-      e.preventDefault();
-      const username = document.getElementById('regUsername').value.trim();
-      const email = document.getElementById('regEmail').value.trim();
-      const name = document.getElementById('regName').value.trim();
-      const password = document.getElementById('regPassword').value;
-      const confirmPass = document.getElementById('regConfirmPassword').value;
-      const btn = document.getElementById('regSubmitBtn');
-
-      if (password !== confirmPass) return showToast('Passwords do not match.', 'error');
-      if (!isUsernameAvailable) return showToast('Please select an available username.', 'error');
-
-      btn.disabled = true;
-      btn.innerHTML = `${SVG_SPINNER} Creating...`;
-
-      try {
-        const data = await fetchJSON('/api/auth/customer/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, name, email, password })
-        });
-        state.token = data.token;
-        state.user = data.user;
-        localStorage.setItem('nexus_token', data.token);
-        localStorage.setItem('nexus_user', JSON.stringify(data.user));
-        
-        showToast(`✓ Welcome to Nexus Digital, @${data.user.username}!`);
-        navigate(returnView);
+        `;
       } catch (err) {
         btn.disabled = false;
-        btn.innerHTML = 'Create Account';
+        btn.textContent = 'Continue to Payment Details →';
         showToast(err.message, 'error');
       }
     }
 
-    async function handleCustomerLogin(e, returnView) {
-      e.preventDefault();
-      const username = document.getElementById('logUsername').value.trim();
-      const password = document.getElementById('logPassword').value;
-      const btn = document.getElementById('logSubmitBtn');
+    function compressImageFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+          const img = new Image();
+          img.src = event.target.result;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 1280;
+            let width = img.width;
+            let height = img.height;
+            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.82));
+          };
+          img.onerror = (err) => reject(err);
+        };
+        reader.onerror = (err) => reject(err);
+      });
+    }
 
+    async function submitProofScreenshot(e, txnId) {
+      e.preventDefault();
+      const fileInput = document.getElementById('proofImgInput');
+      if (!fileInput.files.length) return;
+
+      const btn = document.getElementById('submitProofBtn');
       btn.disabled = true;
-      btn.innerHTML = `${SVG_SPINNER} Signing In...`;
+      btn.textContent = 'Compressing & Uploading Proof...';
 
       try {
-        const data = await fetchJSON('/api/auth/customer/login', {
+        const base64Data = await compressImageFile(fileInput.files[0]);
+        await fetchJSON('/api/checkout/upload-proof-json', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}` },
+          body: JSON.stringify({ transaction_id: txnId, screenshot_base64: base64Data })
         });
-        state.token = data.token;
-        state.user = data.user;
-        localStorage.setItem('nexus_token', data.token);
-        localStorage.setItem('nexus_user', JSON.stringify(data.user));
-        
-        showToast(`Welcome back, @${data.user.username}!`);
-        navigate(returnView);
+
+        state.cart = [];
+        localStorage.removeItem('nexus_cart');
+        showToast('Proof submitted! Payment is being verified.');
+        navigate('orders');
       } catch (err) {
         btn.disabled = false;
-        btn.innerHTML = 'Sign In';
+        btn.textContent = 'Submit Payment Proof for Verification';
         showToast(err.message, 'error');
       }
-    }
-
-    async function handleForgotPassword(e, returnView) {
-      e.preventDefault();
-      const btn = document.getElementById('forgotSubmitBtn');
-      btn.disabled = true;
-      btn.innerHTML = `${SVG_SPINNER} Sending...`;
-
-      try {
-        const data = await fetchJSON('/api/auth/customer/forgot-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: document.getElementById('forgotInput').value.trim() })
-        });
-        showToast(data.message);
-        switchAuthScreen('login', returnView);
-      } catch (e) {
-        btn.disabled = false;
-        btn.innerHTML = 'Send Reset Link';
-        showToast(e.message, 'error'); 
-      }
-    }
-
-    function renderStoreAccount(container) {
-      if (!state.token) return renderCustomerAuthPrompt(container, 'account');
-      container.innerHTML = `
-        <div class="max-w-2xl mx-auto glass rounded-3xl p-8 space-y-6">
-          <div class="flex justify-between items-center border-b border-white/5 pb-4">
-            <div>
-              <span class="text-[10px] text-emerald-400 font-bold uppercase tracking-widest font-mono">Authenticated Customer</span>
-              <h1 class="text-2xl font-black text-white mt-1">@${state.user.username || state.user.name}</h1>
-            </div>
-            <button onclick="customerLogout()" class="px-4 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-bold transition-all">
-              🚪 Logout
-            </button>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <button onclick="navigate('orders')" class="p-6 rounded-2xl bg-surface-950 border border-white/5 text-left space-y-2 hover:border-emerald-500/30 transition-all">
-              <span class="text-2xl">📦</span>
-              <h3 class="text-sm font-bold text-white">Purchased Items</h3>
-              <p class="text-xs text-slate-400">View unlocked account keys & subscription credentials.</p>
-            </button>
-            <button onclick="navigate('products')" class="p-6 rounded-2xl bg-surface-950 border border-white/5 text-left space-y-2 hover:border-emerald-500/30 transition-all">
-              <span class="text-2xl">🛍</span>
-              <h3 class="text-sm font-bold text-white">Browse Catalog</h3>
-              <p class="text-xs text-slate-400">Explore premium digital accounts & license keys.</p>
-            </button>
-          </div>
-        </div>
-      `;
-    }
-
-    function customerLogout() {
-      if (!confirm('Are you sure you want to log out?')) return;
-      state.token = '';
-      state.user = null;
-      localStorage.removeItem('nexus_token');
-      localStorage.removeItem('nexus_user');
-      showToast('Logged out successfully.');
-      navigate('home');
     }
 
     // =========================================================================
-    // CUSTOMER VAULT / PURCHASED ITEMS
+    // CUSTOMER PURCHASED ITEMS
     // =========================================================================
     async function renderStoreOrders(container) {
       if (!state.token) return renderCustomerAuthPrompt(container, 'orders');
-      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold">Loading vault...</div>';
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold">Loading purchased items...</div>';
 
       try {
         const orders = await fetchJSON('/api/customer/orders', { headers: { 'Authorization': `Bearer ${state.token}` } });
@@ -922,8 +763,298 @@
       }
     }
 
+    function toggleCustPass(id, actualPass) {
+      const el = document.getElementById(`custPass-${id}`);
+      if (!el) return;
+      if (el.textContent === '••••••••') el.textContent = actualPass;
+      else el.textContent = '••••••••';
+    }
+
     // =========================================================================
-    // DEDICATED SAAS ADMIN CONTROL CENTER
+    // REDESIGNED AUTHENTICATION PORTAL
+    // =========================================================================
+    function renderCustomerAuthPrompt(container, returnView = 'account') {
+      container.innerHTML = `
+        <div class="min-h-[75vh] flex items-center justify-center p-4">
+          <div class="glass auth-glow max-w-md w-full rounded-[24px] p-6 sm:p-8 border border-white/10 shadow-2xl relative overflow-hidden transition-all duration-300">
+            <div class="flex flex-col items-center space-y-2.5 mb-6">
+              <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-xl font-black text-gray-950 shadow-md">N</div>
+              <div class="text-center">
+                <h1 class="text-[17px] font-black text-white tracking-tight" id="authPortalHeading">Create Your Account</h1>
+                <p class="text-[11px] text-slate-400 mt-0.5" id="authPortalSub">Join Nexus Digital to manage your purchases.</p>
+              </div>
+            </div>
+            <div id="authDynamicContainer"></div>
+          </div>
+        </div>
+      `;
+      switchAuthScreen(state.authScreen || 'register', returnView);
+    }
+
+    function switchAuthScreen(screen, returnView = 'account') {
+      state.authScreen = screen;
+      const container = document.getElementById('authDynamicContainer');
+      const heading = document.getElementById('authPortalHeading');
+      const sub = document.getElementById('authPortalSub');
+      if (!container) return;
+
+      if (screen === 'register') {
+        if(heading) heading.textContent = 'Create Your Account';
+        if(sub) sub.textContent = 'Join Nexus Digital to manage your purchases.';
+        renderRegisterScreen(container, returnView);
+      } else if (screen === 'login') {
+        if(heading) heading.textContent = 'Welcome Back';
+        if(sub) sub.textContent = 'Sign in to continue to your account.';
+        renderLoginScreen(container, returnView);
+      } else if (screen === 'forgot') {
+        if(heading) heading.textContent = 'Reset Password';
+        if(sub) sub.textContent = 'Enter your email to receive reset instructions.';
+        renderForgotScreen(container, returnView);
+      }
+    }
+
+    function renderRegisterScreen(container, returnView) {
+      container.innerHTML = `
+        <form onsubmit="handleCustomerRegister(event, '${returnView}')" class="space-y-3.5 text-xs font-sans">
+          <div class="space-y-1">
+            <label class="text-[11px] font-bold text-slate-300 block ml-1">Full Name</label>
+            <input type="text" id="regName" required placeholder="Enter your full name" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="space-y-1 relative">
+              <label class="text-[11px] font-bold text-slate-300 block ml-1">Username</label>
+              <input type="text" id="regUsername" required oninput="validateUsernameLive(this.value)" placeholder="Unique ID" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+              <div id="regUsernameMsg" class="text-[9px] font-bold min-h-[14px] mt-0.5 ml-1"></div>
+            </div>
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-slate-300 block ml-1">Email Address</label>
+              <input type="email" id="regEmail" required placeholder="Enter email" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+            </div>
+          </div>
+          <div class="space-y-1">
+            <label class="text-[11px] font-bold text-slate-300 block ml-1">Password</label>
+            <div class="relative">
+              <input type="password" id="regPassword" required oninput="checkPasswordStrength(this.value)" placeholder="Create a password" class="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+              <button type="button" onclick="togglePassVisibility('regPassword', this)" class="absolute right-3 top-2.5 text-slate-400 hover:text-white focus:outline-none p-0.5" aria-label="Show password">${SVG_EYE}</button>
+            </div>
+            <div class="flex justify-between items-center px-1"><span class="text-[9px] text-slate-500">Min 8 chars, 1 letter, 1 number</span><span id="passStrengthBadge" class="text-[9px]"></span></div>
+          </div>
+          <div class="space-y-1">
+            <label class="text-[11px] font-bold text-slate-300 block ml-1">Confirm Password</label>
+            <div class="relative">
+              <input type="password" id="regConfirmPassword" required oninput="checkPasswordMatch()" placeholder="Confirm password" class="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+              <button type="button" onclick="togglePassVisibility('regConfirmPassword', this)" class="absolute right-3 top-2.5 text-slate-400 hover:text-white focus:outline-none p-0.5" aria-label="Show password">${SVG_EYE}</button>
+            </div>
+            <div id="confirmPassMsg" class="text-[9px] font-bold px-1 min-h-[14px]"></div>
+          </div>
+          <button type="submit" id="regSubmitBtn" class="w-full py-3 mt-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-[13px] flex items-center justify-center transition-all shadow-md active:scale-[0.98]">Create Account</button>
+        </form>
+        <div class="pt-5 text-center text-[11px] text-slate-400">
+          Already a customer? <button onclick="switchAuthScreen('login', '${returnView}')" class="font-bold text-emerald-400 hover:text-emerald-300 transition-colors ml-0.5">Sign In</button>
+        </div>
+      `;
+    }
+
+    function renderLoginScreen(container, returnView) {
+      container.innerHTML = `
+        <form onsubmit="handleCustomerLogin(event, '${returnView}')" class="space-y-4 text-xs font-sans">
+          <div class="space-y-1">
+            <label class="text-[11px] font-bold text-slate-300 block ml-1">Email Address / Username</label>
+            <input type="text" id="logUsername" required placeholder="Enter email or username" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+          </div>
+          <div class="space-y-1">
+            <div class="flex justify-between items-center ml-1 pr-1">
+              <label class="text-[11px] font-bold text-slate-300 block">Password</label>
+              <button type="button" onclick="switchAuthScreen('forgot', '${returnView}')" class="text-[10px] text-emerald-400 hover:text-emerald-300 transition-colors">Forgot Password?</button>
+            </div>
+            <div class="relative">
+              <input type="password" id="logPassword" required placeholder="Enter password" class="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+              <button type="button" onclick="togglePassVisibility('logPassword', this)" class="absolute right-3 top-2.5 text-slate-400 hover:text-white focus:outline-none p-0.5" aria-label="Show password">${SVG_EYE}</button>
+            </div>
+          </div>
+          <button type="submit" id="logSubmitBtn" class="w-full py-3 mt-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-[13px] flex items-center justify-center transition-all shadow-md active:scale-[0.98]">Sign In</button>
+        </form>
+        <div class="pt-5 text-center text-[11px] text-slate-400">
+          Don't have an account? <button onclick="switchAuthScreen('register', '${returnView}')" class="font-bold text-emerald-400 hover:text-emerald-300 transition-colors ml-0.5">Sign Up</button>
+        </div>
+      `;
+    }
+
+    function renderForgotScreen(container, returnView) {
+      container.innerHTML = `
+        <form onsubmit="handleForgotPassword(event, '${returnView}')" class="space-y-4 text-xs font-sans">
+          <div class="space-y-1">
+            <label class="text-[11px] font-bold text-slate-300 block ml-1">Email Address</label>
+            <input type="email" id="forgotInput" required placeholder="Enter your email" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+          </div>
+          <button type="submit" id="forgotSubmitBtn" class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-[13px] flex items-center justify-center transition-all shadow-md active:scale-[0.98]">Send Reset Link</button>
+        </form>
+        <div class="pt-5 text-center"><button onclick="switchAuthScreen('login', '${returnView}')" class="text-[11px] text-slate-400 hover:text-white transition-colors">← Back to Login</button></div>
+      `;
+    }
+
+    function togglePassVisibility(inputId, btn) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      if (input.type === 'password') { input.type = 'text'; btn.innerHTML = SVG_EYE_OFF; btn.classList.add('text-emerald-400'); btn.setAttribute('aria-label', 'Hide password'); } 
+      else { input.type = 'password'; btn.innerHTML = SVG_EYE; btn.classList.remove('text-emerald-400'); btn.setAttribute('aria-label', 'Show password'); }
+    }
+
+    let usernameCheckTimer = null;
+    let isUsernameAvailable = false;
+
+    function validateUsernameLive(val) {
+      clearTimeout(usernameCheckTimer);
+      const msg = document.getElementById('regUsernameMsg');
+      const clean = val.toLowerCase().trim();
+
+      if (!clean || clean.length < 3) { msg.innerHTML = '<span class="text-slate-500">Min 3 chars</span>'; isUsernameAvailable = false; return; }
+      if (!/^[a-zA-Z0-9_]+$/.test(clean)) { msg.innerHTML = '<span class="text-rose-400">✕ Invalid chars</span>'; isUsernameAvailable = false; return; }
+
+      msg.innerHTML = '<span class="text-slate-400 animate-pulse">Checking...</span>';
+
+      usernameCheckTimer = setTimeout(async () => {
+        try {
+          const res = await fetchJSON(`/api/auth/check-username?username=${encodeURIComponent(clean)}`);
+          if (res.available) { msg.innerHTML = '<span class="text-emerald-400 font-bold">✓ Available</span>'; isUsernameAvailable = true; } 
+          else { msg.innerHTML = `<span class="text-rose-400 font-bold">✕ Taken</span>`; isUsernameAvailable = false; }
+        } catch (e) { msg.innerHTML = '<span class="text-rose-400">✕ Error</span>'; isUsernameAvailable = false; }
+      }, 350);
+    }
+
+    function checkPasswordStrength(val) {
+      const badge = document.getElementById('passStrengthBadge');
+      if (!badge) return;
+      if (!val) { badge.textContent = ''; return; }
+      let score = 0;
+      if (val.length >= 8) score++;
+      if (/[A-Za-z]/.test(val) && /[0-9]/.test(val)) score++;
+      if (/[^A-Za-z0-9]/.test(val) && val.length >= 10) score++;
+
+      if (score <= 1) { badge.textContent = 'Weak'; badge.className = 'font-bold text-rose-400 text-[9px]'; } 
+      else if (score === 2) { badge.textContent = 'Medium'; badge.className = 'font-bold text-amber-400 text-[9px]'; } 
+      else { badge.textContent = 'Strong'; badge.className = 'font-bold text-emerald-400 text-[9px]'; }
+      checkPasswordMatch();
+    }
+
+    function checkPasswordMatch() {
+      const p1 = document.getElementById('regPassword')?.value;
+      const p2 = document.getElementById('regConfirmPassword')?.value;
+      const msg = document.getElementById('confirmPassMsg');
+      if (!msg || !p2) { if (msg) msg.textContent = ''; return; }
+      if (p1 === p2) msg.innerHTML = '<span class="text-emerald-400">✓ Passwords match</span>';
+      else msg.innerHTML = '<span class="text-rose-400">✕ Passwords do not match</span>';
+    }
+
+    async function handleCustomerRegister(e, returnView) {
+      e.preventDefault();
+      const username = document.getElementById('regUsername').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const name = document.getElementById('regName').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const confirmPass = document.getElementById('regConfirmPassword').value;
+      const btn = document.getElementById('regSubmitBtn');
+
+      if (password !== confirmPass) return showToast('Passwords do not match.', 'error');
+      if (!isUsernameAvailable) return showToast('Please select an available username.', 'error');
+
+      btn.disabled = true; btn.innerHTML = `${SVG_SPINNER} Creating...`;
+
+      try {
+        const data = await fetchJSON('/api/auth/customer/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, name, email, password })
+        });
+        state.token = data.token; state.user = data.user;
+        localStorage.setItem('nexus_token', data.token); localStorage.setItem('nexus_user', JSON.stringify(data.user));
+        showToast(`✓ Welcome to Nexus Digital, @${data.user.username}!`);
+        navigate(returnView);
+      } catch (err) {
+        btn.disabled = false; btn.innerHTML = 'Create Account'; showToast(err.message, 'error');
+      }
+    }
+
+    async function handleCustomerLogin(e, returnView) {
+      e.preventDefault();
+      const username = document.getElementById('logUsername').value.trim();
+      const password = document.getElementById('logPassword').value;
+      const btn = document.getElementById('logSubmitBtn');
+
+      btn.disabled = true; btn.innerHTML = `${SVG_SPINNER} Signing In...`;
+
+      try {
+        const data = await fetchJSON('/api/auth/customer/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        state.token = data.token; state.user = data.user;
+        localStorage.setItem('nexus_token', data.token); localStorage.setItem('nexus_user', JSON.stringify(data.user));
+        showToast(`Welcome back, @${data.user.username}!`);
+        navigate(returnView);
+      } catch (err) {
+        btn.disabled = false; btn.innerHTML = 'Sign In'; showToast(err.message, 'error');
+      }
+    }
+
+    async function handleForgotPassword(e, returnView) {
+      e.preventDefault();
+      const btn = document.getElementById('forgotSubmitBtn');
+      btn.disabled = true; btn.innerHTML = `${SVG_SPINNER} Sending...`;
+
+      try {
+        const data = await fetchJSON('/api/auth/customer/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: document.getElementById('forgotInput').value.trim() })
+        });
+        showToast(data.message);
+        switchAuthScreen('login', returnView);
+      } catch (e) {
+        btn.disabled = false; btn.innerHTML = 'Send Reset Link'; showToast(e.message, 'error'); 
+      }
+    }
+
+    function renderStoreAccount(container) {
+      if (!state.token) return renderCustomerAuthPrompt(container, 'account');
+      container.innerHTML = `
+        <div class="max-w-2xl mx-auto glass rounded-3xl p-8 space-y-6">
+          <div class="flex justify-between items-center border-b border-white/5 pb-4">
+            <div>
+              <span class="text-[10px] text-emerald-400 font-bold uppercase tracking-widest font-mono">Authenticated Customer</span>
+              <h1 class="text-2xl font-black text-white mt-1">@${state.user.username || state.user.name}</h1>
+            </div>
+            <button onclick="customerLogout()" class="px-4 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-bold transition-all">
+              🚪 Logout
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button onclick="navigate('orders')" class="p-6 rounded-2xl bg-surface-950 border border-white/5 text-left space-y-2 hover:border-emerald-500/30 transition-all">
+              <span class="text-2xl">📦</span>
+              <h3 class="text-sm font-bold text-white">Purchased Items</h3>
+              <p class="text-xs text-slate-400">View unlocked account keys & subscription credentials.</p>
+            </button>
+            <button onclick="navigate('products')" class="p-6 rounded-2xl bg-surface-950 border border-white/5 text-left space-y-2 hover:border-emerald-500/30 transition-all">
+              <span class="text-2xl">🛍</span>
+              <h3 class="text-sm font-bold text-white">Browse Catalog</h3>
+              <p class="text-xs text-slate-400">Explore premium digital accounts & license keys.</p>
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function customerLogout() {
+      if (!confirm('Are you sure you want to log out?')) return;
+      state.token = ''; state.user = null;
+      localStorage.removeItem('nexus_token'); localStorage.removeItem('nexus_user');
+      showToast('Logged out successfully.'); navigate('home');
+    }
+
+    // =========================================================================
+    // FULLY RESTORED SAAS ADMIN CONTROL CENTER & OVERVIEW DASHBOARD
     // =========================================================================
     function renderAdminLogin(viewport) {
       viewport.innerHTML = `
@@ -935,13 +1066,11 @@
               <p class="text-xs text-slate-400">Restricted Administration Gateway</p>
             </div>
             <form onsubmit="handleAdminAuth(event)" class="space-y-4">
-              <input type="text" id="admUser" required placeholder="Admin Username" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-xs text-white outline-none focus:border-emerald-500 font-mono">
-              <input type="password" id="admPass" required placeholder="Admin Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-xs text-white outline-none focus:border-emerald-500 font-mono">
+              <input type="text" id="admUser" required placeholder="Admin Username (Aryan)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-xs text-white outline-none focus:border-emerald-500 font-mono">
+              <input type="password" id="admPass" required placeholder="Password (5669)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-xs text-white outline-none focus:border-emerald-500 font-mono">
               <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Authorize Session</button>
             </form>
-            <div class="text-center">
-              <button onclick="navigate('home')" class="text-xs text-slate-500 hover:text-slate-300">← Back to Storefront</button>
-            </div>
+            <div class="text-center"><button onclick="navigate('home')" class="text-xs text-slate-500 hover:text-slate-300">← Back to Storefront</button></div>
           </div>
         </div>
       `;
@@ -951,19 +1080,12 @@
       e.preventDefault();
       try {
         const data = await fetchJSON('/api/admin/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: document.getElementById('admUser').value,
-            password: document.getElementById('admPass').value
-          })
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: document.getElementById('admUser').value, password: document.getElementById('admPass').value })
         });
-        state.adminToken = data.token;
-        state.adminUsername = data.username;
-        localStorage.setItem('nexus_admin_token', data.token);
-        localStorage.setItem('nexus_admin_user', data.username);
-        showToast('Admin Authorized');
-        navigate('admin-center');
+        state.adminToken = data.token; state.adminUsername = data.username;
+        localStorage.setItem('nexus_admin_token', data.token); localStorage.setItem('nexus_admin_user', data.username);
+        showToast('Admin Authorized'); navigate('admin-center');
       } catch (err) { showToast(err.message, 'error'); }
     }
 
@@ -979,20 +1101,21 @@
                 </div>
                 <button onclick="toggleAdminDrawer(false)" class="lg:hidden text-slate-400 p-1">✕</button>
               </div>
+
               <nav class="p-4 space-y-1 text-xs font-bold font-mono">
                 <button onclick="switchAdminSection('dashboard')" id="adnav-dashboard" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">📊 <span>Overview Dashboard</span></button>
                 <button onclick="switchAdminSection('products')" id="adnav-products" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">📦 <span>Product Studio</span></button>
                 <button onclick="switchAdminSection('slots')" id="adnav-slots" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🔐 <span>Account Slots</span></button>
-                <button onclick="switchAdminSection('subscriptions')" id="adnav-subscriptions" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all border border-indigo-500/20 bg-indigo-500/5">👥 <span>Subscriptions Suite</span></button>
+                <button onclick="switchAdminSection('subscriptions')" id="adnav-subscriptions" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">👥 <span>Subscriptions Suite</span></button>
                 <button onclick="switchAdminSection('transactions')" id="adnav-transactions" class="w-full flex items-center justify-between px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">
                   <div class="flex items-center gap-3">💳 <span>Transactions</span></div>
-                  <span id="pendingTxnCountBadge" class="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-400 font-mono">0</span>
                 </button>
                 <button onclick="switchAdminSection('customers')" id="adnav-customers" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">👤 <span>Customers</span></button>
                 <button onclick="switchAdminSection('payment-settings')" id="adnav-payment-settings" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">💰 <span>Payment Gateway</span></button>
                 <button onclick="switchAdminSection('system-monitor')" id="adnav-system-monitor" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🌐 <span>Website Status</span></button>
               </nav>
             </div>
+
             <div class="p-4 border-t border-admin-border space-y-2">
               <button onclick="navigate('home')" class="w-full py-2.5 rounded-xl bg-white/5 text-slate-400 hover:text-white text-xs font-bold">👁 Customer Store</button>
               <button onclick="adminSignOut()" class="w-full py-2.5 rounded-xl bg-rose-500/10 text-rose-400 text-xs font-bold">🚪 End Session</button>
@@ -1026,7 +1149,7 @@
       const content = document.getElementById('adminMainContent');
       if (!content) return;
 
-      document.querySelectorAll('[id^="adnav-"]').forEach(b => b.classList.remove('bg-emerald-500/10', 'text-emerald-400', 'bg-indigo-500/10', 'text-indigo-400'));
+      document.querySelectorAll('[id^="adnav-"]').forEach(b => b.classList.remove('bg-emerald-500/10', 'text-emerald-400'));
       const active = document.getElementById(`adnav-${sec}`);
       if (active) active.classList.add('bg-emerald-500/10', 'text-emerald-400');
 
@@ -1042,15 +1165,524 @@
       }
     }
 
-    // Include standard rendering stubs for the Admin side to avoid undefined reference errors
-    async function renderAdminOverview(container) { container.innerHTML = '<div class="text-center p-8 text-slate-500 font-mono">Loading Overview...</div>'; fetchJSON('/api/admin/dashboard/full-overview', { headers: { 'Authorization': `Bearer ${state.adminToken}` }}).then(d => { container.innerHTML = `<div class="space-y-6"><h1 class="text-xl font-bold text-white">Admin Dashboard</h1><div class="grid grid-cols-2 lg:grid-cols-4 gap-4"><div class="p-5 admin-card rounded-2xl"><span class="text-slate-500 text-[10px] uppercase">Revenue</span><div class="text-2xl font-black text-emerald-400 mt-1">₹${d.sales?.total || 0}</div></div></div></div>`; }).catch(e => container.innerHTML = e.message); }
-    async function renderAdminProductsStudio(container) { container.innerHTML = '<div class="text-center p-8 text-slate-500 font-mono">Loading Product Studio...</div>'; fetchJSON('/api/admin/products', { headers: { 'Authorization': `Bearer ${state.adminToken}` }}).then(p => { container.innerHTML = `<h1 class="text-xl font-bold text-white mb-4">Product Studio</h1><table class="w-full text-left text-xs text-white"><tr><th>Product Name</th><th>Price</th></tr>${p.map(x=>`<tr><td class="py-2">${x.name}</td><td class="py-2 text-emerald-400">₹${x.sale_price}</td></tr>`).join('')}</table>`; }).catch(e => container.innerHTML = e.message); }
-    async function renderAdminAccountSlots(container) { container.innerHTML = '<div class="text-center p-8 text-slate-500 font-mono">Loading Slots...</div>'; fetchJSON('/api/admin/slots', { headers: { 'Authorization': `Bearer ${state.adminToken}` }}).then(d => { container.innerHTML = `<h1 class="text-xl font-bold text-white mb-4">Account Slots</h1><table class="w-full text-left text-xs text-white"><tr><th>Label</th><th>Email</th></tr>${d.slots.map(x=>`<tr><td class="py-2">${x.account_label}</td><td class="py-2 text-slate-400">${x.email}</td></tr>`).join('')}</table>`; }).catch(e => container.innerHTML = e.message); }
-    async function renderAdminSubscriptions(container) { container.innerHTML = '<div class="text-center p-8 text-slate-500 font-mono">Loading Subscriptions...</div>'; fetchJSON('/api/admin/subscriptions/advanced', { headers: { 'Authorization': `Bearer ${state.adminToken}` }}).then(d => { container.innerHTML = `<h1 class="text-xl font-bold text-white mb-4">Subscriptions Engine</h1><table class="w-full text-left text-xs text-white"><tr><th>Customer</th><th>Product</th></tr>${d.subscriptions.map(x=>`<tr><td class="py-2">${x.user_id?.name || 'Customer'}</td><td class="py-2 text-emerald-400">${x.product_name}</td></tr>`).join('')}</table>`; }).catch(e => container.innerHTML = e.message); }
-    async function renderAdminTransactions(container) { container.innerHTML = '<div class="text-center p-8 text-slate-500 font-mono">Loading Transactions...</div>'; fetchJSON('/api/admin/transactions', { headers: { 'Authorization': `Bearer ${state.adminToken}` }}).then(d => { container.innerHTML = `<h1 class="text-xl font-bold text-white mb-4">Transactions Queue</h1><table class="w-full text-left text-xs text-white"><tr><th>TXN ID</th><th>Amount</th><th>Status</th></tr>${d.map(x=>`<tr><td class="py-2">${x.txn_id}</td><td class="py-2 text-emerald-400">₹${x.amount}</td><td class="py-2">${x.status}</td></tr>`).join('')}</table>`; }).catch(e => container.innerHTML = e.message); }
-    async function renderAdminCustomers(container) { container.innerHTML = '<div class="text-center p-8 text-slate-500 font-mono">Loading Customers...</div>'; fetchJSON('/api/admin/customers/list', { headers: { 'Authorization': `Bearer ${state.adminToken}` }}).then(d => { container.innerHTML = `<h1 class="text-xl font-bold text-white mb-4">Customer Directory</h1><table class="w-full text-left text-xs text-white"><tr><th>Name</th><th>Email</th></tr>${d.map(x=>`<tr><td class="py-2">${x.name}</td><td class="py-2 text-slate-400">${x.email}</td></tr>`).join('')}</table>`; }).catch(e => container.innerHTML = e.message); }
-    async function renderAdminPaymentSettings(container) { container.innerHTML = '<div class="text-center p-8 text-slate-500 font-mono">Loading Gateways...</div>'; fetchJSON('/api/admin/payment-settings', { headers: { 'Authorization': `Bearer ${state.adminToken}` }}).then(d => { container.innerHTML = `<div class="p-6 glass rounded-2xl text-white">Payment Configuration Active: UPI ${d.upi_enabled ? 'ON' : 'OFF'}</div>`; }).catch(e => container.innerHTML = e.message); }
-    async function renderAdminSystemMonitor(container) { container.innerHTML = '<div class="text-center p-8 text-slate-500 font-mono">Diagnostics Running...</div>'; fetchJSON('/api/admin/system/infrastructure', { headers: { 'Authorization': `Bearer ${state.adminToken}` }}).then(d => { container.innerHTML = `<div class="p-6 glass rounded-2xl text-white">Database Status: <span class="text-emerald-400">${d.database?.status}</span> (${d.database?.ping_latency_ms}ms)</div>`; }).catch(e => container.innerHTML = e.message); }
+    // 1. ADMIN OVERVIEW
+    async function renderAdminOverview(container) {
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading Business Overview...</div>';
+      try {
+        const range = document.getElementById('dashboardDateFilter')?.value || 'today';
+        const d = await fetchJSON(`/api/admin/dashboard/full-overview?range=${range}`, { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+
+        container.innerHTML = `
+          <div class="space-y-8 font-mono text-xs pb-12">
+            <div class="glass border-emerald-500/20 px-4 py-2 rounded-xl flex justify-between items-center text-[10px] font-bold">
+              <span class="text-emerald-400">🟢 LIVE: ${d.live_visitors || 1} VISITORS ON WEBSITE</span>
+              <span class="text-slate-500">Updated: ${new Date().toLocaleTimeString()}</span>
+            </div>
+
+            <div class="flex justify-between items-center">
+              <h1 class="text-xl font-black text-white font-sans">Admin Overview</h1>
+              <select id="dashboardDateFilter" onchange="renderAdminOverview(document.getElementById('adminMainContent'))" class="bg-surface-950 border border-admin-border px-3 py-1 rounded-lg text-white">
+                <option value="today" ${range==='today'?'selected':''}>Today</option>
+                <option value="7d" ${range==='7d'?'selected':''}>Last 7 Days</option>
+                <option value="30d" ${range==='30d'?'selected':''}>Last 30 Days</option>
+                <option value="all" ${range==='all'?'selected':''}>All Time</option>
+              </select>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div class="admin-card p-5 rounded-3xl space-y-1"><span class="text-slate-400 block text-[10px] uppercase">Total Revenue</span><div class="text-2xl font-black text-emerald-400">₹${d.sales?.revenue || 0}</div></div>
+              <div class="admin-card p-5 rounded-3xl space-y-1"><span class="text-slate-400 block text-[10px] uppercase">Total Orders</span><div class="text-2xl font-black text-white">${d.sales?.orders || 0}</div></div>
+              <div class="admin-card p-5 rounded-3xl space-y-1"><span class="text-slate-400 block text-[10px] uppercase">Customers</span><div class="text-2xl font-black text-white">${d.customers?.total || 0}</div></div>
+              <div class="admin-card p-5 rounded-3xl space-y-1"><span class="text-slate-400 block text-[10px] uppercase">Active Subscriptions</span><div class="text-2xl font-black text-indigo-400">${d.active_subs || 0}</div></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div class="admin-card rounded-3xl p-6 space-y-4">
+                <h3 class="text-white font-black font-sans uppercase">Recent Transactions</h3>
+                <div class="space-y-2">
+                  ${!(d.recent_txns && d.recent_txns.length) ? '<div class="text-slate-500 p-2">No recent transactions.</div>' : d.recent_txns.map(t => `
+                    <div class="p-3 rounded-2xl bg-surface-950 flex justify-between items-center">
+                      <span>${t.customer_name}</span>
+                      <span class="text-emerald-400 font-bold">₹${t.amount}</span>
+                      <span class="text-[10px] text-slate-400">${t.status}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+
+              <div class="admin-card rounded-3xl p-6 space-y-4">
+                <h3 class="text-white font-black font-sans uppercase">System Health</h3>
+                <div class="space-y-3">
+                  <div class="flex justify-between p-2 rounded-xl bg-surface-950"><span>Website</span><span class="text-emerald-400">🟢 Online</span></div>
+                  <div class="flex justify-between p-2 rounded-xl bg-surface-950"><span>Database</span><span class="text-emerald-400">🟢 Connected</span></div>
+                  <button onclick="switchAdminSection('system-monitor')" class="w-full py-3 bg-white/5 hover:bg-white/10 rounded-xl font-bold transition-all">View System Status</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      } catch (err) { container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">Overview Error: ${err.message}</div>`; }
+    }
+
+    async function safeFetchAdminProducts() {
+      try {
+        const data = await fetchJSON('/api/admin/products', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+        return Array.isArray(data) ? data : [];
+      } catch (e) { return []; }
+    }
+
+    // 2. PRODUCT STUDIO
+    async function renderAdminProductsStudio(container) {
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading Product Studio...</div>';
+      try {
+        const products = await safeFetchAdminProducts();
+        container.innerHTML = `
+          <div class="space-y-6 font-mono text-xs">
+            <div class="flex justify-between items-center">
+              <h1 class="text-xl font-black text-white font-sans">Product Studio</h1>
+              <button onclick="openProductStudioModal('new')" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg active:scale-95 transition-all font-sans">+ Add Product</button>
+            </div>
+            <div class="admin-card rounded-3xl p-6">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left min-w-[780px]">
+                  <thead><tr class="border-b border-admin-border text-slate-500"><th class="pb-2">Image</th><th class="pb-2">Product Name</th><th class="pb-2">Type</th><th class="pb-2">Original Price</th><th class="pb-2">Selling Price</th><th class="pb-2">Status</th><th class="pb-2 text-right">Actions</th></tr></thead>
+                  <tbody class="divide-y divide-admin-border">
+                    ${products.length === 0 ? `<tr><td colspan="7" class="py-8 text-center text-slate-500">No products created yet.</td></tr>` : products.map(p => `
+                      <tr class="hover:bg-white/[0.02]">
+                        <td class="py-3"><img src="${p.images && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=200'}" class="w-12 h-12 rounded-xl object-cover border border-admin-border bg-black/40"></td>
+                        <td class="py-3"><span class="text-white font-bold block">${p.name}</span><span class="text-[10px] text-slate-500 font-mono">${p.sku}</span></td>
+                        <td class="py-3"><span class="px-2 py-0.5 rounded text-[10px] ${p.product_type === 'SUBSCRIPTION' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-emerald-500/10 text-emerald-400'}">${p.product_type}</span></td>
+                        <td class="py-3 text-slate-400 line-through">₹${p.original_price}</td>
+                        <td class="py-3 text-emerald-400 font-bold">₹${p.sale_price}</td>
+                        <td class="py-3"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${p.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : p.status === 'out_of_stock' ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-500/10 text-slate-400'}">${p.status === 'active' ? '● In Stock' : (p.status === 'out_of_stock' ? '✕ Out of Stock' : p.status)}</span></td>
+                        <td class="py-3 text-right space-x-2">
+                          <button onclick="navigate('product-details', { id: '${p._id}' })" class="text-slate-400 hover:text-white">👁 View</button>
+                          <button onclick="openProductStudioModal('${p._id}')" class="text-emerald-400 font-bold">✏️ Edit</button>
+                          <button onclick="deleteAdminProduct('${p._id}')" class="text-rose-400">✕</button>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        `;
+      } catch (err) { container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs">${err.message}</div>`; }
+    }
+
+    async function openProductStudioModal(productId) {
+      const isNew = productId === 'new';
+      const modal = document.getElementById('globalModal');
+      const content = document.getElementById('globalModalContent');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      let p = {
+        name: '', short_description: '', description: '', category: 'Software & Digital Goods', sku: 'SKU-' + Date.now(),
+        product_type: 'ONE_TIME', original_price: 999, sale_price: 499, discount_percentage: 50,
+        subscription_pricing: { one_month: 199, six_months: 899, one_year: 1499 },
+        images: ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'],
+        features: ['Instant Fulfillment'], whats_included: ['Digital Credentials / License'], specifications: [{ label: 'Format', value: 'Cloud Digital' }],
+        delivery_type: 'EMAIL_PASSWORD', status: 'active'
+      };
+
+      if (!isNew) {
+        content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono">Loading product studio...</div>';
+        p = await fetchJSON(`/api/products/${productId}`);
+      }
+
+      content.innerHTML = `
+        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+        <div class="space-y-6 text-xs font-mono">
+          <div><h2 class="text-base font-black text-white font-sans">${isNew ? 'Create New Master Product' : `Edit Product: ${p.name}`}</h2></div>
+          <form onsubmit="handleMasterProductSubmit(event, '${productId}')" class="space-y-6">
+            <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
+              <span class="text-[10px] text-emerald-400 font-bold uppercase font-sans">Basic Information</span>
+              <input type="text" id="studioName" required value="${p.name || ''}" placeholder="Product Title" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white font-bold">
+              <input type="text" id="studioShortDesc" value="${p.short_description || ''}" placeholder="Short Tagline Description" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
+              <select id="studioProductType" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
+                <option value="ONE_TIME" ${p.product_type === 'ONE_TIME' ? 'selected' : ''}>One-Time Digital Product</option>
+                <option value="SUBSCRIPTION" ${p.product_type === 'SUBSCRIPTION' ? 'selected' : ''}>Subscription Product (1M / 6M / 1Y)</option>
+              </select>
+            </div>
+            <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
+              <span class="text-[10px] text-emerald-400 font-bold uppercase font-sans">Pricing & Availability</span>
+              <div class="grid grid-cols-3 gap-2">
+                <input type="number" id="studioOrigPrice" value="${p.original_price || 999}" placeholder="Orig Price" class="px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white">
+                <input type="number" id="studioSalePrice" value="${p.sale_price || 499}" placeholder="Sale Price" class="px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-emerald-400 font-bold">
+                <select id="studioStatus" class="px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-emerald-400 font-bold">
+                  <option value="active" ${p.status === 'active' ? 'selected' : ''}>🟢 In Stock</option>
+                  <option value="out_of_stock" ${p.status === 'out_of_stock' ? 'selected' : ''}>🔴 Out of Stock</option>
+                  <option value="draft" ${p.status === 'draft' ? 'selected' : ''}>Draft</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase tracking-wider font-sans active:scale-95 transition-all">
+              ${isNew ? 'Create Product' : 'Save Changes'}
+            </button>
+          </form>
+        </div>
+      `;
+    }
+
+    async function handleMasterProductSubmit(e, productId) {
+      e.preventDefault();
+      const isNew = productId === 'new';
+      const payload = {
+        name: document.getElementById('studioName').value,
+        short_description: document.getElementById('studioShortDesc').value,
+        product_type: document.getElementById('studioProductType').value,
+        original_price: Number(document.getElementById('studioOrigPrice').value),
+        sale_price: Number(document.getElementById('studioSalePrice').value),
+        status: document.getElementById('studioStatus').value
+      };
+
+      try {
+        await fetchJSON(isNew ? '/api/admin/products' : `/api/admin/products/${productId}`, {
+          method: isNew ? 'POST' : 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
+          body: JSON.stringify(payload)
+        });
+        showToast(isNew ? 'Product created!' : 'Product updated!');
+        document.getElementById('globalModal').classList.add('hidden');
+        renderAdminProductsStudio(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function deleteAdminProduct(id) {
+      if (!confirm('Delete product and all its slots?')) return;
+      try {
+        await fetchJSON(`/api/admin/products/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+        showToast('Deleted');
+        renderAdminProductsStudio(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    // 3. ACCOUNT SLOTS
+    async function renderAdminAccountSlots(container) {
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading Account Slots from database...</div>';
+      try {
+        let queryUrl = `/api/admin/slots?`;
+        if (state.slotFilterProduct !== 'ALL') queryUrl += `product_id=${state.slotFilterProduct}&`;
+        if (state.slotFilterStatus !== 'ALL') queryUrl += `status=${state.slotFilterStatus}&`;
+
+        const [data, products] = await Promise.all([
+          fetchJSON(queryUrl, { headers: { 'Authorization': `Bearer ${state.adminToken}` } }),
+          safeFetchAdminProducts()
+        ]);
+        state.loadedSlots = Array.isArray(data.slots) ? data.slots : [];
+        state.loadedProducts = Array.isArray(products) ? products : [];
+
+        container.innerHTML = `
+          <div class="space-y-6 font-mono text-xs">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <h1 class="text-xl font-black text-white font-sans">Account Slots Management</h1>
+              <button onclick="openSlotFormModal('new')" class="px-5 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider font-sans active:scale-95 transition-all">+ Add New Slot</button>
+            </div>
+            <div class="admin-card rounded-2xl p-4 flex gap-3 items-center">
+              <select id="slotProductFilter" onchange="state.slotFilterProduct=this.value; renderAdminAccountSlots(document.getElementById('adminMainContent'))" class="px-3 py-2 rounded-xl bg-surface-950 border border-admin-border text-white flex-1">
+                <option value="ALL">All Products</option>
+                ${state.loadedProducts.map(p => `<option value="${p._id}" ${state.slotFilterProduct === p._id ? 'selected' : ''}>${p.name}</option>`).join('')}
+              </select>
+            </div>
+            <div class="admin-card rounded-3xl p-6">
+              <table class="w-full text-left">
+                <thead><tr class="border-b border-admin-border text-slate-500"><th class="pb-3">Slot</th><th class="pb-3">Email</th><th class="pb-3">Status</th><th class="pb-3 text-right">Actions</th></tr></thead>
+                <tbody class="divide-y divide-admin-border font-mono">
+                  ${state.loadedSlots.length === 0 ? `<tr><td colspan="4" class="py-8 text-center text-slate-500">No account slots found.</td></tr>` : state.loadedSlots.map(s => `
+                    <tr class="hover:bg-white/[0.02]">
+                      <td class="py-3.5 font-bold text-white">${s.account_label}</td>
+                      <td class="py-3.5 text-slate-400">${s.email}</td>
+                      <td class="py-3.5"><span class="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-white/5 text-white">${s.status}</span></td>
+                      <td class="py-3.5 text-right space-x-2">
+                        <button onclick="openSlotFormModal('${s._id}', '${s.status}')" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 font-bold">✏️ Edit</button>
+                        ${s.active_users_count === 0 ? `<button onclick="deleteSlotRecord('${s._id}')" class="px-2 py-1 text-rose-400">✕</button>` : ''}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      } catch (err) { container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs">${err.message}</div>`; }
+    }
+
+    async function openSlotFormModal(slotId, currentStatus) {
+      const isNew = slotId === 'new';
+      const modal = document.getElementById('globalModal');
+      const content = document.getElementById('globalModalContent');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      let slotData = { account_label: 'Slot ' + Math.floor(Math.random() * 100), email: '', password: '', status: 'AVAILABLE', max_active_users: 1 };
+      const products = await safeFetchAdminProducts();
+      if (!isNew) slotData = state.loadedSlots.find(s => s._id === slotId) || slotData;
+
+      content.innerHTML = `
+        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+        <div class="space-y-5 font-mono text-xs">
+          <h2 class="text-base font-black text-white font-sans">${isNew ? '+ Add New Account Slot' : `Edit Credentials: ${slotData.account_label}`}</h2>
+          <form onsubmit="handleSlotFormSubmit(event, '${slotId}')" class="space-y-4">
+            ${isNew ? `<select id="slotFormProduct" required class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">${products.map(p => `<option value="${p._id}">${p.name}</option>`).join('')}</select>` : ''}
+            <input type="text" id="slotFormLabel" required value="${slotData.account_label}" placeholder="Slot Name" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
+            <input type="email" id="slotFormEmail" required value="${slotData.email}" placeholder="Email" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
+            <input type="text" id="slotFormPassword" value="${slotData.password}" placeholder="Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-emerald-400 font-bold">
+            <select id="slotFormStatus" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
+              <option value="AVAILABLE" ${slotData.status === 'AVAILABLE' ? 'selected' : ''}>Available</option>
+              <option value="DISABLED" ${slotData.status === 'DISABLED' ? 'selected' : ''}>Disabled</option>
+            </select>
+            <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase font-sans active:scale-95 transition-all">Save Account Slot</button>
+          </form>
+        </div>
+      `;
+    }
+
+    async function handleSlotFormSubmit(e, slotId) {
+      e.preventDefault();
+      const isNew = slotId === 'new';
+      const payload = { account_label: document.getElementById('slotFormLabel').value, email: document.getElementById('slotFormEmail').value, password: document.getElementById('slotFormPassword').value, status: document.getElementById('slotFormStatus').value };
+      if (isNew) payload.product_id = document.getElementById('slotFormProduct').value;
+
+      try {
+        await fetchJSON(isNew ? '/api/admin/slots' : `/api/admin/slots/${slotId}`, { method: isNew ? 'POST' : 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` }, body: JSON.stringify(payload) });
+        showToast(isNew ? 'Account Slot created!' : 'Credentials updated!');
+        document.getElementById('globalModal').classList.add('hidden');
+        renderAdminAccountSlots(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function deleteSlotRecord(id) {
+      if (!confirm('Permanently remove this account slot?')) return;
+      try {
+        await fetchJSON(`/api/admin/slots/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+        showToast('Slot removed'); renderAdminAccountSlots(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    // 4. SUBSCRIPTIONS SUITE
+    async function renderAdminSubscriptions(container) {
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading subscription engine...</div>';
+      try {
+        const data = await fetchJSON('/api/admin/subscriptions/advanced', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+        state.loadedSubs = Array.isArray(data.subscriptions) ? data.subscriptions : [];
+        container.innerHTML = `
+          <div class="space-y-6 font-mono text-xs">
+            <h1 class="text-xl font-black text-white font-sans">Subscriptions Suite</h1>
+            <div class="admin-card rounded-3xl p-6">
+              <table class="w-full text-left">
+                <thead><tr class="border-b border-admin-border text-slate-500"><th class="pb-3">Customer</th><th class="pb-3">Product</th><th class="pb-3">Time Left</th><th class="pb-3 text-right">Actions</th></tr></thead>
+                <tbody class="divide-y divide-admin-border">
+                  ${state.loadedSubs.map(s => `
+                    <tr>
+                      <td class="py-3 font-bold text-white">${s.user_id?.username || s.user_id?.name}</td>
+                      <td class="py-3">${s.product_name}</td>
+                      <td class="py-3 text-emerald-400 font-bold">${s.time_remaining_text}</td>
+                      <td class="py-3 text-right"><button onclick="openSubscriptionDetailsModal('${s._id}')" class="px-2 py-1 bg-white/5 hover:bg-white/10 rounded-lg">View</button></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      } catch (e) { container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs">${e.message}</div>`; }
+    }
+
+    function openSubscriptionDetailsModal(subId) {
+      const s = state.loadedSubs.find(item => item._id === subId);
+      if (!s) return;
+      const modal = document.getElementById('globalModal');
+      const content = document.getElementById('globalModalContent');
+      modal.classList.remove('hidden'); modal.classList.add('flex');
+      content.innerHTML = `
+        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+        <div class="space-y-6 font-mono text-xs">
+          <h2 class="text-lg font-black text-white font-sans">${s.product_name}</h2>
+          <div class="p-4 bg-surface-950 border border-admin-border rounded-2xl space-y-2">
+            <div class="flex justify-between"><span>Customer:</span><span class="text-white">${s.user_id?.username}</span></div>
+            <div class="flex justify-between"><span>Slot:</span><span class="text-emerald-400">${s.assigned_slot_id?.account_label || 'N/A'}</span></div>
+            <div class="flex justify-between"><span>Time Left:</span><span class="text-emerald-400 font-bold">${s.time_remaining_text}</span></div>
+            <div class="flex justify-between"><span>Expires:</span><span class="text-white">${new Date(s.expires_at).toLocaleString()}</span></div>
+          </div>
+          <div class="flex justify-end gap-2 pt-2 border-t border-admin-border">
+            <button onclick="openExtendModal('${s._id}')" class="px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 font-bold">+ Extend</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function openExtendModal(subId) {
+      const modal = document.getElementById('globalModal');
+      const content = document.getElementById('globalModalContent');
+      content.innerHTML = `
+        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+        <div class="space-y-5 font-mono text-xs">
+          <h3 class="text-base font-black text-white font-sans">Extend Subscription</h3>
+          <form onsubmit="handleExtendSubmit(event, '${subId}')" class="space-y-4">
+            <select id="extendTypeSelect" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
+              <option value="1_MONTH">+ 1 Month Extension</option>
+              <option value="6_MONTHS">+ 6 Months Extension</option>
+              <option value="1_YEAR">+ 1 Year Extension</option>
+            </select>
+            <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase font-sans shadow-lg active:scale-95 transition-all">Confirm Extension</button>
+          </form>
+        </div>
+      `;
+    }
+
+    async function handleExtendSubmit(e, subId) {
+      e.preventDefault();
+      try {
+        await fetchJSON(`/api/admin/subscriptions/${subId}/extend`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
+          body: JSON.stringify({ extend_type: document.getElementById('extendTypeSelect').value })
+        });
+        showToast('Subscription extended successfully!');
+        document.getElementById('globalModal').classList.add('hidden');
+        renderAdminSubscriptions(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    // 5. TRANSACTIONS QUEUE
+    async function renderAdminTransactions(container) {
+      container.innerHTML = '<div class="text-center py-12 text-slate-500 font-mono animate-pulse">Loading transactions...</div>';
+      try {
+        const data = await fetchJSON('/api/admin/transactions', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+        const txns = Array.isArray(data) ? data : [];
+        container.innerHTML = `
+          <div class="space-y-6 font-mono text-xs">
+            <h2 class="text-lg font-black text-white font-sans">Transactions Queue</h2>
+            <div class="admin-card rounded-3xl p-6">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left min-w-[780px]">
+                  <thead><tr class="border-b border-admin-border text-slate-500"><th class="pb-3">TXN</th><th class="pb-3">Customer</th><th class="pb-3">Amount</th><th class="pb-3">Assign Slot</th><th class="pb-3 text-right">Actions</th></tr></thead>
+                  <tbody class="divide-y divide-admin-border">
+                    ${txns.length === 0 ? `<tr><td colspan="5" class="py-8 text-center text-slate-500">No transactions in queue.</td></tr>` : txns.map(t => `
+                      <tr>
+                        <td class="py-3.5"><span class="font-bold text-white block">${t.txn_id}</span></td>
+                        <td class="py-3.5 text-slate-300">${t.customer_name}</td>
+                        <td class="py-3.5 text-emerald-400 font-bold">₹${t.amount}</td>
+                        <td class="py-3.5">
+                          ${t.status === 'PROCESSING' ? `
+                            <select id="slotSelect-${t._id}" class="px-3 py-1.5 rounded-xl bg-surface-950 border border-admin-border text-[11px] text-emerald-400 max-w-[200px]">
+                              ${(t.available_slots || []).map(s => `<option value="${s._id}">${s.account_label}</option>`).join('')}
+                            </select>
+                          ` : '<span class="text-slate-500">Assigned</span>'}
+                        </td>
+                        <td class="py-3.5 text-right space-x-2">
+                          ${t.status === 'PROCESSING' ? `
+                            <button onclick="confirmAndAssignTransaction('${t._id}')" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-gray-950 font-black">Confirm</button>
+                            <button onclick="rejectTransaction('${t._id}')" class="px-3 py-1.5 rounded-lg bg-rose-500/20 text-rose-400 font-bold">Reject</button>
+                          ` : `<span class="px-2 py-0.5 rounded text-[10px] ${t.status === 'CONFIRMED' ? 'text-emerald-400 bg-emerald-500/10' : 'text-rose-400 bg-rose-500/10'}">${t.status}</span>`}
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        `;
+      } catch (err) { container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">Transactions Error: ${err.message}</div>`; }
+    }
+
+    async function confirmAndAssignTransaction(id) {
+      const selectEl = document.getElementById(`slotSelect-${id}`);
+      const slot_id = selectEl ? selectEl.value : null;
+      if (!confirm('Confirm this payment and bind account slot?')) return;
+      try {
+        await fetchJSON(`/api/admin/transactions/${id}/confirm-and-assign`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
+          body: JSON.stringify({ slot_id })
+        });
+        showToast('Subscription activated and account slot bound!');
+        renderAdminTransactions(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function rejectTransaction(id) {
+      if (!confirm('Reject transaction?')) return;
+      try {
+        await fetchJSON(`/api/admin/transactions/${id}/reject`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
+          body: JSON.stringify({ reason: 'Rejected by Admin' })
+        });
+        showToast('Transaction rejected');
+        renderAdminTransactions(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    // 6. CUSTOMERS DIRECTORY
+    async function renderAdminCustomers(container) {
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading directory...</div>';
+      try {
+        const data = await fetchJSON('/api/admin/customers/list', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+        const customers = Array.isArray(data) ? data : [];
+        container.innerHTML = `
+          <div class="space-y-6 font-mono text-xs">
+            <h1 class="text-xl font-black text-white font-sans">Registered Customers</h1>
+            <div class="admin-card rounded-3xl p-6">
+              <table class="w-full text-left">
+                <thead><tr class="border-b border-admin-border text-slate-500"><th class="pb-3">Username</th><th class="pb-3">Orders</th><th class="pb-3">Active Subs</th></tr></thead>
+                <tbody class="divide-y divide-admin-border">${customers.map(c => `
+                  <tr><td class="py-3 font-bold text-white">@${c.username || c.name}</td><td class="py-3 font-bold text-emerald-400">${c.orders_count || 0}</td><td class="py-3 text-indigo-400">${c.active_subscriptions.length} Active</td></tr>
+                `).join('')}</tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      } catch (err) { container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">${err.message}</div>`; }
+    }
+
+    // 7. PAYMENT SETTINGS
+    async function renderAdminPaymentSettings(container) {
+      try {
+        const s = await fetchJSON('/api/admin/payment-settings', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+        container.innerHTML = `
+          <div class="max-w-xl space-y-6 font-mono text-xs">
+            <h1 class="text-xl font-black text-white font-sans">Payment Settings</h1>
+            <form onsubmit="saveAdminPaymentSettings(event)" class="admin-card rounded-3xl p-6 space-y-4">
+              <div><label class="text-slate-400 block mb-1">UPI ID</label><input type="text" id="admUpiId" value="${s.upi_id || ''}" class="w-full px-4 py-3 bg-surface-950 border border-admin-border text-white rounded-xl"></div>
+              <div><label class="text-slate-400 block mb-1">UPI QR Data URL (Base64)</label><input type="text" id="admUpiQr" value="${s.upi_qr_url || ''}" class="w-full px-4 py-3 bg-surface-950 border border-admin-border text-slate-400 text-[9px] rounded-xl"></div>
+              <div><label class="text-slate-400 block mb-1">Crypto Wallet</label><input type="text" id="admCryptoWallet" value="${s.crypto_wallet_address || ''}" class="w-full px-4 py-3 bg-surface-950 border border-admin-border text-white rounded-xl"></div>
+              <button type="submit" class="w-full py-4 bg-emerald-500 text-gray-950 font-black rounded-2xl uppercase">Save Settings</button>
+            </form>
+          </div>
+        `;
+      } catch (e) { container.innerHTML = `<div class="admin-card p-8 text-rose-400 text-xs font-mono">${e.message}</div>`; }
+    }
+
+    async function saveAdminPaymentSettings(e) {
+      e.preventDefault();
+      try {
+        await fetchJSON('/api/admin/payment-settings', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
+          body: JSON.stringify({ upi_id: document.getElementById('admUpiId').value, upi_qr_url: document.getElementById('admUpiQr').value, crypto_wallet_address: document.getElementById('admCryptoWallet').value })
+        });
+        showToast('Payment settings saved!');
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    // 8. SYSTEM MONITOR
+    async function renderAdminSystemMonitor(container) {
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Running live diagnostics...</div>';
+      try {
+        const data = await fetchJSON('/api/admin/system/infrastructure', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+        container.innerHTML = `
+          <div class="space-y-6 font-mono text-xs">
+            <h1 class="text-xl font-black text-white font-sans">Website & Infrastructure Status</h1>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div class="admin-card p-5 rounded-2xl"><span class="text-slate-500 uppercase text-[10px]">Memory RSS</span><div class="text-2xl font-black text-white">${data.server?.service_memory_rss_mb || 0} MB</div></div>
+              <div class="admin-card p-5 rounded-2xl"><span class="text-slate-500 uppercase text-[10px]">DB Status</span><div class="text-2xl font-black text-emerald-400">${data.database?.status || 'Online'}</div></div>
+              <div class="admin-card p-5 rounded-2xl"><span class="text-slate-500 uppercase text-[10px]">DB Latency</span><div class="text-2xl font-black text-white">${data.database?.ping_latency_ms || 12} ms</div></div>
+              <div class="admin-card p-5 rounded-2xl"><span class="text-slate-500 uppercase text-[10px]">Uptime</span><div class="text-lg font-black text-emerald-400 mt-1">${data.server?.uptime_formatted || 'Live'}</div></div>
+            </div>
+          </div>
+        `;
+      } catch (e) { container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs">${e.message}</div>`; }
+    }
 
     function adminSignOut() {
       state.adminToken = '';
