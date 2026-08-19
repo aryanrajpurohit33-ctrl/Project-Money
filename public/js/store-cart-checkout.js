@@ -112,32 +112,67 @@ async function renderStoreCheckout(container) {
   const subtotal = cart.reduce((acc, i) => acc + (i.price || 0) * (i.qty || 1), 0);
   const method = state.checkoutMethod || 'UPI';
 
-  container.innerHTML = `
-    <div class="max-w-xl mx-auto glass rounded-3xl p-6 sm:p-8 space-y-6 font-sans">
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="text-xl font-black text-white">Complete Payment</h2>
-          <p class="text-xs text-slate-400 font-mono">Secure Order Verification</p>
-        </div>
-        <button onclick="navigate('home')" class="text-xs text-slate-400 hover:text-white font-mono">← Store</button>
-      </div>
+  container.innerHTML = '<div class="text-center py-20 text-slate-400 font-mono text-xs animate-pulse">Loading payment gateway...</div>';
 
-      <div class="p-5 rounded-2xl bg-surface-950 border border-white/10 space-y-3 font-mono">
-        <div class="flex justify-between items-center text-xs">
-          <span class="text-slate-400">Payment Gateway:</span>
-          <span class="text-emerald-400 font-bold">${method === 'UPI' ? 'UPI QR / ID' : 'USDT (TRC20)'}</span>
+  try {
+    const paySettings = await fetchJSON('/api/admin/payment-settings').catch(() => ({ upi_id: 'merchant@okaxis', crypto_wallet_address: 'TXYz...' }));
+    
+    container.innerHTML = `
+      <div class="max-w-xl mx-auto glass rounded-3xl p-6 sm:p-8 space-y-6 font-sans">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-black text-white">Complete Payment</h2>
+            <p class="text-xs text-slate-400 font-mono">Secure Order Verification</p>
+          </div>
+          <button onclick="navigate('home')" class="text-xs text-slate-400 hover:text-white font-mono">← Store</button>
         </div>
-        <div class="flex justify-between items-center text-sm font-black pt-2 border-t border-white/5">
-          <span class="text-white">Amount to Pay:</span>
-          <span class="text-emerald-400 text-lg">₹${subtotal}</span>
-        </div>
-      </div>
 
-      <button onclick="handleCustomerMultiCheckoutSubmit('${method}')" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-        Confirm Order & Complete
-      </button>
-    </div>
-  `;
+        <div class="p-5 rounded-2xl bg-surface-950 border border-white/10 space-y-4 font-mono">
+          <div class="flex justify-between items-center text-xs">
+            <span class="text-slate-400">Total Amount to Pay:</span>
+            <span class="text-emerald-400 font-black text-lg">₹${subtotal}</span>
+          </div>
+
+          <div class="pt-3 border-t border-white/5 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-400 text-xs">Merchant UPI ID:</span>
+              <div class="flex items-center gap-2">
+                <span id="upiIdText" class="text-white font-bold text-xs">${paySettings.upi_id || 'merchant@okaxis'}</span>
+                <button onclick="navigator.clipboard.writeText('${paySettings.upi_id || 'merchant@okaxis'}'); showToast('✓ UPI ID copied');" class="px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded-lg text-[10px] font-bold">Copy</button>
+              </div>
+            </div>
+
+            <div class="flex justify-center pt-2">
+              <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=${encodeURIComponent(paySettings.upi_id || 'merchant@okaxis')}&pn=NexusDigital&am=${subtotal}&cu=INR" class="w-40 h-40 rounded-2xl border border-white/10 p-2 bg-white">
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-3 font-sans">
+          <label class="text-slate-400 text-xs block font-bold">Upload Payment Proof Screenshot (Optional)</label>
+          <input type="file" id="checkoutProofFile" accept="image/*" onchange="handleCheckoutProofSelect(this)" class="w-full text-xs text-slate-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-500 file:text-gray-950 hover:file:bg-emerald-400 cursor-pointer bg-surface-950 rounded-xl border border-white/10 p-2">
+          <input type="hidden" id="checkoutProofBase64" value="">
+        </div>
+
+        <button onclick="handleCustomerMultiCheckoutSubmit('${method}')" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all font-sans">
+          CONFIRM ORDER & COMPLETE
+        </button>
+      </div>
+    `;
+  } catch (err) {
+    container.innerHTML = `<div class="glass p-8 text-center text-rose-400 text-xs">Error loading payment gateway: ${err.message}</div>`;
+  }
+}
+
+function handleCheckoutProofSelect(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('checkoutProofBase64').value = e.target.result;
+      showToast('✓ Proof attached successfully');
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
 }
 
 async function handleCustomerMultiCheckoutSubmit(method) {
@@ -151,10 +186,13 @@ async function handleCustomerMultiCheckoutSubmit(method) {
       }
     });
 
+    const proofScreenshot = document.getElementById('checkoutProofBase64')?.value || '';
+
     await fetchJSON('/api/checkout/initiate-order', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}` },
-      body: JSON.stringify({ items: itemsPayload, payment_method: method })
+      body: JSON.stringify({ items: itemsPayload, payment_method: method, proof_screenshot: proofScreenshot })
     });
+    
     showToast('✓ Order placed successfully! View in Purchased Items.');
     state.cart = []; localStorage.removeItem('nexus_cart');
     const badge = document.getElementById('storeCartBadge');
