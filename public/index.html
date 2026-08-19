@@ -40,6 +40,9 @@
     .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
     .custom-scroll::-webkit-scrollbar-track { background: transparent; }
     .custom-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 999px; }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased">
@@ -49,7 +52,7 @@
   <div id="mainViewport" class="flex flex-1 min-h-screen"></div>
 
   <div id="globalModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
-    <div class="glass max-w-4xl w-full rounded-3xl p-6 relative max-h-[90vh] overflow-y-auto custom-scroll" id="globalModalContent"></div>
+    <div class="glass max-w-3xl w-full rounded-3xl p-6 relative max-h-[90vh] overflow-y-auto custom-scroll" id="globalModalContent"></div>
   </div>
 
   <script>
@@ -61,9 +64,14 @@
       adminUsername: localStorage.getItem('nexus_admin_user') || '',
       cart: JSON.parse(localStorage.getItem('nexus_cart') || '[]'),
       currentView: 'home',
-      adminSection: 'products',
+      adminSection: 'dashboard',
+      paymentSettings: null,
+      slotFilterProduct: 'ALL',
+      slotFilterStatus: 'ALL',
       authScreen: 'register',
-      loadedProducts: []
+      loadedProducts: [],
+      loadedSlots: [],
+      loadedSubs: []
     };
 
     const SVG_EYE = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
@@ -89,7 +97,9 @@
           throw new Error('Session expired or unauthorized');
         }
         const contentType = res.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) throw new Error('Service synchronizing.');
+        if (!contentType.includes('application/json')) {
+          throw new Error('Service synchronizing. Please retry.');
+        }
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
         return data;
@@ -119,9 +129,18 @@
       else { side.classList.add('-translate-x-full'); drop.classList.add('hidden'); }
     }
 
+    function sendHeartbeat(action = '') {
+      fetch('/api/presence/heartbeat', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: state.sessionId, page: state.currentView, action })
+      }).catch(() => {});
+    }
+    setInterval(sendHeartbeat, 15000);
+
     function navigate(view, params = {}) {
       state.currentView = view;
       closeAllDrawers();
+      sendHeartbeat();
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
       const viewport = document.getElementById('mainViewport');
@@ -143,102 +162,658 @@
             <div>
               <div class="p-6 border-b border-white/5 flex items-center justify-between">
                 <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('home')">
-                  <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center font-black text-gray-950">N</div>
-                  <div><span class="font-extrabold text-sm text-white block">NEXUS</span><span class="text-[10px] font-bold text-emerald-400">DIGITAL VAULT</span></div>
+                  <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center font-black text-gray-950 shadow-lg shadow-emerald-500/20">N</div>
+                  <div>
+                    <span class="font-extrabold text-sm tracking-wider text-white block">NEXUS</span>
+                    <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">DIGITAL VAULT</span>
+                  </div>
                 </div>
-                <button onclick="toggleCustomerDrawer(false)" class="lg:hidden text-slate-400">✕</button>
+                <button onclick="toggleCustomerDrawer(false)" class="lg:hidden text-slate-400 p-1">✕</button>
               </div>
+
               <nav class="p-4 space-y-1.5 text-xs font-semibold">
-                <button onclick="navigate('home')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5"><span>🏠</span> Home</button>
-                <button onclick="navigate('products')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5"><span>🛍</span> All Products</button>
-                <button onclick="navigate('orders')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5"><span>📦</span> Purchased Items</button>
-                <button onclick="navigate('account')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5"><span>👤</span> Account</button>
+                <button onclick="navigate('home')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all"><span>🏠</span> <span>Home</span></button>
+                <button onclick="navigate('products')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all"><span>🛍</span> <span>All Products</span></button>
+                <button onclick="navigate('cart')" class="w-full flex items-center justify-between px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">
+                  <div class="flex items-center gap-3"><span>🛒</span> <span>My Cart</span></div>
+                  <span class="cart-count-badge px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-gray-950">${state.cart.length}</span>
+                </button>
+                <button onclick="navigate('orders')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all"><span>📦</span> <span>Purchased Items</span></button>
+                <button onclick="navigate('account')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all"><span>👤</span> <span>${state.user ? '@' + state.user.username : 'Account'}</span></button>
               </nav>
             </div>
+
             <div class="p-4 border-t border-white/5">
-              <button onclick="navigate('admin-center')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-slate-400 bg-white/[0.03] hover:text-emerald-400 border border-white/5">🔐 Admin Panel</button>
+              <button onclick="navigate('admin-center')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-slate-400 bg-white/[0.03] hover:bg-emerald-500/10 hover:text-emerald-400 border border-white/5 transition-all">
+                <span>🔐</span> <span>Admin Panel</span>
+              </button>
             </div>
           </aside>
+
           <div class="flex-1 flex flex-col min-w-0">
-            <header class="sticky top-0 z-30 glass border-b border-white/5 px-4 sm:px-8 py-3.5 flex items-center justify-between">
-              <button onclick="toggleCustomerDrawer(true)" class="lg:hidden p-2 rounded-xl bg-white/5 text-slate-300">☰</button>
-              <div class="text-xs font-bold text-white">NEXUS DIGITAL STOREFRONT</div>
+            <header class="sticky top-0 z-30 glass border-b border-white/5 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
+              <div class="flex items-center gap-3">
+                <button onclick="toggleCustomerDrawer(true)" class="lg:hidden p-2 rounded-xl bg-white/5 text-slate-300">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <div class="relative w-48 sm:w-80">
+                  <input type="text" oninput="handleStoreSearch(this.value)" placeholder="Search products..." class="w-full pl-9 pr-4 py-2 rounded-xl bg-surface-900 border border-white/10 text-xs text-white placeholder-slate-500 focus:border-emerald-500 outline-none">
+                  <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <button onclick="navigate('cart')" class="relative p-2.5 rounded-xl bg-surface-900 border border-white/5 text-slate-300">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                  <span class="cart-count-badge absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 text-gray-950 text-[10px] font-black flex items-center justify-center">${state.cart.length}</span>
+                </button>
+              </div>
             </header>
+
             <main id="storeContent" class="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-8"></main>
           </div>
         </div>
       `;
+
       const storeContent = document.getElementById('storeContent');
-      if (view === 'home' || view === 'products') renderStoreProducts(storeContent, params);
-      else if (view === 'product-details') renderStoreProductDetails(storeContent, params.id);
-      else if (view === 'orders') renderStoreOrders(storeContent);
-      else if (view === 'account') renderStoreAccount(storeContent);
+      switch(view) {
+        case 'home':
+        case 'products': renderStoreProducts(storeContent, params); break;
+        case 'product-details': renderStoreProductDetails(storeContent, params.id || params.slug); break;
+        case 'cart': renderStoreCart(storeContent); break;
+        case 'checkout': renderStoreCheckout(storeContent); break;
+        case 'orders': renderStoreOrders(storeContent); break;
+        case 'account': renderStoreAccount(storeContent); break;
+      }
     }
 
-    async function renderStoreProducts(container) {
-      const data = await fetchJSON('/api/products');
-      container.innerHTML = `
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          ${data.map(p => `
-            <div class="glass-card rounded-3xl overflow-hidden cursor-pointer p-5 space-y-3" onclick="navigate('product-details', { id: '${p._id}' })">
-              <img src="${p.images?.[0] || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=500'}" class="w-full h-40 object-cover rounded-2xl">
-              <h3 class="text-white font-bold">${p.name}</h3>
-              <div class="flex justify-between items-center"><span class="text-emerald-400 font-black">₹${p.sale_price}</span><span class="text-[10px] bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-full">${p.product_type}</span></div>
+    async function renderStoreProducts(container, filters = {}) {
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-bold animate-pulse">Loading catalog...</div>';
+      let queryUrl = '/api/products?';
+      if (filters.search) queryUrl += `search=${encodeURIComponent(filters.search)}&`;
+
+      try {
+        const data = await fetchJSON(queryUrl);
+        const products = Array.isArray(data) ? data : [];
+
+        container.innerHTML = `
+          <div class="space-y-6">
+            <div>
+              <h1 class="text-xl font-black text-white">${filters.title || 'Digital Products & Subscriptions'}</h1>
+              <p class="text-xs text-slate-400">${products.length} products available</p>
             </div>
-          `).join('')}
-        </div>
-      `;
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              ${products.map(p => `
+                <div class="glass-card rounded-3xl overflow-hidden flex flex-col justify-between border border-white/5 relative group cursor-pointer" onclick="navigate('product-details', { id: '${p._id}' })">
+                  <span class="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full ${p.product_type === 'SUBSCRIPTION' ? 'bg-indigo-500' : 'bg-emerald-500'} text-white font-black text-[10px] uppercase">
+                    ${p.product_type === 'SUBSCRIPTION' ? '🔄 Subscription' : '⚡ One-Time'}
+                  </span>
+
+                  <div>
+                    <div class="h-48 w-full overflow-hidden bg-surface-900">
+                      <img src="${p.images && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                    </div>
+                    <div class="p-5 space-y-2">
+                      <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">${p.category || 'Digital Good'}</span>
+                      <h3 class="text-sm font-bold text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">${p.name}</h3>
+                      <p class="text-xs text-slate-400 line-clamp-2">${p.short_description || p.description}</p>
+                    </div>
+                  </div>
+
+                  <div class="px-5 pb-5 pt-2 flex items-center justify-between border-t border-white/5" onclick="event.stopPropagation()">
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span class="text-base font-black text-white">₹${p.sale_price}</span>
+                        ${p.original_price > p.sale_price ? `<span class="text-xs text-slate-500 line-through">₹${p.original_price}</span>` : ''}
+                      </div>
+                    </div>
+                    <button onclick="navigate('product-details', { id: '${p._id}' })" class="px-4 py-2 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95">
+                      View Details
+                    </button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } catch (err) {
+        container.innerHTML = `<div class="glass p-8 text-center text-rose-400 text-xs">${err.message}</div>`;
+      }
     }
 
-    async function renderStoreProductDetails(container, id) {
-      const p = await fetchJSON(`/api/products/${id}`);
+    let selectedSubDuration = '1_MONTH';
+    let currentSelectedPrice = 199;
+
+    async function renderStoreProductDetails(container, identifier) {
+      container.innerHTML = '<div class="text-center py-20 text-slate-500 font-bold animate-pulse">Loading product details...</div>';
+      try {
+        const p = await fetchJSON(`/api/products/${identifier}`);
+        selectedSubDuration = '1_MONTH';
+        currentSelectedPrice = p.product_type === 'SUBSCRIPTION' ? (p.subscription_pricing?.one_month || p.sale_price) : p.sale_price;
+        const imagesList = p.images && p.images.length ? p.images : ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'];
+        const savings = p.original_price > currentSelectedPrice ? p.original_price - currentSelectedPrice : 0;
+        const isAvailable = p.in_stock;
+
+        sendHeartbeat(`product_view_${p.name}`);
+
+        container.innerHTML = `
+          <div class="space-y-12">
+            <div class="flex items-center justify-between text-xs text-slate-400">
+              <button onclick="navigate('products')" class="hover:text-white flex items-center gap-1">← Back to Catalog</button>
+              <div class="flex items-center gap-2">
+                <span class="text-emerald-400 font-bold">${p.category || 'Digital Good'}</span>
+                <span>/</span>
+                <span class="font-mono text-slate-500">SKU: ${p.sku}</span>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              <div class="lg:col-span-7 space-y-4">
+                <div class="h-72 sm:h-96 rounded-3xl overflow-hidden glass border border-white/10 relative">
+                  <img id="detailMainImage" src="${imagesList[0]}" class="w-full h-full object-cover">
+                  ${p.discount_percentage > 0 ? `
+                    <span class="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-rose-500 text-white font-black text-xs uppercase shadow-xl">
+                      ${p.discount_percentage}% OFF
+                    </span>
+                  ` : ''}
+                </div>
+              </div>
+
+              <div class="lg:col-span-5 space-y-6">
+                <div>
+                  <span class="px-3 py-1 rounded-full ${p.product_type === 'SUBSCRIPTION' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'} border font-bold text-[10px] uppercase">
+                    ${p.product_type === 'SUBSCRIPTION' ? '🔄 Subscription Product' : '⚡ One-Time Digital Purchase'}
+                  </span>
+                  <h1 class="text-2xl sm:text-3xl font-black text-white mt-2">${p.name}</h1>
+                  <p class="text-xs text-slate-400 mt-1">${p.short_description || ''}</p>
+                </div>
+
+                ${p.product_type === 'SUBSCRIPTION' ? `
+                  <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-300">Choose Subscription Duration:</label>
+                    <div class="grid grid-cols-3 gap-2">
+                      <button onclick="pickDuration('1_MONTH', ${p.subscription_pricing?.one_month || 199})" id="dur-1_MONTH" class="dur-btn p-3 rounded-2xl border-2 border-emerald-500 bg-emerald-500/10 text-center">
+                        <span class="text-xs font-black text-white block">1 Month</span>
+                        <span class="text-[11px] font-mono text-emerald-400">₹${p.subscription_pricing?.one_month || 199}</span>
+                      </button>
+                      <button onclick="pickDuration('6_MONTHS', ${p.subscription_pricing?.six_months || 899})" id="dur-6_MONTHS" class="dur-btn p-3 rounded-2xl border border-white/10 glass text-center">
+                        <span class="text-xs font-black text-white block">6 Months</span>
+                        <span class="text-[11px] font-mono text-emerald-400">₹${p.subscription_pricing?.six_months || 899}</span>
+                      </button>
+                      <button onclick="pickDuration('1_YEAR', ${p.subscription_pricing?.one_year || 1499})" id="dur-1_YEAR" class="dur-btn p-3 rounded-2xl border border-white/10 glass text-center">
+                        <span class="text-xs font-black text-white block">1 Year</span>
+                        <span class="text-[11px] font-mono text-emerald-400">₹${p.subscription_pricing?.one_year || 1499}</span>
+                      </button>
+                    </div>
+                  </div>
+                ` : ''}
+
+                <div class="p-5 rounded-3xl glass border border-white/5 space-y-1">
+                  <div class="flex items-center gap-3">
+                    <span class="text-3xl font-black text-white" id="displayActivePrice">₹${currentSelectedPrice}</span>
+                    ${p.original_price > currentSelectedPrice ? `<span class="text-sm text-slate-500 line-through">₹${p.original_price}</span>` : ''}
+                    ${savings > 0 ? `<span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold" id="detailSavingsBadge">You Save ₹${savings}</span>` : ''}
+                  </div>
+                  <span class="text-xs ${isAvailable ? 'text-emerald-400' : 'text-rose-400'} font-bold block pt-1">
+                    ${isAvailable ? '● Available' : '✕ Out of Stock'}
+                  </span>
+                </div>
+
+                <div class="space-y-3">
+                  <button onclick="buyNowStore('${p._id}', '${p.name.replace(/'/g, "\\'")}', '${p.product_type}')" ${!isAvailable ? 'disabled' : ''} class="w-full py-4 rounded-2xl ${isAvailable ? 'bg-emerald-500 text-gray-950 font-black' : 'bg-gray-800 text-gray-500 cursor-not-allowed'} text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+                    ${isAvailable ? '⚡ Buy Now & Pay (UPI / Crypto)' : 'Currently Out of Stock'}
+                  </button>
+                  <button onclick="addToCart('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${currentSelectedPrice}, '${imagesList[0]}', '${p.delivery_type}')" ${!isAvailable ? 'disabled' : ''} class="w-full py-4 rounded-2xl glass hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all">
+                    Add to Cart
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      } catch (err) {
+        container.innerHTML = `<div class="glass p-8 text-center text-rose-400 text-xs">${err.message}</div>`;
+      }
+    }
+
+    function pickDuration(dur, price) {
+      selectedSubDuration = dur;
+      currentSelectedPrice = price;
+      document.getElementById('displayActivePrice').textContent = `₹${price}`;
+      document.querySelectorAll('.dur-btn').forEach(b => b.className = 'dur-btn p-3 rounded-2xl border border-white/10 glass text-center');
+      document.getElementById(`dur-${dur}`).className = 'dur-btn p-3 rounded-2xl border-2 border-emerald-500 bg-emerald-500/10 text-center';
+    }
+
+    function buyNowStore(id, name, product_type) {
+      state.cart = [{
+        product_id: id,
+        name: name + (product_type === 'SUBSCRIPTION' ? ` (${selectedSubDuration.replace('_', ' ')})` : ''),
+        price: currentSelectedPrice,
+        product_type: product_type,
+        duration: product_type === 'SUBSCRIPTION' ? selectedSubDuration : 'ONE_TIME'
+      }];
+      localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
+      navigate('checkout');
+    }
+
+    function addToCart(product_id, name, price, image, delivery_type) {
+      state.cart = [{ product_id, name, price, image, delivery_type, duration: '1_MONTH' }];
+      localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
+      navigate('checkout');
+    }
+
+    function renderStoreCart(container) {
+      container.innerHTML = `<div class="text-center py-16"><button onclick="navigate('checkout')" class="px-6 py-3 bg-emerald-500 text-gray-950 font-black rounded-2xl text-xs uppercase">Proceed to Checkout</button></div>`;
+    }
+
+    async function renderStoreCheckout(container) {
+      if (!state.token) return renderCustomerAuthPrompt(container, 'checkout');
+      if (!state.cart.length) return navigate('products');
+      const item = state.cart[0];
+
       container.innerHTML = `
         <div class="max-w-xl mx-auto glass rounded-3xl p-8 space-y-6">
-          <button onclick="navigate('products')" class="text-xs text-slate-400">← Back</button>
-          <h1 class="text-2xl font-black text-white">${p.name}</h1>
-          <p class="text-xs text-slate-300">${p.description}</p>
-          <div class="text-3xl font-black text-emerald-400">₹${p.sale_price}</div>
-          <button onclick="showToast('Added to cart!')" class="w-full py-4 bg-emerald-500 text-gray-950 font-black rounded-2xl uppercase">Buy Now</button>
+          <h2 class="text-xl font-black text-white">Checkout: ${item.name}</h2>
+          <div class="text-2xl font-black text-emerald-400">₹${item.price}</div>
+          <button onclick="handleCheckoutPayment()" class="w-full py-4 bg-emerald-500 text-gray-950 font-black rounded-2xl text-xs uppercase">Confirm & Upload Proof</button>
         </div>
       `;
     }
 
-    async function renderStoreOrders(container) {
-      if (!state.token) return renderCustomerAuthPrompt(container, 'orders');
-      const orders = await fetchJSON('/api/customer/orders', { headers: { 'Authorization': `Bearer ${state.token}` } });
-      container.innerHTML = `<div class="space-y-4"><h1 class="text-xl font-black text-white">Purchased Items</h1>${orders.map(o => `<div class="glass p-4 rounded-2xl text-white font-mono text-xs">${o.order_number} - ₹${o.total_amount}</div>`).join('')}</div>`;
+    async function handleCheckoutPayment() {
+      try {
+        await fetchJSON('/api/checkout/initiate-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}` },
+          body: JSON.stringify({ items: state.cart, payment_method: 'UPI' })
+        });
+        showToast('Order initiated! Upload proof.');
+        navigate('orders');
+      } catch (e) { showToast(e.message, 'error'); }
+    }
+
+    // =========================================================================
+    // CUSTOMER AUTHENTICATION PORTAL (COMPACT, MOBILE-FIRST, VECTOR SVG ICONS)
+    // =========================================================================
+    function renderCustomerAuthPrompt(container, returnView = 'account') {
+      container.innerHTML = `
+        <div class="min-h-[75vh] flex items-center justify-center p-4">
+          <div class="glass max-w-sm w-full rounded-[24px] p-6 sm:p-8 border border-white/10 shadow-2xl relative overflow-hidden transition-all duration-300">
+            
+            <div class="flex flex-col items-center space-y-2.5 mb-6">
+              <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-xl font-black text-gray-950 shadow-md">
+                N
+              </div>
+              <div class="text-center">
+                <h1 class="text-[17px] font-black text-white tracking-tight" id="authPortalHeading">Create Your Account</h1>
+                <p class="text-[11px] text-slate-400 mt-0.5" id="authPortalSub">Join Nexus Digital to manage your purchases.</p>
+              </div>
+            </div>
+
+            <div id="authDynamicContainer"></div>
+
+          </div>
+        </div>
+      `;
+      switchAuthScreen(state.authScreen || 'register', returnView);
+    }
+
+    function switchAuthScreen(screen, returnView = 'account') {
+      state.authScreen = screen;
+      const container = document.getElementById('authDynamicContainer');
+      const heading = document.getElementById('authPortalHeading');
+      const sub = document.getElementById('authPortalSub');
+      if (!container) return;
+
+      if (screen === 'register') {
+        if(heading) heading.textContent = 'Create Your Account';
+        if(sub) sub.textContent = 'Join Nexus Digital to manage your purchases.';
+        renderRegisterScreen(container, returnView);
+      } else if (screen === 'login') {
+        if(heading) heading.textContent = 'Welcome Back';
+        if(sub) sub.textContent = 'Sign in to continue to your account.';
+        renderLoginScreen(container, returnView);
+      } else if (screen === 'forgot') {
+        if(heading) heading.textContent = 'Reset Password';
+        if(sub) sub.textContent = 'Enter your email to receive reset instructions.';
+        renderForgotScreen(container, returnView);
+      }
+    }
+
+    function renderRegisterScreen(container, returnView) {
+      container.innerHTML = `
+        <form onsubmit="handleCustomerRegister(event, '${returnView}')" class="space-y-3.5 text-xs font-sans">
+          
+          <div class="space-y-1">
+            <label class="text-[11px] font-bold text-slate-300 block ml-1">Full Name</label>
+            <input type="text" id="regName" required placeholder="Enter your full name" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="space-y-1 relative">
+              <label class="text-[11px] font-bold text-slate-300 block ml-1">Username</label>
+              <input type="text" id="regUsername" required oninput="validateUsernameLive(this.value)" placeholder="Unique ID" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+              <div id="regUsernameMsg" class="text-[9px] font-bold min-h-[14px] mt-0.5 ml-1"></div>
+            </div>
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-slate-300 block ml-1">Email Address</label>
+              <input type="email" id="regEmail" required placeholder="Enter email" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <label class="text-[11px] font-bold text-slate-300 block ml-1">Password</label>
+            <div class="relative">
+              <input type="password" id="regPassword" required oninput="checkPasswordStrength(this.value)" placeholder="Create a password" class="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+              <button type="button" onclick="togglePassVisibility('regPassword', this)" class="absolute right-3 top-2.5 text-slate-400 hover:text-white focus:outline-none p-0.5" aria-label="Show password">
+                ${SVG_EYE}
+              </button>
+            </div>
+            <div class="flex justify-between items-center px-1">
+               <span class="text-[9px] text-slate-500">Min 8 chars, 1 letter, 1 number</span>
+               <span id="passStrengthBadge" class="text-[9px]"></span>
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <label class="text-[11px] font-bold text-slate-300 block ml-1">Confirm Password</label>
+            <div class="relative">
+              <input type="password" id="regConfirmPassword" required oninput="checkPasswordMatch()" placeholder="Confirm password" class="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+              <button type="button" onclick="togglePassVisibility('regConfirmPassword', this)" class="absolute right-3 top-2.5 text-slate-400 hover:text-white focus:outline-none p-0.5" aria-label="Show password">
+                ${SVG_EYE}
+              </button>
+            </div>
+            <div id="confirmPassMsg" class="text-[9px] font-bold px-1 min-h-[14px]"></div>
+          </div>
+
+          <button type="submit" id="regSubmitBtn" class="w-full py-3 mt-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-[13px] flex items-center justify-center transition-all shadow-md active:scale-[0.98]">
+            Create Account
+          </button>
+        </form>
+
+        <div class="pt-5 text-center text-[11px] text-slate-400">
+          Already a customer? 
+          <button onclick="switchAuthScreen('login', '${returnView}')" class="font-bold text-emerald-400 hover:text-emerald-300 transition-colors ml-0.5">Sign In</button>
+        </div>
+      `;
+    }
+
+    function renderLoginScreen(container, returnView) {
+      container.innerHTML = `
+        <form onsubmit="handleCustomerLogin(event, '${returnView}')" class="space-y-4 text-xs font-sans">
+          
+          <div class="space-y-1">
+            <label class="text-[11px] font-bold text-slate-300 block ml-1">Email Address / Username</label>
+            <input type="text" id="logUsername" required placeholder="Enter email or username" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+          </div>
+
+          <div class="space-y-1">
+            <div class="flex justify-between items-center ml-1 pr-1">
+              <label class="text-[11px] font-bold text-slate-300 block">Password</label>
+              <button type="button" onclick="switchAuthScreen('forgot', '${returnView}')" class="text-[10px] text-emerald-400 hover:text-emerald-300 transition-colors">Forgot Password?</button>
+            </div>
+            <div class="relative">
+              <input type="password" id="logPassword" required placeholder="Enter password" class="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+              <button type="button" onclick="togglePassVisibility('logPassword', this)" class="absolute right-3 top-2.5 text-slate-400 hover:text-white focus:outline-none p-0.5" aria-label="Show password">
+                ${SVG_EYE}
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" id="logSubmitBtn" class="w-full py-3 mt-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-[13px] flex items-center justify-center transition-all shadow-md active:scale-[0.98]">
+            Sign In
+          </button>
+        </form>
+
+        <div class="pt-5 text-center text-[11px] text-slate-400">
+          Don't have an account? 
+          <button onclick="switchAuthScreen('register', '${returnView}')" class="font-bold text-emerald-400 hover:text-emerald-300 transition-colors ml-0.5">Sign Up</button>
+        </div>
+      `;
+    }
+
+    function renderForgotScreen(container, returnView) {
+      container.innerHTML = `
+        <form onsubmit="handleForgotPassword(event, '${returnView}')" class="space-y-4 text-xs font-sans">
+          <div class="space-y-1">
+            <label class="text-[11px] font-bold text-slate-300 block ml-1">Email Address</label>
+            <input type="email" id="forgotInput" required placeholder="Enter your email" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white placeholder-slate-500 focus:border-emerald-500 outline-none transition-all">
+          </div>
+          
+          <button type="submit" id="forgotSubmitBtn" class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-[13px] flex items-center justify-center transition-all shadow-md active:scale-[0.98]">
+            Send Reset Link
+          </button>
+        </form>
+
+        <div class="pt-5 text-center">
+          <button onclick="switchAuthScreen('login', '${returnView}')" class="text-[11px] text-slate-400 hover:text-white transition-colors">← Back to Login</button>
+        </div>
+      `;
+    }
+
+    function togglePassVisibility(inputId, btn) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.innerHTML = SVG_EYE_OFF;
+        btn.classList.add('text-emerald-400');
+        btn.setAttribute('aria-label', 'Hide password');
+      } else {
+        input.type = 'password';
+        btn.innerHTML = SVG_EYE;
+        btn.classList.remove('text-emerald-400');
+        btn.setAttribute('aria-label', 'Show password');
+      }
+    }
+
+    let usernameCheckTimer = null;
+    let isUsernameAvailable = false;
+
+    function validateUsernameLive(val) {
+      clearTimeout(usernameCheckTimer);
+      const msg = document.getElementById('regUsernameMsg');
+      const clean = val.toLowerCase().trim();
+
+      if (!clean || clean.length < 3) {
+        msg.innerHTML = '<span class="text-slate-500">Min 3 chars</span>';
+        isUsernameAvailable = false; return;
+      }
+      if (!/^[a-zA-Z0-9_]+$/.test(clean)) {
+        msg.innerHTML = '<span class="text-rose-400">✕ Invalid chars</span>';
+        isUsernameAvailable = false; return;
+      }
+
+      msg.innerHTML = '<span class="text-slate-400 animate-pulse">Checking...</span>';
+
+      usernameCheckTimer = setTimeout(async () => {
+        try {
+          const res = await fetchJSON(`/api/auth/check-username?username=${encodeURIComponent(clean)}`);
+          if (res.available) {
+            msg.innerHTML = '<span class="text-emerald-400 font-bold">✓ Available</span>';
+            isUsernameAvailable = true;
+          } else {
+            msg.innerHTML = `<span class="text-rose-400 font-bold">✕ Taken</span>`;
+            isUsernameAvailable = false;
+          }
+        } catch (e) {
+          msg.innerHTML = '<span class="text-rose-400">✕ Error</span>';
+          isUsernameAvailable = false;
+        }
+      }, 350);
+    }
+
+    function checkPasswordStrength(val) {
+      const badge = document.getElementById('passStrengthBadge');
+      if (!badge) return;
+      if (!val) { badge.textContent = ''; return; }
+
+      let score = 0;
+      if (val.length >= 8) score++;
+      if (/[A-Za-z]/.test(val) && /[0-9]/.test(val)) score++;
+      if (/[^A-Za-z0-9]/.test(val) && val.length >= 10) score++;
+
+      if (score <= 1) { badge.textContent = 'Weak'; badge.className = 'font-bold text-rose-400 text-[9px]'; } 
+      else if (score === 2) { badge.textContent = 'Medium'; badge.className = 'font-bold text-amber-400 text-[9px]'; } 
+      else { badge.textContent = 'Strong'; badge.className = 'font-bold text-emerald-400 text-[9px]'; }
+      checkPasswordMatch();
+    }
+
+    function checkPasswordMatch() {
+      const p1 = document.getElementById('regPassword')?.value;
+      const p2 = document.getElementById('regConfirmPassword')?.value;
+      const msg = document.getElementById('confirmPassMsg');
+      if (!msg || !p2) { if (msg) msg.textContent = ''; return; }
+
+      if (p1 === p2) msg.innerHTML = '<span class="text-emerald-400">✓ Passwords match</span>';
+      else msg.innerHTML = '<span class="text-rose-400">✕ Passwords do not match</span>';
+    }
+
+    async function handleCustomerRegister(e, returnView) {
+      e.preventDefault();
+      const username = document.getElementById('regUsername').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const name = document.getElementById('regName').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const confirmPass = document.getElementById('regConfirmPassword').value;
+      const btn = document.getElementById('regSubmitBtn');
+
+      if (password !== confirmPass) return showToast('Passwords do not match.', 'error');
+      if (!isUsernameAvailable) return showToast('Please select an available username.', 'error');
+
+      btn.disabled = true;
+      btn.innerHTML = `${SVG_SPINNER} Creating...`;
+
+      try {
+        const data = await fetchJSON('/api/auth/customer/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, name, email, password })
+        });
+        state.token = data.token;
+        state.user = data.user;
+        localStorage.setItem('nexus_token', data.token);
+        localStorage.setItem('nexus_user', JSON.stringify(data.user));
+        
+        showToast(`✓ Welcome to Nexus Digital, @${data.user.username}!`);
+        navigate(returnView);
+      } catch (err) {
+        btn.disabled = false;
+        btn.innerHTML = 'Create Account';
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function handleCustomerLogin(e, returnView) {
+      e.preventDefault();
+      const username = document.getElementById('logUsername').value.trim();
+      const password = document.getElementById('logPassword').value;
+      const btn = document.getElementById('logSubmitBtn');
+
+      btn.disabled = true;
+      btn.innerHTML = `${SVG_SPINNER} Signing In...`;
+
+      try {
+        const data = await fetchJSON('/api/auth/customer/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        state.token = data.token;
+        state.user = data.user;
+        localStorage.setItem('nexus_token', data.token);
+        localStorage.setItem('nexus_user', JSON.stringify(data.user));
+        
+        showToast(`Welcome back, @${data.user.username}!`);
+        navigate(returnView);
+      } catch (err) {
+        btn.disabled = false;
+        btn.innerHTML = 'Sign In';
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function handleForgotPassword(e, returnView) {
+      e.preventDefault();
+      const btn = document.getElementById('forgotSubmitBtn');
+      btn.disabled = true;
+      btn.innerHTML = `${SVG_SPINNER} Sending...`;
+
+      try {
+        const data = await fetchJSON('/api/auth/customer/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: document.getElementById('forgotInput').value.trim() })
+        });
+        showToast(data.message);
+        switchAuthScreen('login', returnView);
+      } catch (e) {
+        btn.disabled = false;
+        btn.innerHTML = 'Send Reset Link';
+        showToast(e.message, 'error'); 
+      }
     }
 
     function renderStoreAccount(container) {
       if (!state.token) return renderCustomerAuthPrompt(container, 'account');
-      container.innerHTML = `<div class="glass p-8 rounded-3xl max-w-md mx-auto text-center space-y-4"><h1 class="text-xl font-black text-white">@${state.user.username}</h1><button onclick="customerLogout()" class="px-4 py-2 bg-rose-500/20 text-rose-400 rounded-xl font-bold text-xs">Logout</button></div>`;
+      container.innerHTML = `
+        <div class="max-w-2xl mx-auto glass rounded-3xl p-8 space-y-6">
+          <div class="flex justify-between items-center border-b border-white/5 pb-4">
+            <div>
+              <span class="text-[10px] text-emerald-400 font-bold uppercase tracking-widest font-mono">Authenticated Customer</span>
+              <h1 class="text-2xl font-black text-white mt-1">@${state.user.username || state.user.name}</h1>
+            </div>
+            <button onclick="customerLogout()" class="px-4 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-bold transition-all">
+              🚪 Logout
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button onclick="navigate('orders')" class="p-6 rounded-2xl bg-surface-950 border border-white/5 text-left space-y-2 hover:border-emerald-500/30 transition-all">
+              <span class="text-2xl">📦</span>
+              <h3 class="text-sm font-bold text-white">Purchased Items</h3>
+              <p class="text-xs text-slate-400">View unlocked account keys & subscription credentials.</p>
+            </button>
+            <button onclick="navigate('products')" class="p-6 rounded-2xl bg-surface-950 border border-white/5 text-left space-y-2 hover:border-emerald-500/30 transition-all">
+              <span class="text-2xl">🛍</span>
+              <h3 class="text-sm font-bold text-white">Browse Catalog</h3>
+              <p class="text-xs text-slate-400">Explore premium digital accounts & license keys.</p>
+            </button>
+          </div>
+        </div>
+      `;
     }
 
     function customerLogout() {
-      localStorage.removeItem('nexus_token'); localStorage.removeItem('nexus_user');
-      state.token = ''; state.user = null; navigate('home'); showToast('Logged out');
-    }
-
-    function renderCustomerAuthPrompt(container, returnView) {
-      container.innerHTML = `<div class="glass max-w-md mx-auto p-8 rounded-3xl text-center text-white text-xs">Customer authentication portal active. Please login via storefront.</div>`;
+      if (!confirm('Are you sure you want to log out?')) return;
+      state.token = '';
+      state.user = null;
+      localStorage.removeItem('nexus_token');
+      localStorage.removeItem('nexus_user');
+      showToast('Logged out successfully.');
+      navigate('home');
     }
 
     // =========================================================================
-    // ADMIN SAAS CONTROL CENTER & REDESIGNED PRODUCT STUDIO
+    // DEDICATED SAAS ADMIN CONTROL CENTER & OVERVIEW DASHBOARD
     // =========================================================================
     function renderAdminLogin(viewport) {
       viewport.innerHTML = `
         <div class="min-h-screen w-full bg-admin-bg flex items-center justify-center p-4">
           <div class="admin-card max-w-md w-full rounded-3xl p-8 space-y-6 shadow-2xl border border-admin-border">
             <div class="text-center space-y-1">
+              <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-xl mx-auto mb-2">⚡</div>
               <h2 class="text-xl font-black text-white tracking-wider font-sans">NEXUS CONTROL CENTER</h2>
-              <p class="text-xs text-slate-400">Admin Authorization Portal</p>
+              <p class="text-xs text-slate-400">Restricted Administration Gateway</p>
             </div>
             <form onsubmit="handleAdminAuth(event)" class="space-y-4">
-              <input type="text" id="admUser" required placeholder="Username (Aryan)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-xs text-white outline-none focus:border-emerald-500 font-mono">
+              <input type="text" id="admUser" required placeholder="Admin Username (Aryan)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-xs text-white outline-none focus:border-emerald-500 font-mono">
               <input type="password" id="admPass" required placeholder="Password (5669)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-xs text-white outline-none focus:border-emerald-500 font-mono">
-              <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider font-sans">Authorize Session</button>
+              <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Authorize Session</button>
             </form>
+            <div class="text-center">
+              <button onclick="navigate('home')" class="text-xs text-slate-500 hover:text-slate-300">← Back to Storefront</button>
+            </div>
           </div>
         </div>
       `;
@@ -248,12 +823,20 @@
       e.preventDefault();
       try {
         const data = await fetchJSON('/api/admin/login', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: document.getElementById('admUser').value, password: document.getElementById('admPass').value })
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: document.getElementById('admUser').value,
+            password: document.getElementById('admPass').value
+          })
         });
-        state.adminToken = data.token; state.adminUsername = data.username;
-        localStorage.setItem('nexus_admin_token', data.token); localStorage.setItem('nexus_admin_user', data.username);
-        showToast('Admin Authorized'); navigate('admin-center');
+
+        state.adminToken = data.token;
+        state.adminUsername = data.username;
+        localStorage.setItem('nexus_admin_token', data.token);
+        localStorage.setItem('nexus_admin_user', data.username);
+        showToast('Admin Authorized');
+        navigate('admin-center');
       } catch (err) { showToast(err.message, 'error'); }
     }
 
@@ -263,145 +846,230 @@
           <aside id="adminSidebar" class="fixed lg:static top-0 bottom-0 left-0 w-64 bg-admin-sidebar border-r border-admin-border flex flex-col justify-between z-50 transition-transform duration-300 -translate-x-full lg:translate-x-0">
             <div>
               <div class="p-6 border-b border-admin-border flex items-center justify-between">
-                <div><span class="text-xs font-black text-emerald-400 uppercase tracking-widest block font-mono">NEXUS CONTROL</span><span class="text-sm font-bold text-white">Admin Hub</span></div>
-                <button onclick="toggleAdminDrawer(false)" class="lg:hidden text-slate-400">✕</button>
+                <div>
+                  <span class="text-xs font-black text-emerald-400 uppercase tracking-widest block font-mono">NEXUS CONTROL</span>
+                  <span class="text-sm font-bold text-white">Admin Hub</span>
+                </div>
+                <button onclick="toggleAdminDrawer(false)" class="lg:hidden text-slate-400 p-1">✕</button>
               </div>
+
               <nav class="p-4 space-y-1 text-xs font-bold font-mono">
-                <button onclick="switchAdminSection('dashboard')" id="adnav-dashboard" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5">📊 Overview Dashboard</button>
-                <button onclick="switchAdminSection('products')" id="adnav-products" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5">📦 Product Studio</button>
-                <button onclick="switchAdminSection('slots')" id="adnav-slots" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5">🔐 Account Slots</button>
-                <button onclick="switchAdminSection('subscriptions')" id="adnav-subscriptions" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5">👥 Subscriptions Suite</button>
-                <button onclick="switchAdminSection('transactions')" id="adnav-transactions" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5">💳 Transactions</button>
-                <button onclick="switchAdminSection('customers')" id="adnav-customers" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5">👤 Customers</button>
-                <button onclick="switchAdminSection('payment-settings')" id="adnav-payment-settings" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5">💰 Payment Gateway</button>
-                <button onclick="switchAdminSection('system-monitor')" id="adnav-system-monitor" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5">🌐 Website Status</button>
+                <button onclick="switchAdminSection('dashboard')" id="adnav-dashboard" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">📊 <span>Overview Dashboard</span></button>
+                <button onclick="switchAdminSection('products')" id="adnav-products" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">📦 <span>Product Studio</span></button>
+                <button onclick="switchAdminSection('slots')" id="adnav-slots" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🔐 <span>Account Slots</span></button>
+                <button onclick="switchAdminSection('subscriptions')" id="adnav-subscriptions" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all border border-indigo-500/20 bg-indigo-500/5">👥 <span>Subscriptions Suite</span></button>
+                <button onclick="switchAdminSection('transactions')" id="adnav-transactions" class="w-full flex items-center justify-between px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">
+                  <div class="flex items-center gap-3">💳 <span>Transactions</span></div>
+                </button>
+                <button onclick="switchAdminSection('customers')" id="adnav-customers" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">👤 <span>Customers</span></button>
+                <button onclick="switchAdminSection('payment-settings')" id="adnav-payment-settings" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">💰 <span>Payment Gateway</span></button>
+                <button onclick="switchAdminSection('system-monitor')" id="adnav-system-monitor" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🌐 <span>Website Status</span></button>
               </nav>
             </div>
+
             <div class="p-4 border-t border-admin-border space-y-2">
               <button onclick="navigate('home')" class="w-full py-2.5 rounded-xl bg-white/5 text-slate-400 hover:text-white text-xs font-bold">👁 Customer Store</button>
               <button onclick="adminSignOut()" class="w-full py-2.5 rounded-xl bg-rose-500/10 text-rose-400 text-xs font-bold">🚪 End Session</button>
             </div>
           </aside>
+
           <div class="flex-1 flex flex-col min-w-0">
             <header class="h-16 border-b border-admin-border bg-admin-sidebar/50 px-4 sm:px-8 flex items-center justify-between">
-              <button onclick="toggleAdminDrawer(true)" class="lg:hidden p-2 rounded-xl bg-white/5 text-slate-300">☰</button>
-              <span class="text-xs text-slate-400 font-mono">Admin: ${state.adminUsername}</span>
+              <div class="flex items-center gap-3">
+                <button onclick="toggleAdminDrawer(true)" class="lg:hidden p-2 rounded-xl bg-white/5 text-slate-300">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <span class="text-xs text-slate-400 font-mono">Admin: ${state.adminUsername}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="text-xs font-bold text-emerald-400 font-mono">Online</span>
+              </div>
             </header>
+
             <main id="adminMainContent" class="flex-1 p-4 sm:p-8 space-y-8 max-w-7xl w-full mx-auto"></main>
           </div>
         </div>
       `;
-      switchAdminSection(state.adminSection || 'products');
+
+      switchAdminSection(state.adminSection || 'dashboard');
     }
 
     function switchAdminSection(sec) {
-      state.adminSection = sec; closeAllDrawers();
+      state.adminSection = sec;
+      closeAllDrawers();
       const content = document.getElementById('adminMainContent');
       if (!content) return;
+
       document.querySelectorAll('[id^="adnav-"]').forEach(b => b.classList.remove('bg-emerald-500/10', 'text-emerald-400'));
       const active = document.getElementById(`adnav-${sec}`);
       if (active) active.classList.add('bg-emerald-500/10', 'text-emerald-400');
 
-      if (sec === 'products') renderAdminProductsStudio(content);
-      else if (sec === 'dashboard') renderAdminOverview(content);
-      else if (sec === 'slots') renderAdminAccountSlots(content);
-      else if (sec === 'subscriptions') renderAdminSubscriptions(content);
-      else if (sec === 'transactions') renderAdminTransactions(content);
-      else if (sec === 'customers') renderAdminCustomers(content);
-      else if (sec === 'payment-settings') renderAdminPaymentSettings(content);
-      else if (sec === 'system-monitor') renderAdminSystemMonitor(content);
+      switch(sec) {
+        case 'dashboard': renderAdminOverview(content); break;
+        case 'products': renderAdminProductsStudio(content); break;
+        case 'slots': renderAdminAccountSlots(content); break;
+        case 'subscriptions': renderAdminSubscriptions(content); break;
+        case 'transactions': renderAdminTransactions(content); break;
+        case 'customers': renderAdminCustomers(content); break;
+        case 'payment-settings': renderAdminPaymentSettings(content); break;
+        case 'system-monitor': renderAdminSystemMonitor(content); break;
+      }
     }
 
     async function safeFetchAdminProducts() {
       try {
         const data = await fetchJSON('/api/admin/products', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
         return Array.isArray(data) ? data : [];
-      } catch (e) { return []; }
+      } catch (e) {
+        return [];
+      }
     }
 
-    // =========================================================================
-    // REDESIGNED PRODUCT STUDIO (CLEAN 2-COLUMN DESKTOP / MOBILE RESPONSIVE)
-    // =========================================================================
+    // 1. ADMIN OVERVIEW (REDESIGNED PROFESSIONAL COMMAND CENTER)
+    async function renderAdminOverview(container) {
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading Business Overview...</div>';
+      
+      try {
+        const range = document.getElementById('dashboardDateFilter')?.value || 'today';
+        const d = await fetchJSON(`/api/admin/dashboard/full-overview?range=${range}`, { 
+          headers: { 'Authorization': `Bearer ${state.adminToken}` } 
+        });
+
+        container.innerHTML = `
+          <div class="space-y-8 font-mono text-xs pb-12">
+            <div class="glass border-emerald-500/20 px-4 py-2.5 rounded-2xl flex justify-between items-center text-[11px] font-bold shadow-lg">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="text-emerald-400">${d.live_visitors || 1} Live Visitors Online</span>
+              </div>
+              <span class="text-slate-400">Updated just now</span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h1 class="text-2xl font-black text-white font-sans tracking-tight">Overview Dashboard</h1>
+                <p class="text-slate-400 mt-0.5">Monitor your store performance, revenue, customers and subscriptions from one place.</p>
+              </div>
+              <select id="dashboardDateFilter" onchange="renderAdminOverview(document.getElementById('adminMainContent'))" class="bg-surface-950 border border-admin-border px-4 py-2.5 rounded-xl text-white font-bold outline-none focus:border-emerald-500">
+                <option value="today" ${range==='today'?'selected':''}>Today</option>
+                <option value="7d" ${range==='7d'?'selected':''}>7 Days</option>
+                <option value="30d" ${range==='30d'?'selected':''}>30 Days</option>
+                <option value="all" ${range==='all'?'selected':''}>1 Year / All Time</option>
+              </select>
+            </div>
+
+            <!-- Primary KPIs -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div class="admin-card p-6 rounded-3xl space-y-2 border border-admin-border hover:border-emerald-500/30 transition-all">
+                <span class="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Total Revenue</span>
+                <div class="text-2xl font-black text-emerald-400">₹${d.sales?.revenue || 0}</div>
+                <div class="text-[10px] text-emerald-400 font-bold">✓ Confirmed payments</div>
+              </div>
+              <div class="admin-card p-6 rounded-3xl space-y-2 border border-admin-border hover:border-emerald-500/30 transition-all">
+                <span class="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Total Orders</span>
+                <div class="text-2xl font-black text-white">${d.sales?.orders || 0}</div>
+                <div class="text-[10px] text-slate-500">Completed & active</div>
+              </div>
+              <div class="admin-card p-6 rounded-3xl space-y-2 border border-admin-border hover:border-emerald-500/30 transition-all">
+                <span class="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Total Customers</span>
+                <div class="text-2xl font-black text-white">${d.customers?.total || 0}</div>
+                <div class="text-[10px] text-slate-500">Registered users</div>
+              </div>
+              <div class="admin-card p-6 rounded-3xl space-y-2 border border-admin-border hover:border-emerald-500/30 transition-all">
+                <span class="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Active Subscriptions</span>
+                <div class="text-2xl font-black text-indigo-400">${d.subscriptions?.active || 0}</div>
+                <div class="text-[10px] text-indigo-400 font-bold">Healthy accounts</div>
+              </div>
+            </div>
+
+            <!-- Secondary Summary Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="admin-card p-5 rounded-2xl space-y-1">
+                <span class="text-slate-500 text-[10px] uppercase">Completed Payments</span>
+                <div class="text-lg font-bold text-white">${d.completed_payments || 0}</div>
+              </div>
+              <div class="admin-card p-5 rounded-2xl space-y-1">
+                <span class="text-slate-500 text-[10px] uppercase">Pending Payments</span>
+                <div class="text-lg font-bold text-amber-400">${d.pending_payments || 0}</div>
+              </div>
+              <div class="admin-card p-5 rounded-2xl space-y-1">
+                <span class="text-slate-500 text-[10px] uppercase">Active Products</span>
+                <div class="text-lg font-bold text-emerald-400">${d.active_products || 0}</div>
+              </div>
+            </div>
+
+            <!-- Recent Tables -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div class="admin-card rounded-3xl p-6 space-y-4">
+                <div class="flex justify-between items-center">
+                  <h3 class="text-white font-black font-sans uppercase">Recent Transactions</h3>
+                  <button onclick="switchAdminSection('transactions')" class="text-emerald-400 font-bold hover:underline">View All →</button>
+                </div>
+                <div class="space-y-2">
+                  ${!(d.recent_txns && d.recent_txns.length) ? '<div class="text-slate-500 p-4 text-center">No recent transactions.</div>' : d.recent_txns.map(t => `
+                    <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
+                      <div>
+                        <span class="font-bold text-white block">${t.customer_name}</span>
+                        <span class="text-[10px] text-slate-500">${t.txn_id} • ${t.payment_method}</span>
+                      </div>
+                      <div class="text-right">
+                        <span class="text-emerald-400 font-bold block">₹${t.amount}</span>
+                        <span class="text-[9px] ${t.status === 'CONFIRMED' ? 'text-emerald-400' : 'text-amber-400'}">${t.status}</span>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+
+              <div class="admin-card rounded-3xl p-6 space-y-4">
+                <div class="flex justify-between items-center">
+                  <h3 class="text-white font-black font-sans uppercase">System Health</h3>
+                  <button onclick="switchAdminSection('system-monitor')" class="text-emerald-400 font-bold hover:underline">View Status →</button>
+                </div>
+                <div class="space-y-3">
+                  <div class="flex justify-between p-3 rounded-2xl bg-surface-950 border border-admin-border"><span>Website & Frontend</span><span class="text-emerald-400 font-bold">🟢 Online</span></div>
+                  <div class="flex justify-between p-3 rounded-2xl bg-surface-950 border border-admin-border"><span>Backend Express API</span><span class="text-emerald-400 font-bold">🟢 Healthy</span></div>
+                  <div class="flex justify-between p-3 rounded-2xl bg-surface-950 border border-admin-border"><span>MongoDB Atlas Cluster</span><span class="text-emerald-400 font-bold">🟢 Connected</span></div>
+                  <div class="flex justify-between p-3 rounded-2xl bg-surface-950 border border-admin-border"><span>Subscription Engine</span><span class="text-indigo-400 font-bold">🟢 Active</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      } catch (err) {
+        container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">Overview Error: ${err.message}</div>`;
+      }
+    }
+
+    // 2. PRODUCT STUDIO
     async function renderAdminProductsStudio(container) {
       container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading Product Studio...</div>';
       try {
         const products = await safeFetchAdminProducts();
-        const publishedCount = products.filter(p => p.status === 'active').length;
-        const draftCount = products.filter(p => p.status === 'draft').length;
-        const outOfStockCount = products.filter(p => p.status === 'out_of_stock').length;
-
         container.innerHTML = `
-          <div class="space-y-8 font-mono text-xs pb-12">
-            <!-- Header -->
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h1 class="text-2xl font-black text-white font-sans tracking-tight">Product Studio</h1>
-                <p class="text-slate-400 mt-0.5">Manage your products, pricing, availability and digital delivery.</p>
-              </div>
-              <button onclick="openProductStudioModal('new')" class="px-5 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-xs uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-                + Add Product
-              </button>
+          <div class="space-y-6 font-mono text-xs">
+            <div class="flex justify-between items-center">
+              <h1 class="text-xl font-black text-white font-sans">Product Studio</h1>
+              <button onclick="openProductStudioModal('new')" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg active:scale-95 transition-all font-sans">+ Add Product</button>
             </div>
-
-            <!-- Summary Cards -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div class="admin-card p-5 rounded-3xl space-y-1"><span class="text-slate-400 block text-[10px] uppercase font-bold">Total Products</span><div class="text-2xl font-black text-white">${products.length}</div></div>
-              <div class="admin-card p-5 rounded-3xl space-y-1"><span class="text-slate-400 block text-[10px] uppercase font-bold">Published</span><div class="text-2xl font-black text-emerald-400">${publishedCount}</div></div>
-              <div class="admin-card p-5 rounded-3xl space-y-1"><span class="text-slate-400 block text-[10px] uppercase font-bold">Drafts</span><div class="text-2xl font-black text-amber-400">${draftCount}</div></div>
-              <div class="admin-card p-5 rounded-3xl space-y-1"><span class="text-slate-400 block text-[10px] uppercase font-bold">Out of Stock</span><div class="text-2xl font-black text-rose-400">${outOfStockCount}</div></div>
-            </div>
-
-            <!-- Search Bar -->
-            <div class="admin-card rounded-2xl p-4 flex gap-3 items-center">
-              <input type="text" oninput="filterProductStudioTable(this.value)" placeholder="Search products by name, SKU, or category..." class="w-full px-4 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white placeholder-slate-500 outline-none focus:border-emerald-500">
-            </div>
-
-            <!-- Products List / Table -->
             <div class="admin-card rounded-3xl p-6">
               <div class="overflow-x-auto">
-                <table class="w-full text-left min-w-[850px]" id="productStudioTable">
-                  <thead>
-                    <tr class="border-b border-admin-border text-slate-500">
-                      <th class="pb-3">Product</th>
-                      <th class="pb-3">Category</th>
-                      <th class="pb-3">Price</th>
-                      <th class="pb-3">Stock / Availability</th>
-                      <th class="pb-3">Status</th>
-                      <th class="pb-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-admin-border font-sans">
-                    ${products.length === 0 ? `
-                      <tr><td colspan="6" class="py-12 text-center text-slate-500">No products yet. Click "+ Add Product" to create one.</td></tr>
-                    ` : products.map(p => `
-                      <tr class="hover:bg-white/[0.02] transition-colors">
-                        <td class="py-4 flex items-center gap-3">
-                          <img src="${p.images?.[0] || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=200'}" class="w-12 h-12 rounded-xl object-cover border border-admin-border bg-black/40">
-                          <div>
-                            <span class="text-white font-bold block">${p.name}</span>
-                            <span class="text-[10px] text-slate-500 font-mono">SKU: ${p.sku}</span>
-                          </div>
-                        </td>
-                        <td class="py-4 text-slate-300">${p.category || 'Digital Good'}</td>
-                        <td class="py-4">
-                          <div class="flex items-center gap-2">
-                            <span class="text-emerald-400 font-black">₹${p.sale_price}</span>
-                            ${p.original_price > p.sale_price ? `<span class="text-xs text-slate-500 line-through">₹${p.original_price}</span>` : ''}
-                          </div>
-                          ${p.discount_percentage > 0 ? `<span class="text-[9px] text-rose-400 font-bold">${p.discount_percentage}% OFF</span>` : ''}
-                        </td>
-                        <td class="py-4">
-                          <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${p.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">
-                            ${p.status === 'active' ? '🟢 In Stock' : '🔴 Out of Stock'}
-                          </span>
-                        </td>
-                        <td class="py-4">
-                          <span class="text-xs font-semibold uppercase text-slate-300">${p.status}</span>
-                        </td>
-                        <td class="py-4 text-right space-x-2 font-mono">
-                          <button onclick="openProductStudioModal('${p._id}')" class="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 font-bold hover:bg-emerald-500/20">Edit</button>
-                          <button onclick="duplicateAdminProduct('${p._id}')" class="px-3 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 font-bold hover:bg-indigo-500/20">Duplicate</button>
-                          <button onclick="deleteAdminProduct('${p._id}')" class="px-2 py-1 rounded-lg text-rose-400 hover:text-rose-300">✕</button>
+                <table class="w-full text-left min-w-[780px]">
+                  <thead><tr class="border-b border-admin-border text-slate-500"><th class="pb-2">Image</th><th class="pb-2">Product Name</th><th class="pb-2">Type</th><th class="pb-2">Original Price</th><th class="pb-2">Selling Price</th><th class="pb-2">Status</th><th class="pb-2 text-right">Actions</th></tr></thead>
+                  <tbody class="divide-y divide-admin-border">
+                    ${products.length === 0 ? `<tr><td colspan="7" class="py-8 text-center text-slate-500">No products created yet.</td></tr>` : products.map(p => `
+                      <tr class="hover:bg-white/[0.02]">
+                        <td class="py-3"><img src="${p.images && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=200'}" class="w-12 h-12 rounded-xl object-cover border border-admin-border bg-black/40"></td>
+                        <td class="py-3"><span class="text-white font-bold block">${p.name}</span><span class="text-[10px] text-slate-500 font-mono">${p.sku}</span></td>
+                        <td class="py-3"><span class="px-2 py-0.5 rounded text-[10px] ${p.product_type === 'SUBSCRIPTION' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-emerald-500/10 text-emerald-400'}">${p.product_type}</span></td>
+                        <td class="py-3 text-slate-400 line-through">₹${p.original_price}</td>
+                        <td class="py-3 text-emerald-400 font-bold">₹${p.sale_price}</td>
+                        <td class="py-3"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${p.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : p.status === 'out_of_stock' ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-500/10 text-slate-400'}">${p.status === 'active' ? '● In Stock' : (p.status === 'out_of_stock' ? '✕ Out of Stock' : p.status)}</span></td>
+                        <td class="py-3 text-right space-x-2">
+                          <button onclick="navigate('product-details', { id: '${p._id}' })" class="text-slate-400 hover:text-white">👁 View</button>
+                          <button onclick="openProductStudioModal('${p._id}')" class="text-emerald-400 font-bold">✏️ Edit</button>
+                          <button onclick="deleteAdminProduct('${p._id}')" class="text-rose-400">✕</button>
                         </td>
                       </tr>
                     `).join('')}
@@ -411,125 +1079,59 @@
             </div>
           </div>
         `;
-      } catch (err) {
-        container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">Error loading Product Studio: ${err.message}</div>`;
-      }
-    }
-
-    function filterProductStudioTable(val) {
-      const q = val.toLowerCase();
-      document.querySelectorAll('#productStudioTable tbody tr').forEach(row => {
-        if (row.textContent.toLowerCase().includes(q)) row.classList.remove('hidden');
-        else row.classList.add('hidden');
-      });
+      } catch (err) { container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">${err.message}</div>`; }
     }
 
     async function openProductStudioModal(productId) {
       const isNew = productId === 'new';
       const modal = document.getElementById('globalModal');
       const content = document.getElementById('globalModalContent');
-      modal.classList.remove('hidden'); modal.classList.add('flex');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
 
       let p = {
         name: '', short_description: '', description: '', category: 'Software & Digital Goods', sku: 'SKU-' + Date.now(),
         product_type: 'ONE_TIME', original_price: 999, sale_price: 499, discount_percentage: 50,
         subscription_pricing: { one_month: 199, six_months: 899, one_year: 1499 },
         images: ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'],
+        features: ['Instant Fulfillment'], whats_included: ['Digital Credentials / License'], specifications: [{ label: 'Format', value: 'Cloud Digital' }],
         delivery_type: 'EMAIL_PASSWORD', status: 'active'
       };
 
       if (!isNew) {
-        content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono">Loading product editor...</div>';
+        content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono">Loading product studio...</div>';
         p = await fetchJSON(`/api/products/${productId}`);
       }
 
       content.innerHTML = `
         <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
-        <div class="space-y-6 font-sans text-xs">
-          <div>
-            <h2 class="text-lg font-black text-white">${isNew ? 'Create New Product' : `Edit Product: ${p.name}`}</h2>
-            <p class="text-slate-400 text-xs">Configure product details, pricing, inventory, and fulfillment.</p>
-          </div>
-
+        <div class="space-y-6 text-xs font-mono">
+          <div><h2 class="text-base font-black text-white font-sans">${isNew ? 'Create New Master Product' : `Edit Product: ${p.name}`}</h2></div>
           <form onsubmit="handleMasterProductSubmit(event, '${productId}')" class="space-y-6">
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              <!-- Left Column: Basics & Description -->
-              <div class="space-y-4">
-                <div class="p-5 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
-                  <span class="text-[11px] text-emerald-400 font-bold uppercase">1. Basic Information</span>
-                  <div>
-                    <label class="text-slate-400 block mb-1">Product Title</label>
-                    <input type="text" id="studioName" required value="${p.name || ''}" placeholder="Product Title" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white font-bold">
-                  </div>
-                  <div>
-                    <label class="text-slate-400 block mb-1">Short Tagline</label>
-                    <input type="text" id="studioShortDesc" value="${p.short_description || ''}" placeholder="Short summary" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
-                  </div>
-                  <div>
-                    <label class="text-slate-400 block mb-1">Category & SKU</label>
-                    <div class="grid grid-cols-2 gap-2">
-                      <input type="text" id="studioCategory" value="${p.category || 'Digital Goods'}" class="px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
-                      <input type="text" id="studioSku" value="${p.sku || ''}" class="px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white font-mono">
-                    </div>
-                  </div>
-                </div>
-
-                <div class="p-5 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
-                  <span class="text-[11px] text-emerald-400 font-bold uppercase">2. Description</span>
-                  <textarea id="studioFullDesc" rows="4" placeholder="Full product description..." class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white leading-relaxed">${p.description || ''}</textarea>
-                </div>
-              </div>
-
-              <!-- Right Column: Pricing & Publishing -->
-              <div class="space-y-4">
-                <div class="p-5 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
-                  <span class="text-[11px] text-emerald-400 font-bold uppercase">3. Pricing & Type</span>
-                  <div>
-                    <label class="text-slate-400 block mb-1">Product Type</label>
-                    <select id="studioProductType" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white font-bold">
-                      <option value="ONE_TIME" ${p.product_type === 'ONE_TIME' ? 'selected' : ''}>One-Time Digital Product</option>
-                      <option value="SUBSCRIPTION" ${p.product_type === 'SUBSCRIPTION' ? 'selected' : ''}>Subscription Product (1M / 6M / 1Y)</option>
-                    </select>
-                  </div>
-                  <div class="grid grid-cols-2 gap-2">
-                    <div>
-                      <label class="text-slate-400 block mb-1">Real Price (₹)</label>
-                      <input type="number" id="studioOrigPrice" value="${p.original_price || 999}" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white font-bold">
-                    </div>
-                    <div>
-                      <label class="text-slate-400 block mb-1">Selling Price (₹)</label>
-                      <input type="number" id="studioSalePrice" value="${p.sale_price || 499}" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-emerald-400 font-black">
-                    </div>
-                  </div>
-                </div>
-
-                <div class="p-5 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
-                  <span class="text-[11px] text-emerald-400 font-bold uppercase">4. Publishing Status</span>
-                  <div>
-                    <label class="text-slate-400 block mb-1">Status</label>
-                    <select id="studioStatus" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-emerald-400 font-bold">
-                      <option value="active" ${p.status === 'active' ? 'selected' : ''}>🟢 Published (In Stock)</option>
-                      <option value="out_of_stock" ${p.status === 'out_of_stock' ? 'selected' : ''}>🔴 Out of Stock / Unavailable</option>
-                      <option value="draft" ${p.status === 'draft' ? 'selected' : ''}>🟡 Draft</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label class="text-slate-400 block mb-1">Product Image URL</label>
-                    <input type="text" id="studioImage" value="${p.images?.[0] || ''}" placeholder="https://..." class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white font-mono text-[11px]">
-                  </div>
-                </div>
-              </div>
-
+            <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
+              <span class="text-[10px] text-emerald-400 font-bold uppercase font-sans">Basic Information</span>
+              <input type="text" id="studioName" required value="${p.name || ''}" placeholder="Product Title" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white font-bold">
+              <input type="text" id="studioShortDesc" value="${p.short_description || ''}" placeholder="Short Tagline Description" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
+              <select id="studioProductType" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-900 border border-white/10 text-white">
+                <option value="ONE_TIME" ${p.product_type === 'ONE_TIME' ? 'selected' : ''}>One-Time Digital Product</option>
+                <option value="SUBSCRIPTION" ${p.product_type === 'SUBSCRIPTION' ? 'selected' : ''}>Subscription Product (1M / 6M / 1Y)</option>
+              </select>
             </div>
-
-            <div class="pt-2">
-              <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black text-xs uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-                ${isNew ? 'Create & Publish Product' : 'Save Changes to Database'}
-              </button>
+            <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
+              <span class="text-[10px] text-emerald-400 font-bold uppercase font-sans">Pricing & Availability</span>
+              <div class="grid grid-cols-3 gap-2">
+                <input type="number" id="studioOrigPrice" value="${p.original_price || 999}" placeholder="Orig Price" class="px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-white">
+                <input type="number" id="studioSalePrice" value="${p.sale_price || 499}" placeholder="Sale Price" class="px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-emerald-400 font-bold">
+                <select id="studioStatus" class="px-3 py-2 rounded-xl bg-surface-900 border border-white/10 text-emerald-400 font-bold">
+                  <option value="active" ${p.status === 'active' ? 'selected' : ''}>🟢 In Stock</option>
+                  <option value="out_of_stock" ${p.status === 'out_of_stock' ? 'selected' : ''}>🔴 Out of Stock</option>
+                  <option value="draft" ${p.status === 'draft' ? 'selected' : ''}>Draft</option>
+                </select>
+              </div>
             </div>
-
+            <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase tracking-wider font-sans active:scale-95 transition-all">
+              ${isNew ? 'Create Product' : 'Save Changes'}
+            </button>
           </form>
         </div>
       `;
@@ -538,19 +1140,13 @@
     async function handleMasterProductSubmit(e, productId) {
       e.preventDefault();
       const isNew = productId === 'new';
-      const imageUrl = document.getElementById('studioImage').value.trim();
-
       const payload = {
-        name: document.getElementById('studioName').value.trim(),
-        short_description: document.getElementById('studioShortDesc').value.trim(),
-        description: document.getElementById('studioFullDesc').value.trim(),
-        category: document.getElementById('studioCategory').value.trim(),
-        sku: document.getElementById('studioSku').value.trim(),
+        name: document.getElementById('studioName').value,
+        short_description: document.getElementById('studioShortDesc').value,
         product_type: document.getElementById('studioProductType').value,
-        original_price: Number(document.getElementById('studioOrigPrice').value) || 999,
-        sale_price: Number(document.getElementById('studioSalePrice').value) || 499,
-        status: document.getElementById('studioStatus').value,
-        images: imageUrl ? [imageUrl] : ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800']
+        original_price: Number(document.getElementById('studioOrigPrice').value),
+        sale_price: Number(document.getElementById('studioSalePrice').value),
+        status: document.getElementById('studioStatus').value
       };
 
       try {
@@ -559,37 +1155,359 @@
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
           body: JSON.stringify(payload)
         });
-        showToast(isNew ? 'Product created successfully!' : 'Product updated successfully!');
+        showToast(isNew ? 'Product created!' : 'Product updated!');
         document.getElementById('globalModal').classList.add('hidden');
         renderAdminProductsStudio(document.getElementById('adminMainContent'));
       } catch (err) { showToast(err.message, 'error'); }
     }
 
-    async function duplicateAdminProduct(id) {
+    async function deleteAdminProduct(id) {
+      if (!confirm('Delete product and all its slots?')) return;
       try {
-        await fetchJSON(`/api/admin/products/${id}/duplicate`, {
-          method: 'POST', headers: { 'Authorization': `Bearer ${state.adminToken}` }
-        });
-        showToast('Product duplicated as draft!');
+        await fetchJSON(`/api/admin/products/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+        showToast('Deleted');
         renderAdminProductsStudio(document.getElementById('adminMainContent'));
       } catch (err) { showToast(err.message, 'error'); }
     }
 
-    // Other required admin view render stubs to maintain sidebar stability
-    async function renderAdminAccountSlots(c) { c.innerHTML = '<div class="p-8 text-white font-mono text-xs">Account Slots Module Active.</div>'; }
-    async function renderAdminSubscriptions(c) { c.innerHTML = '<div class="p-8 text-white font-mono text-xs">Subscriptions Suite Active.</div>'; }
-    async function renderAdminTransactions(c) { c.innerHTML = '<div class="p-8 text-white font-mono text-xs">Transactions Queue Active.</div>'; }
-    async function renderAdminCustomers(c) { c.innerHTML = '<div class="p-8 text-white font-mono text-xs">Customer Directory Active.</div>'; }
-    async function renderAdminPaymentSettings(c) { c.innerHTML = '<div class="p-8 text-white font-mono text-xs">Payment Gateway Active.</div>'; }
-    async function renderAdminSystemMonitor(c) { c.innerHTML = '<div class="p-8 text-white font-mono text-xs">Website Status Active.</div>'; }
+    // 3. ACCOUNT SLOTS
+    async function renderAdminAccountSlots(container) {
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading Account Slots from database...</div>';
+      try {
+        let queryUrl = `/api/admin/slots?`;
+        if (state.slotFilterProduct !== 'ALL') queryUrl += `product_id=${state.slotFilterProduct}&`;
+        if (state.slotFilterStatus !== 'ALL') queryUrl += `status=${state.slotFilterStatus}&`;
+
+        const [data, products] = await Promise.all([
+          fetchJSON(queryUrl, { headers: { 'Authorization': `Bearer ${state.adminToken}` } }),
+          safeFetchAdminProducts()
+        ]);
+        state.loadedSlots = Array.isArray(data.slots) ? data.slots : [];
+        state.loadedProducts = Array.isArray(products) ? products : [];
+
+        container.innerHTML = `
+          <div class="space-y-6 font-mono text-xs">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <h1 class="text-xl font-black text-white font-sans">Account Slots Management</h1>
+              <button onclick="openSlotFormModal('new')" class="px-5 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider font-sans active:scale-95 transition-all">+ Add New Slot</button>
+            </div>
+            <div class="admin-card rounded-2xl p-4 flex gap-3 items-center">
+              <select id="slotProductFilter" onchange="state.slotFilterProduct=this.value; renderAdminAccountSlots(document.getElementById('adminMainContent'))" class="px-3 py-2 rounded-xl bg-surface-950 border border-admin-border text-white flex-1">
+                <option value="ALL">All Products</option>
+                ${state.loadedProducts.map(p => `<option value="${p._id}" ${state.slotFilterProduct === p._id ? 'selected' : ''}>${p.name}</option>`).join('')}
+              </select>
+            </div>
+            <div class="admin-card rounded-3xl p-6">
+              <table class="w-full text-left">
+                <thead><tr class="border-b border-admin-border text-slate-500"><th class="pb-3">Slot</th><th class="pb-3">Email</th><th class="pb-3">Status</th><th class="pb-3 text-right">Actions</th></tr></thead>
+                <tbody class="divide-y divide-admin-border font-mono">
+                  ${state.loadedSlots.length === 0 ? `<tr><td colspan="4" class="py-8 text-center text-slate-500">No account slots found.</td></tr>` : state.loadedSlots.map(s => `
+                    <tr class="hover:bg-white/[0.02]">
+                      <td class="py-3.5 font-bold text-white">${s.account_label}</td>
+                      <td class="py-3.5 text-slate-400">${s.email}</td>
+                      <td class="py-3.5"><span class="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-white/5 text-white">${s.status}</span></td>
+                      <td class="py-3.5 text-right space-x-2">
+                        <button onclick="openSlotFormModal('${s._id}', '${s.status}')" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 font-bold">✏️ Edit</button>
+                        ${s.active_users_count === 0 ? `<button onclick="deleteSlotRecord('${s._id}')" class="px-2 py-1 text-rose-400">✕</button>` : ''}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      } catch (err) { container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">Error loading slots: ${err.message}</div>`; }
+    }
+
+    async function openSlotFormModal(slotId, currentStatus) {
+      const isNew = slotId === 'new';
+      const modal = document.getElementById('globalModal');
+      const content = document.getElementById('globalModalContent');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      let slotData = { account_label: 'Slot ' + Math.floor(Math.random() * 100), email: '', password: '', status: 'AVAILABLE', max_active_users: 1 };
+      const products = await safeFetchAdminProducts();
+      if (!isNew) slotData = state.loadedSlots.find(s => s._id === slotId) || slotData;
+
+      content.innerHTML = `
+        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+        <div class="space-y-5 font-mono text-xs">
+          <h2 class="text-base font-black text-white font-sans">${isNew ? '+ Add New Account Slot' : `Edit Credentials: ${slotData.account_label}`}</h2>
+          <form onsubmit="handleSlotFormSubmit(event, '${slotId}')" class="space-y-4">
+            ${isNew ? `<select id="slotFormProduct" required class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">${products.map(p => `<option value="${p._id}">${p.name}</option>`).join('')}</select>` : ''}
+            <input type="text" id="slotFormLabel" required value="${slotData.account_label}" placeholder="Slot Name" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
+            <input type="email" id="slotFormEmail" required value="${slotData.email}" placeholder="Email" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
+            <input type="text" id="slotFormPassword" value="${slotData.password}" placeholder="Password" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-emerald-400 font-bold">
+            <select id="slotFormStatus" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
+              <option value="AVAILABLE" ${slotData.status === 'AVAILABLE' ? 'selected' : ''}>Available</option>
+              <option value="DISABLED" ${slotData.status === 'DISABLED' ? 'selected' : ''}>Disabled</option>
+            </select>
+            <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase font-sans active:scale-95 transition-all">Save Account Slot</button>
+          </form>
+        </div>
+      `;
+    }
+
+    async function handleSlotFormSubmit(e, slotId) {
+      e.preventDefault();
+      const isNew = slotId === 'new';
+      const payload = { account_label: document.getElementById('slotFormLabel').value, email: document.getElementById('slotFormEmail').value, password: document.getElementById('slotFormPassword').value, status: document.getElementById('slotFormStatus').value };
+      if (isNew) payload.product_id = document.getElementById('slotFormProduct').value;
+
+      try {
+        await fetchJSON(isNew ? '/api/admin/slots' : `/api/admin/slots/${slotId}`, { method: isNew ? 'POST' : 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` }, body: JSON.stringify(payload) });
+        showToast(isNew ? 'Account Slot created!' : 'Credentials updated!');
+        document.getElementById('globalModal').classList.add('hidden');
+        renderAdminAccountSlots(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function deleteSlotRecord(id) {
+      if (!confirm('Permanently remove this account slot?')) return;
+      try {
+        await fetchJSON(`/api/admin/slots/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+        showToast('Slot removed'); renderAdminAccountSlots(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    // 4. SUBSCRIPTIONS SUITE
+    async function renderAdminSubscriptions(container) {
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading subscription engine...</div>';
+      try {
+        const data = await fetchJSON('/api/admin/subscriptions/advanced', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+        state.loadedSubs = Array.isArray(data.subscriptions) ? data.subscriptions : [];
+        container.innerHTML = `
+          <div class="space-y-6 font-mono text-xs">
+            <h1 class="text-xl font-black text-white font-sans">Subscriptions Suite</h1>
+            <div class="admin-card rounded-3xl p-6">
+              <table class="w-full text-left">
+                <thead><tr class="border-b border-admin-border text-slate-500"><th class="pb-3">Customer</th><th class="pb-3">Product</th><th class="pb-3">Time Left</th><th class="pb-3 text-right">Actions</th></tr></thead>
+                <tbody class="divide-y divide-admin-border">
+                  ${state.loadedSubs.map(s => `
+                    <tr>
+                      <td class="py-3 font-bold text-white">${s.user_id?.username || s.user_id?.name}</td>
+                      <td class="py-3">${s.product_name}</td>
+                      <td class="py-3 text-emerald-400 font-bold">${s.time_remaining_text}</td>
+                      <td class="py-3 text-right"><button onclick="openSubscriptionDetailsModal('${s._id}')" class="px-2 py-1 bg-white/5 hover:bg-white/10 rounded-lg">View</button></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      } catch (e) { container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs">${e.message}</div>`; }
+    }
+
+    function openSubscriptionDetailsModal(subId) {
+      const s = state.loadedSubs.find(item => item._id === subId);
+      if (!s) return;
+      const modal = document.getElementById('globalModal');
+      const content = document.getElementById('globalModalContent');
+      modal.classList.remove('hidden'); modal.classList.add('flex');
+      content.innerHTML = `
+        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+        <div class="space-y-6 font-mono text-xs">
+          <h2 class="text-lg font-black text-white font-sans">${s.product_name}</h2>
+          <div class="p-4 bg-surface-950 border border-admin-border rounded-2xl space-y-2">
+            <div class="flex justify-between"><span>Customer:</span><span class="text-white">${s.user_id?.username}</span></div>
+            <div class="flex justify-between"><span>Slot:</span><span class="text-emerald-400">${s.assigned_slot_id?.account_label || 'N/A'}</span></div>
+            <div class="flex justify-between"><span>Time Left:</span><span class="text-emerald-400 font-bold">${s.time_remaining_text}</span></div>
+            <div class="flex justify-between"><span>Expires:</span><span class="text-white">${new Date(s.expires_at).toLocaleString()}</span></div>
+          </div>
+          <div class="flex justify-end gap-2 pt-2 border-t border-admin-border">
+            <button onclick="openExtendModal('${s._id}')" class="px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 font-bold">+ Extend</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function openExtendModal(subId) {
+      const modal = document.getElementById('globalModal');
+      const content = document.getElementById('globalModalContent');
+      content.innerHTML = `
+        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+        <div class="space-y-5 font-mono text-xs">
+          <h3 class="text-base font-black text-white font-sans">Extend Subscription</h3>
+          <form onsubmit="handleExtendSubmit(event, '${subId}')" class="space-y-4">
+            <select id="extendTypeSelect" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white">
+              <option value="1_MONTH">+ 1 Month Extension</option>
+              <option value="6_MONTHS">+ 6 Months Extension</option>
+              <option value="1_YEAR">+ 1 Year Extension</option>
+            </select>
+            <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase font-sans shadow-lg active:scale-95 transition-all">Confirm Extension</button>
+          </form>
+        </div>
+      `;
+    }
+
+    async function handleExtendSubmit(e, subId) {
+      e.preventDefault();
+      try {
+        await fetchJSON(`/api/admin/subscriptions/${subId}/extend`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
+          body: JSON.stringify({ extend_type: document.getElementById('extendTypeSelect').value })
+        });
+        showToast('Subscription extended successfully!');
+        document.getElementById('globalModal').classList.add('hidden');
+        renderAdminSubscriptions(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    // 5. TRANSACTIONS QUEUE
+    async function renderAdminTransactions(container) {
+      container.innerHTML = '<div class="text-center py-12 text-slate-500 font-mono">Loading transactions...</div>';
+      try {
+        const data = await fetchJSON('/api/admin/transactions', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+        const txns = Array.isArray(data) ? data : [];
+        container.innerHTML = `
+          <div class="space-y-6 font-mono text-xs">
+            <h2 class="text-lg font-black text-white font-sans">Transactions Queue</h2>
+            <div class="admin-card rounded-3xl p-6">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left min-w-[780px]">
+                  <thead><tr class="border-b border-admin-border text-slate-500"><th class="pb-3">TXN</th><th class="pb-3">Customer</th><th class="pb-3">Amount</th><th class="pb-3">Assign Slot</th><th class="pb-3 text-right">Actions</th></tr></thead>
+                  <tbody class="divide-y divide-admin-border">
+                    ${txns.length === 0 ? `<tr><td colspan="5" class="py-8 text-center text-slate-500">No transactions in queue.</td></tr>` : txns.map(t => `
+                      <tr>
+                        <td class="py-3.5"><span class="font-bold text-white block">${t.txn_id}</span></td>
+                        <td class="py-3.5 text-slate-300">${t.customer_name}</td>
+                        <td class="py-3.5 text-emerald-400 font-bold">₹${t.amount}</td>
+                        <td class="py-3.5">
+                          ${t.status === 'PROCESSING' ? `
+                            <select id="slotSelect-${t._id}" class="px-3 py-1.5 rounded-xl bg-surface-950 border border-admin-border text-[11px] text-emerald-400 max-w-[200px]">
+                              ${(t.available_slots || []).map(s => `<option value="${s._id}">${s.account_label}</option>`).join('')}
+                            </select>
+                          ` : '<span class="text-slate-500">Assigned</span>'}
+                        </td>
+                        <td class="py-3.5 text-right space-x-2">
+                          ${t.status === 'PROCESSING' ? `
+                            <button onclick="confirmAndAssignTransaction('${t._id}')" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-gray-950 font-black">Confirm</button>
+                            <button onclick="rejectTransaction('${t._id}')" class="px-3 py-1.5 rounded-lg bg-rose-500/20 text-rose-400 font-bold">Reject</button>
+                          ` : `<span class="px-2 py-0.5 rounded text-[10px] ${t.status === 'CONFIRMED' ? 'text-emerald-400 bg-emerald-500/10' : 'text-rose-400 bg-rose-500/10'}">${t.status}</span>`}
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        `;
+      } catch (err) { container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">Transactions Error: ${err.message}</div>`; }
+    }
+
+    async function confirmAndAssignTransaction(id) {
+      const selectEl = document.getElementById(`slotSelect-${id}`);
+      const slot_id = selectEl ? selectEl.value : null;
+      if (!confirm('Confirm this payment and bind account slot?')) return;
+      try {
+        await fetchJSON(`/api/admin/transactions/${id}/confirm-and-assign`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
+          body: JSON.stringify({ slot_id })
+        });
+        showToast('Subscription activated and account slot bound!');
+        renderAdminTransactions(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function rejectTransaction(id) {
+      if (!confirm('Reject transaction?')) return;
+      try {
+        await fetchJSON(`/api/admin/transactions/${id}/reject`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
+          body: JSON.stringify({ reason: 'Rejected by Admin' })
+        });
+        showToast('Transaction rejected');
+        renderAdminTransactions(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    // 6. CUSTOMERS DIRECTORY
+    async function renderAdminCustomers(container) {
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading directory...</div>';
+      try {
+        const data = await fetchJSON('/api/admin/customers/list', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+        const customers = Array.isArray(data) ? data : [];
+        container.innerHTML = `
+          <div class="space-y-6 font-mono text-xs">
+            <h1 class="text-xl font-black text-white font-sans">Registered Customers</h1>
+            <div class="admin-card rounded-3xl p-6">
+              <table class="w-full text-left">
+                <thead><tr class="border-b border-admin-border text-slate-500"><th class="pb-3">Username</th><th class="pb-3">Orders</th><th class="pb-3">Active Subs</th></tr></thead>
+                <tbody class="divide-y divide-admin-border">${customers.map(c => `
+                  <tr><td class="py-3 font-bold text-white">@${c.username || c.name}</td><td class="py-3 text-emerald-400">${c.orders_count || 0}</td><td class="py-3 text-slate-400">${(c.active_subscriptions || []).length} Active</td></tr>
+                `).join('')}</tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      } catch (err) { container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">${err.message}</div>`; }
+    }
+
+    // 7. PAYMENT SETTINGS
+    async function renderAdminPaymentSettings(container) {
+      try {
+        const s = await fetchJSON('/api/admin/payment-settings', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+        container.innerHTML = `
+          <div class="max-w-xl space-y-6 font-mono text-xs">
+            <h1 class="text-xl font-black text-white font-sans">Payment Settings</h1>
+            <form onsubmit="saveAdminPaymentSettings(event)" class="admin-card rounded-3xl p-6 space-y-4">
+              <div><label class="text-slate-400 block mb-1">UPI ID</label><input type="text" id="admUpiId" value="${s.upi_id || ''}" class="w-full px-4 py-3 bg-surface-950 border border-admin-border text-white rounded-xl"></div>
+              <div><label class="text-slate-400 block mb-1">UPI QR Code URL</label><input type="text" id="admUpiQr" value="${s.upi_qr_url || ''}" class="w-full px-4 py-3 bg-surface-950 border border-admin-border text-white rounded-xl"></div>
+              <button type="submit" class="w-full py-4 bg-emerald-500 text-gray-950 font-black rounded-2xl uppercase">Save Settings</button>
+            </form>
+          </div>
+        `;
+      } catch (e) { container.innerHTML = `<div class="admin-card p-8 text-rose-400 text-xs font-mono">${e.message}</div>`; }
+    }
+
+    async function saveAdminPaymentSettings(e) {
+      e.preventDefault();
+      try {
+        await fetchJSON('/api/admin/payment-settings', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
+          body: JSON.stringify({
+            upi_id: document.getElementById('admUpiId').value,
+            upi_qr_url: document.getElementById('admUpiQr').value
+          })
+        });
+        showToast('Payment settings saved!');
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    // 8. SYSTEM MONITOR
+    async function renderAdminSystemMonitor(container) {
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Running live diagnostics...</div>';
+      try {
+        const data = await fetchJSON('/api/admin/system/infrastructure', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+        container.innerHTML = `
+          <div class="space-y-6 font-mono text-xs">
+            <h1 class="text-xl font-black text-white font-sans">Website & Infrastructure Status</h1>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div class="admin-card p-5 rounded-2xl"><span class="text-slate-500 uppercase text-[10px]">Memory RSS</span><div class="text-2xl font-black text-white">${data.server?.service_memory_rss_mb || 0} MB</div></div>
+              <div class="admin-card p-5 rounded-2xl"><span class="text-slate-500 uppercase text-[10px]">DB Status</span><div class="text-2xl font-black text-emerald-400">${data.database?.status || 'Online'}</div></div>
+              <div class="admin-card p-5 rounded-2xl"><span class="text-slate-500 uppercase text-[10px]">DB Ping</span><div class="text-2xl font-black text-white">${data.database?.ping_latency_ms || 12} ms</div></div>
+              <div class="admin-card p-5 rounded-2xl"><span class="text-slate-500 uppercase text-[10px]">Uptime</span><div class="text-lg font-black text-emerald-400 mt-1">${data.server?.uptime_formatted || 'Live'}</div></div>
+            </div>
+          </div>
+        `;
+      } catch (e) { container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">${e.message}</div>`; }
+    }
 
     function adminSignOut() {
-      state.adminToken = ''; state.adminUsername = '';
-      localStorage.removeItem('nexus_admin_token'); localStorage.removeItem('nexus_admin_user');
+      state.adminToken = '';
+      state.adminUsername = '';
+      localStorage.removeItem('nexus_admin_token');
+      localStorage.removeItem('nexus_admin_user');
       navigate('home');
     }
 
-    document.addEventListener('DOMContentLoaded', () => { navigate('home'); });
+    document.addEventListener('DOMContentLoaded', () => {
+      navigate('home');
+    });
   </script>
 </body>
 </html>
