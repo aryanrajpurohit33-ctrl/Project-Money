@@ -17,7 +17,30 @@ async function renderAdminTransactions(container) {
           <p class="text-slate-400 text-xs mt-0.5">Verify customer payment proofs and fulfill orders.</p>
         </div>
 
-        <div class="admin-card rounded-3xl p-6">
+        <!-- Mobile Stacked Cards Layout -->
+        <div class="block md:hidden space-y-3">
+          ${state.loadedTransactions.length === 0 ? `
+            <div class="admin-card rounded-2xl p-8 text-center text-slate-500">No transactions recorded yet.</div>
+          ` : state.loadedTransactions.map(t => `
+            <div class="admin-card rounded-2xl p-4 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-white font-bold font-mono text-xs">${t.txn_id}</span>
+                <span class="px-2 py-0.5 rounded-full uppercase text-[9px] font-semibold ${t.status === 'SUCCESS' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}">${t.status}</span>
+              </div>
+              <div class="space-y-1 text-slate-300 font-sans">
+                <div><span class="text-slate-500 text-[10px]">Customer:</span> <strong class="text-white">${t.customer_name}</strong> (${t.customer_email || 'N/A'})</div>
+                <div><span class="text-slate-500 text-[10px]">Product:</span> <span class="text-slate-200">${t.product_name}</span></div>
+                <div><span class="text-slate-500 text-[10px]">Amount:</span> <span class="text-emerald-400 font-mono font-black text-sm">₹${t.amount}</span></div>
+              </div>
+              <div class="pt-2 border-t border-admin-border flex justify-end">
+                <button onclick="openVerifyTransactionModal('${t._id}')" class="w-full py-2 bg-emerald-500/10 text-emerald-400 rounded-xl font-bold font-mono text-center hover:bg-emerald-500/20 transition-all">Verify & Fulfill →</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- Desktop Table Layout -->
+        <div class="hidden md:block admin-card rounded-3xl p-6">
           <div class="overflow-x-auto custom-scroll w-full">
             <table class="w-full text-left min-w-[750px]">
               <thead>
@@ -94,11 +117,11 @@ async function openVerifyTransactionModal(txnId) {
         </div>
       </div>
 
-      <div class="flex gap-3 pt-2">
-        <button onclick="confirmTransactionPayment('${t._id}')" class="flex-1 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black uppercase tracking-wider shadow-lg font-sans">
+      <div class="flex flex-col sm:flex-row gap-3 pt-2">
+        <button onclick="confirmTransactionPayment('${t._id}')" class="w-full sm:flex-1 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black uppercase tracking-wider shadow-lg font-sans text-center">
           ✓ Confirm Payment & Deliver
         </button>
-        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="px-5 py-3.5 rounded-xl bg-white/5 text-slate-300 font-bold font-sans">
+        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-white/5 text-slate-300 font-bold font-sans text-center">
           Close
         </button>
       </div>
