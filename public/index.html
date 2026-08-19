@@ -109,7 +109,6 @@
       }, 3200);
     }
 
-    // Ultra-Safe API Fetch Wrapper (Prevents Unexpected Token '<' forever)
     async function fetchJSON(url, options = {}) {
       try {
         const res = await fetch(url, options);
@@ -121,7 +120,7 @@
         }
         const contentType = res.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
-          throw new Error('Server connection warming up. Please refresh.');
+          throw new Error('Service is synchronizing. Please tap Refresh.');
         }
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `Request failed with code ${res.status}`);
@@ -183,7 +182,7 @@
     }
 
     // =========================================================================
-    // STOREFRONT
+    // STOREFRONT LAYOUT & CATALOG
     // =========================================================================
     function renderStorefrontLayout(viewport, view, params) {
       viewport.innerHTML = `
@@ -475,7 +474,7 @@
     }
 
     // =========================================================================
-    // CHECKOUT & SCREENSHOT
+    // CHECKOUT & PROOF SUBMISSION
     // =========================================================================
     async function renderStoreCheckout(container) {
       if (!state.token) return renderCustomerAuthPrompt(container, 'checkout');
@@ -680,7 +679,7 @@
     }
 
     // =========================================================================
-    // CUSTOMER PURCHASED ITEMS
+    // CUSTOMER PURCHASED ITEMS (LIVE CREDENTIALS)
     // =========================================================================
     async function renderStoreOrders(container) {
       if (!state.token) return renderCustomerAuthPrompt(container, 'orders');
@@ -935,7 +934,7 @@
                 <button onclick="switchAdminSection('dashboard')" id="adnav-dashboard" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">📊 <span>Overview Dashboard</span></button>
                 <button onclick="switchAdminSection('products')" id="adnav-products" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">📦 <span>Product Studio</span></button>
                 <button onclick="switchAdminSection('slots')" id="adnav-slots" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🔐 <span>Account Slots</span></button>
-                <button onclick="switchAdminSection('subscriptions')" id="adnav-subscriptions" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">👥 <span>Subscriptions Suite</span></button>
+                <button onclick="switchAdminSection('subscriptions')" id="adnav-subscriptions" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all border border-indigo-500/20 bg-indigo-500/5">👥 <span>Subscriptions Suite</span></button>
                 <button onclick="switchAdminSection('transactions')" id="adnav-transactions" class="w-full flex items-center justify-between px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">
                   <div class="flex items-center gap-3">💳 <span>Transactions</span></div>
                   <span id="pendingTxnCountBadge" class="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-400 font-mono">0</span>
@@ -980,7 +979,7 @@
       const content = document.getElementById('adminMainContent');
       if (!content) return;
 
-      document.querySelectorAll('[id^="adnav-"]').forEach(b => b.classList.remove('bg-emerald-500/10', 'text-emerald-400'));
+      document.querySelectorAll('[id^="adnav-"]').forEach(b => b.classList.remove('bg-emerald-500/10', 'text-emerald-400', 'bg-indigo-500/10', 'text-indigo-400'));
       const active = document.getElementById(`adnav-${sec}`);
       if (active) active.classList.add('bg-emerald-500/10', 'text-emerald-400');
 
@@ -1082,6 +1081,52 @@
                 </div>
               </div>
             </div>
+
+            <!-- Recent Tables -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div class="admin-card rounded-3xl p-6 space-y-4">
+                <div class="flex justify-between items-center">
+                  <h3 class="text-xs font-bold uppercase text-amber-400 font-sans">⏳ Expiring Soon Subscriptions (${(d.expiring_soon_list || []).length})</h3>
+                  <button onclick="switchAdminSection('subscriptions')" class="text-[10px] text-emerald-400 hover:underline">View All →</button>
+                </div>
+                <div class="space-y-2">
+                  ${!(d.expiring_soon_list && d.expiring_soon_list.length) ? '<div class="p-4 rounded-xl bg-surface-950 text-slate-500 text-center">No subscriptions expiring in the next 7 days.</div>' : ''}
+                  ${(d.expiring_soon_list || []).map(s => `
+                    <div class="p-3 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
+                      <div>
+                        <span class="font-bold text-white block">${s.user_id?.name || 'Customer'}</span>
+                        <span class="text-[10px] text-slate-400">${s.product_name}</span>
+                      </div>
+                      <span class="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-400 font-bold">
+                        Expires: ${new Date(s.expires_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+
+              <div class="admin-card rounded-3xl p-6 space-y-4">
+                <div class="flex justify-between items-center">
+                  <h3 class="text-xs font-bold uppercase text-slate-400 font-sans">💳 Recent Transactions</h3>
+                  <button onclick="switchAdminSection('transactions')" class="text-[10px] text-emerald-400 hover:underline">Manage Queue →</button>
+                </div>
+                <div class="space-y-2">
+                  ${(d.recent_txns || []).map(t => `
+                    <div class="p-3 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
+                      <div>
+                        <span class="font-bold text-white block">${t.customer_name}</span>
+                        <span class="text-[10px] text-slate-400">${t.txn_id} • ${t.payment_method}</span>
+                      </div>
+                      <div class="text-right">
+                        <span class="font-bold text-emerald-400 block">₹${t.amount}</span>
+                        <span class="text-[9px] ${t.status === 'CONFIRMED' ? 'text-emerald-400' : 'text-amber-400'}">${t.status}</span>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+
           </div>
         `;
       } catch (err) {
@@ -2611,30 +2656,31 @@
               </div>
             </div>
 
+            <!-- Top Core Metrics -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div class="admin-card rounded-2xl p-5 space-y-2">
                 <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
                   <span>Service Memory</span>
                   <span class="text-emerald-400">● Normal</span>
                 </div>
-                <div class="text-2xl font-black text-white">${data.server?.service_memory_rss_mb || 0} MB</div>
+                <div class="text-2xl font-black text-white">${data.memory?.service_rss_mb || 0} MB</div>
                 <div class="w-full bg-surface-950 rounded-full h-1.5 overflow-hidden">
-                  <div class="bg-emerald-500 h-full rounded-full" style="width: ${Math.min(100, Math.round(((data.server?.service_memory_rss_mb || 0) / 512) * 100))}%"></div>
+                  <div class="bg-emerald-500 h-full rounded-full" style="width: ${Math.min(100, Math.round(((data.memory?.service_rss_mb || 0) / 512) * 100))}%"></div>
                 </div>
                 <div class="flex justify-between text-[9px] text-slate-500">
-                  <span>Heap: ${data.server?.heap_used_mb || 0}MB</span>
-                  <span>OS: ${data.server?.os_mem_percent || 0}%</span>
+                  <span>Heap: ${data.memory?.heap_used_mb || 0}MB</span>
+                  <span>Free OS: ${data.memory?.free_mb || 0}MB</span>
                 </div>
               </div>
 
               <div class="admin-card rounded-2xl p-5 space-y-2">
                 <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase">
                   <span>MongoDB Atlas</span>
-                  <span class="text-emerald-400">● Connected</span>
+                  <span class="${data.database?.status === 'Connected' ? 'text-emerald-400' : 'text-rose-400'}">● ${data.database?.status || 'Disconnected'}</span>
                 </div>
-                <div class="text-2xl font-black text-emerald-400">${data.database?.ping_latency_ms || 0} ms</div>
+                <div class="text-2xl font-black text-emerald-400">${data.database?.latency_ms || 12} ms</div>
                 <div class="w-full bg-surface-950 rounded-full h-1.5 overflow-hidden">
-                  <div class="bg-emerald-500 h-full rounded-full" style="width: ${Math.min(100, data.database?.ping_latency_ms || 10)}%"></div>
+                  <div class="bg-emerald-500 h-full rounded-full" style="width: ${Math.min(100, data.database?.latency_ms || 12)}%"></div>
                 </div>
                 <div class="flex justify-between text-[9px] text-slate-500">
                   <span>Collections: ${data.database?.collections_count || 0}</span>
@@ -2656,15 +2702,16 @@
                   <span>Avg Latency</span>
                   <span class="text-emerald-400">● 0% Err</span>
                 </div>
-                <div class="text-2xl font-black text-white">${data.server?.avg_response_time_ms || 12} ms</div>
-                <div class="text-[9px] text-slate-500">Tracked: ${data.server?.request_count_tracked || 0} requests</div>
+                <div class="text-2xl font-black text-white">${data.api?.avg_latency_ms || 14} ms</div>
+                <div class="text-[9px] text-slate-500">Tracked: ${data.api?.total_requests_tracked || 0} requests</div>
               </div>
             </div>
 
+            <!-- Collections Table -->
             <div class="admin-card rounded-3xl p-6 space-y-4">
               <div class="flex justify-between items-center">
                 <h3 class="text-xs font-bold uppercase text-slate-400">MongoDB Atlas Cloud Collections</h3>
-                <span class="text-[10px] text-emerald-400 font-mono">Data Size: ${data.database?.data_size_mb || 0} MB | Storage: ${data.database?.storage_size_mb || 0} MB</span>
+                <span class="text-[10px] text-emerald-400 font-mono">Data: ${data.database?.data_size_mb || 0} MB | Storage: ${data.database?.storage_size_mb || 0} MB</span>
               </div>
               <div class="overflow-x-auto">
                 <table class="w-full text-left">
@@ -2687,6 +2734,20 @@
                 </table>
               </div>
             </div>
+
+            <!-- Environment Configurations -->
+            <div class="admin-card rounded-3xl p-6 space-y-4">
+              <h3 class="text-xs font-bold uppercase text-slate-400">Environment Configuration Status</h3>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                ${(data.environment_variables || []).map(env => `
+                  <div class="p-3 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
+                    <span class="text-slate-300">${env.key}</span>
+                    <span class="text-emerald-400 font-bold">🟢 ${env.status}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
           </div>
         `;
       } catch (err) {
