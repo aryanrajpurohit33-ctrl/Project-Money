@@ -258,9 +258,6 @@ function calculateAccurateExpiry(startAt, durationStr) {
   return expiry;
 }
 
-// ----------------------------------------------------
-// DATABASE INITIALIZATION
-// ----------------------------------------------------
 async function initializeSystem() {
   try {
     const existingAdmin = await Admin.findOne({ username: 'Aryan' });
@@ -334,7 +331,7 @@ function authAdmin(req, res, next) {
 }
 
 // ----------------------------------------------------
-// CUSTOMER & PUBLIC APIS
+// CUSTOMER AUTHENTICATION APIS (USERNAME-BASED)
 // ----------------------------------------------------
 app.get('/api/auth/check-username', async (req, res) => {
   try {
@@ -350,14 +347,15 @@ app.get('/api/auth/check-username', async (req, res) => {
 app.post('/api/auth/customer/register', async (req, res) => {
   try {
     const username = (req.body.username || '').toLowerCase().trim();
+    const email = (req.body.email || `${username}@nexus.internal`).toLowerCase().trim();
     const password = req.body.password || '';
 
     if (!username || username.length < 3 || username.length > 30) return res.status(400).json({ error: 'Username must be between 3 and 30 characters.' });
     if (!/^[a-zA-Z0-9_]+$/.test(username)) return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores.' });
     if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters long.' });
 
-    const existing = await User.findOne({ username });
-    if (existing) return res.status(400).json({ error: 'Username already taken.' });
+    const existing = await User.findOne({ $or: [{ username }, { email }] });
+    if (existing) return res.status(400).json({ error: 'Username or email already exists.' });
 
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(password, salt);
@@ -365,7 +363,7 @@ app.post('/api/auth/customer/register', async (req, res) => {
     const user = await User.create({
       username,
       name: req.body.name || username,
-      email: (req.body.email || `${username}@nexus.internal`).toLowerCase().trim(),
+      email,
       mobile: req.body.mobile || '',
       password_hash
     });
@@ -396,7 +394,7 @@ app.post('/api/auth/customer/login', async (req, res) => {
 });
 
 app.post('/api/auth/customer/forgot-password', async (req, res) => {
-  res.json({ success: true, message: 'If an account exists with that username or email, reset instructions have been dispatched.' });
+  res.json({ success: true, message: 'If an account exists with that email/username, reset instructions have been sent.' });
 });
 
 app.post('/api/presence/heartbeat', (req, res) => {
@@ -646,7 +644,6 @@ app.get('/api/admin/system/health-check', authAdmin, async (req, res) => {
   }
 });
 
-// Admin Customers Directory
 app.get('/api/admin/customers/list', authAdmin, async (req, res) => {
   try {
     const users = await User.find().sort({ created_at: -1 });
@@ -666,7 +663,6 @@ app.get('/api/admin/customers/list', authAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Admin Slots
 app.get('/api/admin/slots', authAdmin, async (req, res) => {
   try {
     const slots = await InventorySlot.find().populate('product_id', 'name sku product_type').sort({ created_at: -1 });
@@ -707,7 +703,6 @@ app.delete('/api/admin/slots/:id', authAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Admin Subscriptions Advanced Engine
 app.get('/api/admin/subscriptions/advanced', authAdmin, async (req, res) => {
   try {
     const now = new Date();
@@ -769,7 +764,6 @@ app.post('/api/admin/subscriptions/:id/revoke', authAdmin, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// Admin Transactions
 app.get('/api/admin/transactions', authAdmin, async (req, res) => {
   try {
     const txns = await Transaction.find().select('-proof_screenshot').sort({ created_at: -1 });
@@ -859,7 +853,6 @@ app.post('/api/admin/transactions/:id/reject', authAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Admin Product Studio
 app.get('/api/admin/products', authAdmin, async (req, res) => {
   try {
     const prods = await Product.find().sort({ created_at: -1 });
@@ -917,7 +910,6 @@ app.delete('/api/admin/products/:id', authAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Admin Payment Settings
 app.get('/api/admin/payment-settings', authAdmin, async (req, res) => {
   try {
     const settings = await PaymentSettings.findOne() || {};
@@ -935,13 +927,12 @@ app.post('/api/admin/payment-settings', authAdmin, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// SPA Catch-All
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // ----------------------------------------------------
-// LAUNCH SERVER
+// SERVER BOOTSTRAP
 // ----------------------------------------------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
