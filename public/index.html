@@ -40,7 +40,6 @@
     @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
     .animate-fadeIn { animation: fadeIn 0.15s ease-out forwards; }
 
-    /* Custom Loading Spinner */
     @keyframes rotate {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(180deg); }
@@ -101,6 +100,30 @@
     </div>
     <div class="p-4 border-t border-white/5 text-slate-500 text-[10px] font-mono text-center">
       Nexus Digital Vault v2.6
+    </div>
+  </aside>
+
+  <!-- Persistent Admin Sidebar Drawer -->
+  <aside id="adminSidebar" onclick="event.stopPropagation()" class="fixed top-0 bottom-0 left-0 w-64 bg-admin-sidebar border-r border-admin-border flex flex-col justify-between z-50 transition-transform duration-300 -translate-x-full lg:translate-x-0 shadow-2xl">
+    <div>
+      <div class="p-6 border-b border-admin-border flex items-center justify-between">
+        <div><span class="text-xs font-black text-emerald-400 uppercase tracking-widest block font-mono">NEXUS CONTROL</span><span class="text-sm font-bold text-white">Admin Hub</span></div>
+        <button onclick="toggleAdminDrawer(false)" class="lg:hidden text-slate-400 p-2 font-bold text-base">✕</button>
+      </div>
+      <nav class="p-4 space-y-1 text-xs font-bold font-mono">
+        <button onclick="switchAdminSection('dashboard')" id="adnav-dashboard" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/15">📊 Overview Dashboard</button>
+        <button onclick="switchAdminSection('products')" id="adnav-products" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/15">📦 Product Studio</button>
+        <button onclick="switchAdminSection('slots')" id="adnav-slots" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/15">🔐 Account Slots</button>
+        <button onclick="switchAdminSection('subscriptions')" id="adnav-subscriptions" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/15">👥 Subscriptions Suite</button>
+        <button onclick="switchAdminSection('transactions')" id="adnav-transactions" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/15">💳 Transactions</button>
+        <button onclick="switchAdminSection('customers')" id="adnav-customers" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/15">👤 Customers</button>
+        <button onclick="switchAdminSection('payment-settings')" id="adnav-payment-settings" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/15">💰 Payment Gateway</button>
+        <button onclick="switchAdminSection('system-monitor')" id="adnav-system-monitor" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/15">🌐 Website Status</button>
+      </nav>
+    </div>
+    <div class="p-4 border-t border-admin-border space-y-2 font-mono">
+      <button onclick="navigate('home')" class="w-full py-2.5 rounded-xl bg-white/5 text-slate-400 hover:text-white text-xs font-bold">👁 Customer Store</button>
+      <button onclick="adminSignOut()" class="w-full py-2.5 rounded-xl bg-rose-500/10 text-rose-400 text-xs font-bold">🚪 End Session</button>
     </div>
   </aside>
 
@@ -224,11 +247,7 @@
       const side = document.getElementById('adminSidebar');
       const drop = document.getElementById('appBackdrop');
       if (open) { 
-        if (side) {
-          side.classList.remove('-translate-x-full');
-          side.classList.remove('z-30');
-          side.classList.add('z-50');
-        }
+        if (side) side.classList.remove('-translate-x-full');
         drop.classList.remove('hidden'); 
       }
       else { 
@@ -302,36 +321,12 @@
 
     function renderAdminSaaSLayout(viewport) {
       viewport.innerHTML = `
-        <div class="flex flex-1 min-h-screen w-full bg-admin-bg font-sans text-slate-200 relative animate-fadeIn">
-          <aside id="adminSidebar" onclick="event.stopPropagation()" class="fixed top-0 bottom-0 left-0 w-64 bg-admin-sidebar border-r border-admin-border flex flex-col justify-between z-50 transition-transform duration-300 -translate-x-full lg:translate-x-0 shadow-2xl">
-            <div>
-              <div class="p-6 border-b border-admin-border flex items-center justify-between">
-                <div><span class="text-xs font-black text-emerald-400 uppercase tracking-widest block font-mono">NEXUS CONTROL</span><span class="text-sm font-bold text-white">Admin Hub</span></div>
-                <button onclick="toggleAdminDrawer(false)" class="lg:hidden text-slate-400 p-2 font-bold text-base">✕</button>
-              </div>
-              <nav class="p-4 space-y-1 text-xs font-bold font-mono">
-                <button onclick="switchAdminSection('dashboard')" id="adnav-dashboard" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/15 bg-emerald-500/10 text-emerald-400">📊 Overview Dashboard</button>
-                <button onclick="switchAdminSection('products')" id="adnav-products" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/15">📦 Product Studio</button>
-                <button onclick="switchAdminSection('slots')" id="adnav-slots" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/15">🔐 Account Slots</button>
-                <button onclick="switchAdminSection('subscriptions')" id="adnav-subscriptions" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/15">👥 Subscriptions Suite</button>
-                <button onclick="switchAdminSection('transactions')" id="adnav-transactions" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/15">💳 Transactions</button>
-                <button onclick="switchAdminSection('customers')" id="adnav-customers" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/15">👤 Customers</button>
-                <button onclick="switchAdminSection('payment-settings')" id="adnav-payment-settings" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/15">💰 Payment Gateway</button>
-                <button onclick="switchAdminSection('system-monitor')" id="adnav-system-monitor" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/15">🌐 Website Status</button>
-              </nav>
-            </div>
-            <div class="p-4 border-t border-admin-border space-y-2 font-mono">
-              <button onclick="navigate('home')" class="w-full py-2.5 rounded-xl bg-white/5 text-slate-400 hover:text-white text-xs font-bold">👁 Customer Store</button>
-              <button onclick="adminSignOut()" class="w-full py-2.5 rounded-xl bg-rose-500/10 text-rose-400 text-xs font-bold">🚪 End Session</button>
-            </div>
-          </aside>
-          <div class="flex-1 flex flex-col min-w-0">
-            <header class="h-16 border-b border-admin-border bg-admin-sidebar/50 px-4 sm:px-8 flex items-center justify-between">
-              <button onclick="toggleAdminDrawer(true)" class="lg:hidden p-2 rounded-xl bg-white/5 text-slate-300">☰</button>
-              <span class="text-xs text-slate-400 font-mono">Admin: ${state.adminUsername}</span>
-            </header>
-            <main id="adminMainContent" class="flex-1 p-4 sm:p-8 space-y-8 max-w-7xl w-full mx-auto"></main>
-          </div>
+        <div class="flex flex-1 min-h-screen w-full bg-admin-bg font-sans text-slate-200 relative animate-fadeIn flex-col">
+          <header class="h-16 border-b border-admin-border bg-admin-sidebar/50 px-4 sm:px-8 flex items-center justify-between">
+            <button onclick="toggleAdminDrawer(true)" class="lg:hidden p-2 rounded-xl bg-white/5 text-slate-300">☰</button>
+            <span class="text-xs text-slate-400 font-mono">Admin: ${state.adminUsername}</span>
+          </header>
+          <main id="adminMainContent" class="flex-1 p-4 sm:p-8 space-y-8 max-w-7xl w-full mx-auto"></main>
         </div>
       `;
       switchAdminSection(state.adminSection || 'dashboard');
