@@ -213,8 +213,11 @@ async function openProductStudioModal(productId) {
         </div>
 
         <div>
-          <label class="text-slate-400 block mb-1">Image URL</label>
-          <input type="text" id="pImage" value="${p.images?.[0] || ''}" placeholder="https://..." class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs">
+          <label class="text-slate-400 block mb-1">Product Image (Upload File or Paste URL)</label>
+          <div class="space-y-2">
+            <input type="file" accept="image/*" onchange="handleProductImageFileSelect(this)" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-500 file:text-gray-950 hover:file:bg-emerald-400 cursor-pointer bg-surface-950 rounded-xl border border-admin-border p-2">
+            <input type="text" id="pImage" value="${p.images?.[0] || ''}" placeholder="Or paste image URL here..." class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs">
+          </div>
         </div>
 
         <button type="submit" id="saveProductSubmitBtn" class="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/25 active:scale-95 transition-all text-xs cursor-pointer">
@@ -223,6 +226,17 @@ async function openProductStudioModal(productId) {
       </form>
     </div>
   `;
+}
+
+function handleProductImageFileSelect(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('pImage').value = e.target.result;
+      showToast('✓ Image uploaded successfully');
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
 }
 
 async function handleProductFormSubmit(e, productId) {

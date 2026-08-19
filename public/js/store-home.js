@@ -24,11 +24,7 @@ async function renderStoreHome(container) {
           
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             ${products.map(p => {
-              const rawImg = p.images?.[0] || '';
-              // Fix Unsplash page links to direct image links if needed
-              const imgSrc = (rawImg.includes('unsplash.com/photos/') && !rawImg.includes('images.unsplash.com')) 
-                ? 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800' 
-                : (rawImg || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800');
+              const imgSrc = p.images?.[0] || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800';
 
               return `
                 <div class="glass-card rounded-3xl overflow-hidden flex flex-col justify-between border border-white/5 relative group cursor-pointer" onclick="navigate('product-details', { id: '${p._id}' })">
