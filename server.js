@@ -316,7 +316,7 @@ function authAdmin(req, res, next) {
 }
 
 // ----------------------------------------------------
-// STORE & CUSTOMER APIS
+// CUSTOMER & STORE APIS
 // ----------------------------------------------------
 app.get('/api/auth/check-username', async (req, res) => {
   try {
@@ -629,7 +629,7 @@ app.get('/api/admin/dashboard/full-overview', authAdmin, async (req, res) => {
     const activeSubsList = allSubs.filter(s => s.status === 'ACTIVE' && new Date(s.expires_at) > now);
     const expiredSubsList = allSubs.filter(s => s.status === 'EXPIRED' || (s.status === 'ACTIVE' && new Date(s.expires_at) <= now));
 
-    // Daily trend data points for responsive SVG charts
+    // Daily timeline graph points for SVG area chart
     const timePointsMap = new Map();
     const daysInterval = range === '7d' ? 7 : (range === '30d' ? 30 : 14);
     for (let i = daysInterval - 1; i >= 0; i--) {
@@ -755,6 +755,7 @@ app.get('/api/admin/products', authAdmin, async (req, res) => {
     res.json(prods);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
 app.post('/api/admin/products', authAdmin, async (req, res) => {
   try {
     const { name, original_price, sale_price } = req.body;
@@ -765,6 +766,7 @@ app.post('/api/admin/products', authAdmin, async (req, res) => {
     res.status(201).json(product);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
+
 app.put('/api/admin/products/:id', authAdmin, async (req, res) => {
   try {
     const { original_price, sale_price } = req.body;
@@ -775,6 +777,7 @@ app.put('/api/admin/products/:id', authAdmin, async (req, res) => {
     res.json(updated);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
+
 app.delete('/api/admin/products/:id', authAdmin, async (req, res) => {
   try {
     await Product.findByIdAndDelete(req.params.id);
@@ -788,21 +791,26 @@ app.get('/api/admin/slots', authAdmin, async (req, res) => {
     res.json({ slots, stats: { total: slots.length, available: slots.filter(s => s.status === 'AVAILABLE').length, assigned: slots.filter(s => s.status === 'ASSIGNED').length, full: slots.filter(s => s.status === 'FULL').length, disabled: slots.filter(s => s.status === 'DISABLED').length } });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
 app.get('/api/admin/subscriptions/advanced', authAdmin, async (req, res) => {
   try {
     const subs = await Subscription.find().populate('user_id', 'username name email').populate('product_id', 'name');
     res.json({ subscriptions: subs, stats: { total: subs.length, active: subs.filter(s => s.status === 'ACTIVE').length } });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
 app.get('/api/admin/transactions', authAdmin, async (req, res) => {
   try { res.json(await Transaction.find().select('-proof_screenshot')); } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
 app.get('/api/admin/customers/list', authAdmin, async (req, res) => {
   try { res.json(await User.find().sort({ created_at: -1 })); } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
 app.get('/api/admin/payment-settings', authAdmin, async (req, res) => {
   try { res.json(await PaymentSettings.findOne() || {}); } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
 app.get('/api/admin/system/infrastructure', authAdmin, async (req, res) => {
   try { res.json({ server: { service_memory_rss_mb: Math.round(process.memoryUsage().rss / 1024 / 1024), uptime_formatted: '5h' }, database: { status: 'Connected', ping_latency_ms: 12 } }); } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -811,6 +819,9 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// ----------------------------------------------------
+// SERVER BOOTSTRAP
+// ----------------------------------------------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✓ NEXUS Digital Engine running on port ${PORT}`);
