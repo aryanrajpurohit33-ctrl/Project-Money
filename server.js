@@ -14,7 +14,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const JWT_SECRET = process.env.JWT_SECRET || 'nexus_digital_super_secret_jwt_2026_key';
 
 // ----------------------------------------------------
-// PERFORMANCE & PRESENCE LOGGERS
+// PERFORMANCE, PRESENCE & FUNNEL TRACKING
 // ----------------------------------------------------
 const requestLogs = [];
 const appErrorLogs = [];
@@ -80,7 +80,6 @@ setInterval(() => {
 // ----------------------------------------------------
 // DATABASE SCHEMAS & MODELS
 // ----------------------------------------------------
-
 const AdminSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password_hash: { type: String, required: true },
@@ -331,7 +330,7 @@ function authAdmin(req, res, next) {
 }
 
 // ----------------------------------------------------
-// CUSTOMER AUTHENTICATION APIS (USERNAME-BASED)
+// CUSTOMER AUTH & STORE APIS
 // ----------------------------------------------------
 app.get('/api/auth/check-username', async (req, res) => {
   try {
@@ -394,7 +393,7 @@ app.post('/api/auth/customer/login', async (req, res) => {
 });
 
 app.post('/api/auth/customer/forgot-password', async (req, res) => {
-  res.json({ success: true, message: 'If an account exists with that email/username, reset instructions have been sent.' });
+  res.json({ success: true, message: 'If an account exists with that email/username, reset instructions have been dispatched.' });
 });
 
 app.post('/api/presence/heartbeat', (req, res) => {
@@ -555,7 +554,7 @@ app.get('/api/customer/orders', authCustomer, async (req, res) => {
 });
 
 // ----------------------------------------------------
-// ADMIN DASHBOARD & CORE APIS
+// ADMIN DASHBOARD & ADVANCED OVERVIEW
 // ----------------------------------------------------
 app.post('/api/admin/login', async (req, res) => {
   try {
@@ -580,13 +579,15 @@ app.get('/api/admin/dashboard/full-overview', authAdmin, async (req, res) => {
     else if (range === '30d') startDate.setDate(now.getDate() - 30);
     else startDate = new Date(0); 
 
-    const [salesAgg, totalOrdersCount, allSubs, totalCustomers, recentTxns, recentOrders] = await Promise.all([
+    const [salesAgg, totalOrdersCount, allSubs, totalCustomers, recentTxns, recentOrders, allSlots, allProducts] = await Promise.all([
       Order.aggregate([ { $match: { payment_status: 'Paid', created_at: { $gte: startDate } } }, { $group: { _id: null, total: { $sum: '$total_amount' }, count: { $sum: 1 } } } ]),
       Order.countDocuments({ created_at: { $gte: startDate } }),
       Subscription.find(),
       User.countDocuments({ created_at: { $gte: startDate } }),
       Transaction.find().sort({ created_at: -1 }).limit(6),
-      Order.find().sort({ created_at: -1 }).limit(5)
+      Order.find().sort({ created_at: -1 }).limit(5),
+      InventorySlot.find(),
+      Product.find().sort({ sales_count: -1 }).limit(5)
     ]);
 
     const activeSubs = allSubs.filter(s => s.status === 'ACTIVE' && new Date(s.expires_at) > now).length;
@@ -599,7 +600,13 @@ app.get('/api/admin/dashboard/full-overview', authAdmin, async (req, res) => {
       recent_txns: recentTxns,
       recent_orders: recentOrders,
       live_visitors: visitors,
-      funnel: funnelStats
+      inventory_summary: {
+        total: allSlots.length,
+        available: allSlots.filter(s => s.status === 'AVAILABLE').length,
+        assigned: allSlots.filter(s => s.status === 'ASSIGNED').length,
+        full: allSlots.filter(s => s.status === 'FULL').length
+      },
+      top_products: allProducts
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -644,6 +651,7 @@ app.get('/api/admin/system/health-check', authAdmin, async (req, res) => {
   }
 });
 
+// Admin Customers Directory
 app.get('/api/admin/customers/list', authAdmin, async (req, res) => {
   try {
     const users = await User.find().sort({ created_at: -1 });
@@ -663,11 +671,22 @@ app.get('/api/admin/customers/list', authAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Admin Account Slots
 app.get('/api/admin/slots', authAdmin, async (req, res) => {
   try {
-    const slots = await InventorySlot.find().populate('product_id', 'name sku product_type').sort({ created_at: -1 });
-    const enrichedSlots = await Promise.all(slots.map(async (slot) => {
-      const activeSubs = await Subscription.find({ assigned_slot_id: slot._id, status: 'ACTIVE', expires_at: { $gt: new Date() } }).populate('user_id', 'name email').populate('order_id', 'order_number');
+    const { product_id, status, search } = req.query;
+    let filter = {};
+    if (product_id && product_id !== 'ALL') filter.product_id = product_id;
+    if (search) {
+      const regex = new RegExp(search, 'i');
+      filter.$or = [{ account_label: regex }, { email: regex }];
+    }
+
+    const now = new Date();
+    const rawSlots = await InventorySlot.find(filter).populate('product_id', 'name sku product_type').sort({ created_at: -1 });
+
+    const enrichedSlots = await Promise.all(rawSlots.map(async (slot) => {
+      const activeSubs = await Subscription.find({ assigned_slot_id: slot._id, status: 'ACTIVE', expires_at: { $gt: now } }).populate('user_id', 'name email').populate('order_id', 'order_number');
       const activeUsersCount = activeSubs.length;
       const maxUsers = slot.max_active_users || 1;
       let derivedStatus = slot.status;
@@ -676,9 +695,30 @@ app.get('/api/admin/slots', authAdmin, async (req, res) => {
         else if (activeUsersCount > 0) derivedStatus = 'ASSIGNED';
         else derivedStatus = 'AVAILABLE';
       }
-      return { ...slot.toObject(), status: derivedStatus, active_users_count: activeUsersCount, max_active_users: maxUsers };
+
+      const activeCustomers = activeSubs.map(s => ({
+        subscription_id: s._id, customer_name: s.user_id?.name || 'Customer', customer_email: s.user_id?.email || '',
+        order_number: s.order_id?.order_number || 'ORD', duration: s.duration, start_at: s.start_at, expires_at: s.expires_at, status: s.status
+      }));
+
+      return {
+        ...slot.toObject(), status: derivedStatus, active_users_count: activeUsersCount, max_active_users: maxUsers,
+        available_capacity: Math.max(0, maxUsers - activeUsersCount), active_customers: activeCustomers
+      };
     }));
-    res.json({ slots: enrichedSlots, stats: { total: enrichedSlots.length, available: enrichedSlots.filter(s => s.status === 'AVAILABLE').length, assigned: enrichedSlots.filter(s => s.status === 'ASSIGNED').length, full: enrichedSlots.filter(s => s.status === 'FULL').length, disabled: enrichedSlots.filter(s => s.status === 'DISABLED').length, total_active_users: enrichedSlots.reduce((a, b) => a + b.active_users_count, 0) } });
+
+    let finalSlots = enrichedSlots;
+    if (status && status !== 'ALL') finalSlots = enrichedSlots.filter(s => s.status === status);
+
+    const totalActiveUsers = enrichedSlots.reduce((acc, curr) => acc + curr.active_users_count, 0);
+    res.json({
+      slots: finalSlots,
+      stats: {
+        total: enrichedSlots.length, available: enrichedSlots.filter(s => s.status === 'AVAILABLE').length,
+        assigned: enrichedSlots.filter(s => s.status === 'ASSIGNED').length, full: enrichedSlots.filter(s => s.status === 'FULL').length,
+        disabled: enrichedSlots.filter(s => s.status === 'DISABLED').length, total_active_users: totalActiveUsers
+      }
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -703,6 +743,7 @@ app.delete('/api/admin/slots/:id', authAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Admin Subscriptions Suite
 app.get('/api/admin/subscriptions/advanced', authAdmin, async (req, res) => {
   try {
     const now = new Date();
@@ -764,6 +805,7 @@ app.post('/api/admin/subscriptions/:id/revoke', authAdmin, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// Admin Transactions
 app.get('/api/admin/transactions', authAdmin, async (req, res) => {
   try {
     const txns = await Transaction.find().select('-proof_screenshot').sort({ created_at: -1 });
@@ -853,6 +895,7 @@ app.post('/api/admin/transactions/:id/reject', authAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Admin Product Studio
 app.get('/api/admin/products', authAdmin, async (req, res) => {
   try {
     const prods = await Product.find().sort({ created_at: -1 });
@@ -910,6 +953,7 @@ app.delete('/api/admin/products/:id', authAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Admin Payment Settings
 app.get('/api/admin/payment-settings', authAdmin, async (req, res) => {
   try {
     const settings = await PaymentSettings.findOne() || {};
@@ -927,6 +971,7 @@ app.post('/api/admin/payment-settings', authAdmin, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// SPA Catch-All
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

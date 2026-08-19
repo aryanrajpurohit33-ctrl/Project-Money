@@ -40,14 +40,18 @@
     .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
     .custom-scroll::-webkit-scrollbar-track { background: transparent; }
     .custom-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 999px; }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
   <div id="toastHub" class="fixed top-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
-  <div id="appBackdrop" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden transition-opacity"></div>
+  <div id="appBackdrop" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden transition-opacity duration-200"></div>
   <div id="mainViewport" class="flex flex-1 min-h-screen"></div>
 
+  <!-- Global Modal -->
   <div id="globalModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
     <div class="glass max-w-3xl w-full rounded-3xl p-6 relative max-h-[90vh] overflow-y-auto custom-scroll" id="globalModalContent"></div>
   </div>
@@ -95,10 +99,10 @@
         }
         const contentType = res.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
-          throw new Error('Service is synchronizing. Please retry.');
+          throw new Error('Service synchronizing. Please retry.');
         }
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || `Request failed with code ${res.status}`);
+        if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
         return data;
       } catch (err) { throw err; }
     }
@@ -430,12 +434,12 @@
     }
 
     // =========================================================================
-    // CUSTOMER AUTHENTICATION PORTAL (REDESIGNED, COMPACT, SVG ICONS)
+    // CUSTOMER AUTHENTICATION PORTAL (COMPACT, MOBILE-FIRST, VECTOR SVG ICONS)
     // =========================================================================
     function renderCustomerAuthPrompt(container, returnView = 'account') {
       container.innerHTML = `
         <div class="min-h-[75vh] flex items-center justify-center p-4">
-          <div class="glass max-w-sm w-full rounded-[24px] p-6 sm:p-8 border border-white/10 shadow-2xl relative overflow-hidden transition-all duration-300">
+          <div class="glass auth-glow max-w-sm w-full rounded-[24px] p-6 sm:p-8 border border-white/10 shadow-2xl relative overflow-hidden transition-all duration-300">
             
             <div class="flex flex-col items-center space-y-2.5 mb-6">
               <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-xl font-black text-gray-950 shadow-md">
@@ -854,7 +858,7 @@
                 <button onclick="switchAdminSection('dashboard')" id="adnav-dashboard" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">📊 <span>Overview Dashboard</span></button>
                 <button onclick="switchAdminSection('products')" id="adnav-products" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">📦 <span>Product Studio</span></button>
                 <button onclick="switchAdminSection('slots')" id="adnav-slots" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🔐 <span>Account Slots</span></button>
-                <button onclick="switchAdminSection('subscriptions')" id="adnav-subscriptions" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">👥 <span>Subscriptions Suite</span></button>
+                <button onclick="switchAdminSection('subscriptions')" id="adnav-subscriptions" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all border border-indigo-500/20 bg-indigo-500/5">👥 <span>Subscriptions Suite</span></button>
                 <button onclick="switchAdminSection('transactions')" id="adnav-transactions" class="w-full flex items-center justify-between px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">
                   <div class="flex items-center gap-3">💳 <span>Transactions</span></div>
                 </button>
@@ -1074,7 +1078,7 @@
                 </select>
               </div>
             </div>
-            <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase tracking-wider font-sans active:scale-95 transition-all">
+            <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase font-sans active:scale-95 transition-all">
               ${isNew ? 'Create Product' : 'Save Changes'}
             </button>
           </form>
@@ -1413,15 +1417,14 @@
       e.preventDefault();
       try {
         await fetchJSON('/api/admin/payment-settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
           body: JSON.stringify({
             upi_id: document.getElementById('admUpiId').value,
             upi_qr_url: document.getElementById('admUpiQr').value
           })
         });
         showToast('Payment settings saved!');
-      } catch (e) { showToast(e.message, 'error'); }
+      } catch (err) { showToast(err.message, 'error'); }
     }
 
     // 8. SYSTEM MONITOR
