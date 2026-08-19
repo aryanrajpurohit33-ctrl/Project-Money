@@ -154,7 +154,7 @@ async function renderStoreCheckout(container) {
           <input type="hidden" id="checkoutProofBase64" value="">
         </div>
 
-        <button onclick="handleCustomerMultiCheckoutSubmit('${method}')" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all font-sans">
+        <button id="confirmOrderBtn" onclick="handleCustomerMultiCheckoutSubmit('${method}')" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all font-sans cursor-pointer">
           CONFIRM ORDER & COMPLETE
         </button>
       </div>
@@ -176,8 +176,23 @@ function handleCheckoutProofSelect(input) {
 }
 
 async function handleCustomerMultiCheckoutSubmit(method) {
+  if (window._isSubmittingCheckout) return;
+  window._isSubmittingCheckout = true;
+
+  const btn = document.getElementById('confirmOrderBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Processing Order...';
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+  }
+
   try {
     const cart = state.cart || [];
+    if (!cart.length) {
+      window._isSubmittingCheckout = false;
+      return;
+    }
+
     const itemsPayload = [];
     cart.forEach(item => {
       const q = item.qty || 1;
@@ -188,17 +203,29 @@ async function handleCustomerMultiCheckoutSubmit(method) {
 
     const proofScreenshot = document.getElementById('checkoutProofBase64')?.value || '';
 
+    // Clear cart immediately to prevent duplicate requests
+    state.cart = [];
+    localStorage.removeItem('nexus_cart');
+    const badge = document.getElementById('storeCartBadge');
+    if (badge) badge.textContent = '0';
+
     await fetchJSON('/api/checkout/initiate-order', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}` },
       body: JSON.stringify({ items: itemsPayload, payment_method: method, proof_screenshot: proofScreenshot })
     });
     
     showToast('✓ Order placed successfully! View in Purchased Items.');
-    state.cart = []; localStorage.removeItem('nexus_cart');
-    const badge = document.getElementById('storeCartBadge');
-    if (badge) badge.textContent = '0';
+    window._isSubmittingCheckout = false;
     navigate('orders');
-  } catch (err) { showToast(err.message, 'error'); }
+  } catch (err) {
+    window._isSubmittingCheckout = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'CONFIRM ORDER & COMPLETE';
+      btn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+    showToast(err.message, 'error');
+  }
 }
 
 function addToCustomerCart(product_id, name, price, image) {
