@@ -5,11 +5,21 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const os = require('os');
 const path = require('path');
+const compression = require('compression');
 
 const app = express();
+
+// Enable Gzip/Bratli compression for blazing fast load times
+app.use(compression());
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve static files with 1-day aggressive caching for maximum speed
+app.use(express.static(path.join(__dirname, 'public'), {
+  maxAge: '1d',
+  etag: true
+}));
 
 const JWT_SECRET = process.env.JWT_SECRET || 'nexus_digital_super_secret_jwt_2026_key';
 const activeSessions = new Map();
@@ -17,6 +27,8 @@ const activeSessions = new Map();
 app.use((req, res, next) => {
   if (req.originalUrl && req.originalUrl.startsWith('/api/')) {
     res.setHeader('Content-Type', 'application/json');
+    // Prevent API response caching so admin panels and inventory are always live
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   }
   next();
 });
@@ -230,14 +242,14 @@ app.post('/api/auth/customer/register', async (req, res) => {
 });
 
 app.get('/api/products', async (req, res) => {
-  try { res.json(await Product.find({ status: { $ne: 'archived' } }).sort({ created_at: -1 })); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { res.json(await Product.find({ status: { $ne: 'archived' } }).sort({ created_at: -1 }).lean()); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/products/:id', async (req, res) => {
   try {
-    const p = await Product.findById(req.params.id) || await Product.findOne({ slug: req.params.id });
+    const p = await Product.findById(req.params.id).lean() || await Product.findOne({ slug: req.params.id }).lean();
     if (!p) return res.status(404).json({ error: 'Not found' });
-    res.json({ ...p.toObject(), in_stock: p.unlimited_stock || p.stock_quantity > 0 });
+    res.json({ ...p, in_stock: p.unlimited_stock || p.stock_quantity > 0 });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -296,7 +308,7 @@ app.post('/api/checkout/initiate-order', authCustomer, async (req, res) => {
 
 app.get('/api/customer/orders', authCustomer, async (req, res) => {
   try {
-    const orders = await Order.find({ user_id: req.user.id }).sort({ created_at: -1 });
+    const orders = await Order.find({ user_id: req.user.id }).sort({ created_at: -1 }).lean();
     res.json(orders);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -304,7 +316,7 @@ app.get('/api/customer/orders', authCustomer, async (req, res) => {
 });
 
 app.get('/api/admin/products', async (req, res) => {
-  try { res.json(await Product.find().sort({ created_at: -1 })); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { res.json(await Product.find().sort({ created_at: -1 }).lean()); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/admin/products', async (req, res) => {
@@ -357,28 +369,28 @@ app.delete('/api/admin/products/:id', async (req, res) => {
 
 app.get('/api/admin/slots', async (req, res) => {
   try {
-    const slots = await InventorySlot.find().populate('product_id', 'name');
+    const slots = await InventorySlot.find().populate('product_id', 'name').lean();
     res.json({ slots, stats: { total: slots.length, available: slots.filter(s => s.status === 'AVAILABLE').length, assigned: slots.filter(s => s.status === 'ASSIGNED').length, full: 0, disabled: 0 } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/admin/subscriptions/advanced', async (req, res) => {
   try {
-    const subs = await Subscription.find().populate('user_id', 'username name').populate('product_id', 'name');
+    const subs = await Subscription.find().populate('user_id', 'username name').populate('product_id', 'name').lean();
     res.json({ subscriptions: subs, stats: { total: subs.length, active: subs.filter(s => s.status === 'ACTIVE').length } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/admin/transactions', async (req, res) => {
-  try { res.json(await Transaction.find().select('-proof_screenshot')); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { res.json(await Transaction.find().select('-proof_screenshot').lean()); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/admin/customers/list', async (req, res) => {
-  try { res.json(await User.find()); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { res.json(await User.find().lean()); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/admin/payment-settings', async (req, res) => {
-  try { res.json(await PaymentSettings.findOne() || {}); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { res.json(await PaymentSettings.findOne().lean() || {}); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/admin/system/infrastructure', async (req, res) => {
@@ -414,7 +426,7 @@ app.get('/api/admin/system/infrastructure', async (req, res) => {
 
 app.get('/api/admin/dashboard/full-overview', async (req, res) => {
   try {
-    const orders = await Order.find({ payment_status: 'Paid' });
+    const orders = await Order.find({ payment_status: 'Paid' }).lean();
     const totalRev = orders.reduce((acc, o) => acc + o.total_amount, 0);
     const customersCount = await User.countDocuments();
     const subsCount = await Subscription.countDocuments({ status: 'ACTIVE' });
