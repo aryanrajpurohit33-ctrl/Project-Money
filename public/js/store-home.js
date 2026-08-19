@@ -1,14 +1,17 @@
 async function renderStoreHome(container) {
   const isAllProductsView = state.currentView === 'products';
   
-  // Render instantly using cached data if available, eliminating any loading state
-  const products = state.cachedProducts || [];
-  buildStoreProductsHTML(container, products, isAllProductsView);
+  // If no cached data is available yet, show your custom loading spinner instead of text
+  if (!state.cachedProducts || !state.cachedProducts.length) {
+    container.innerHTML = getLoadingSpinnerHTML();
+  } else {
+    buildStoreProductsHTML(container, state.cachedProducts, isAllProductsView);
+  }
 
-  // Fetch fresh data in the background silently
   try {
     const freshProducts = await fetchJSON('/api/products');
     state.cachedProducts = freshProducts;
+    localStorage.setItem('nexus_local_cache', JSON.stringify(freshProducts));
     buildStoreProductsHTML(container, freshProducts, isAllProductsView);
   } catch (err) {}
 }
