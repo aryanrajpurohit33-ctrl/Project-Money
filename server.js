@@ -14,7 +14,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const JWT_SECRET = process.env.JWT_SECRET || 'nexus_digital_super_secret_jwt_2026_key';
 
 // ----------------------------------------------------
-// PERFORMANCE, PRESENCE & FUNNEL TRACKING
+// PERFORMANCE & PRESENCE LOGGERS
 // ----------------------------------------------------
 const requestLogs = [];
 const appErrorLogs = [];
@@ -269,30 +269,6 @@ async function initializeSystem() {
 
     const existingPaymentSettings = await PaymentSettings.findOne();
     if (!existingPaymentSettings) await PaymentSettings.create({});
-
-    const pCount = await Product.countDocuments();
-    if (pCount === 0) {
-      const subProduct = await Product.create({
-        name: 'Authorized Streaming Subscription',
-        slug: 'authorized-streaming-subscription',
-        sku: 'SUB-STRM-01',
-        category: 'Streaming & Accounts',
-        tags: ['netflix', 'streaming', '4k', 'uhd'],
-        short_description: 'PIN-protected 4K UHD streaming profile with instant activation.',
-        description: 'Enjoy Ultra HD 4K streaming across all your devices. Dedicated private profile on authorized high-speed streaming accounts.',
-        product_type: 'SUBSCRIPTION',
-        original_price: 299,
-        sale_price: 199,
-        discount_percentage: 33,
-        subscription_pricing: { one_month: 199, six_months: 899, one_year: 1499 },
-        images: ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=1000&auto=format&fit=crop&q=80'],
-        delivery_type: 'EMAIL_PASSWORD'
-      });
-
-      await InventorySlot.create([
-        { product_id: subProduct._id, account_label: 'Slot 1', email: 'account1@example.com', password: 'VaultStream#2026', max_active_users: 1, status: 'AVAILABLE' }
-      ]);
-    }
   } catch (err) {
     console.error('Init error:', err.message);
   }
@@ -554,7 +530,7 @@ app.get('/api/customer/orders', authCustomer, async (req, res) => {
 });
 
 // ----------------------------------------------------
-// ADMIN DASHBOARD & ADVANCED OVERVIEW
+// ADMIN AUTH & DASHBOARD APIS (INCLUDING REDESIGNED OVERVIEW)
 // ----------------------------------------------------
 app.post('/api/admin/login', async (req, res) => {
   try {
@@ -579,7 +555,7 @@ app.get('/api/admin/dashboard/full-overview', authAdmin, async (req, res) => {
     else if (range === '30d') startDate.setDate(now.getDate() - 30);
     else startDate = new Date(0); 
 
-    const [salesAgg, totalOrdersCount, allSubs, totalCustomers, recentTxns, recentOrders, allSlots, allProducts] = await Promise.all([
+    const [salesAgg, totalOrdersCount, allSubs, totalCustomers, recentTxns, recentOrders, allSlots, completedPayments, pendingPayments, activeProducts] = await Promise.all([
       Order.aggregate([ { $match: { payment_status: 'Paid', created_at: { $gte: startDate } } }, { $group: { _id: null, total: { $sum: '$total_amount' }, count: { $sum: 1 } } } ]),
       Order.countDocuments({ created_at: { $gte: startDate } }),
       Subscription.find(),
@@ -587,7 +563,9 @@ app.get('/api/admin/dashboard/full-overview', authAdmin, async (req, res) => {
       Transaction.find().sort({ created_at: -1 }).limit(6),
       Order.find().sort({ created_at: -1 }).limit(5),
       InventorySlot.find(),
-      Product.find().sort({ sales_count: -1 }).limit(5)
+      Order.countDocuments({ payment_status: 'Paid' }),
+      Transaction.countDocuments({ status: 'PROCESSING' }),
+      Product.countDocuments({ status: 'active' })
     ]);
 
     const activeSubs = allSubs.filter(s => s.status === 'ACTIVE' && new Date(s.expires_at) > now).length;
@@ -597,6 +575,9 @@ app.get('/api/admin/dashboard/full-overview', authAdmin, async (req, res) => {
       sales: { revenue: salesAgg[0]?.total || 0, orders: totalOrdersCount },
       customers: { total: totalCustomers },
       subscriptions: { active: activeSubs },
+      completed_payments: completedPayments,
+      pending_payments: pendingPayments,
+      active_products: activeProducts,
       recent_txns: recentTxns,
       recent_orders: recentOrders,
       live_visitors: visitors,
@@ -605,8 +586,7 @@ app.get('/api/admin/dashboard/full-overview', authAdmin, async (req, res) => {
         available: allSlots.filter(s => s.status === 'AVAILABLE').length,
         assigned: allSlots.filter(s => s.status === 'ASSIGNED').length,
         full: allSlots.filter(s => s.status === 'FULL').length
-      },
-      top_products: allProducts
+      }
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -805,7 +785,6 @@ app.post('/api/admin/subscriptions/:id/revoke', authAdmin, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// Admin Transactions
 app.get('/api/admin/transactions', authAdmin, async (req, res) => {
   try {
     const txns = await Transaction.find().select('-proof_screenshot').sort({ created_at: -1 });
