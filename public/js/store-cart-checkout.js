@@ -1,91 +1,115 @@
-async function renderStoreCart(container) {
-  const cart = state.cart || [];
-  
-  if (cart.length === 0) {
-    container.innerHTML = `
-      <div class="glass max-w-md mx-auto rounded-3xl p-8 text-center space-y-4 font-sans">
-        <div class="w-16 h-16 rounded-3xl bg-white/5 flex items-center justify-center mx-auto text-2xl">🛒</div>
-        <h2 class="text-xl font-black text-white">Your Cart is Empty</h2>
-        <p class="text-xs text-slate-400">Explore our digital catalog and add your first subscription or access pass.</p>
-        <button onclick="navigate('products')" class="px-6 py-3 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-          Browse Store
-        </button>
-      </div>
-    `;
-    return;
+function openCartDrawer() {
+  let drawer = document.getElementById('cartSlideDrawer');
+  if (!drawer) {
+    drawer = document.createElement('div');
+    drawer.id = 'cartSlideDrawer';
+    drawer.className = 'fixed inset-y-0 right-0 z-50 w-full max-w-md bg-surface-900 border-l border-white/10 shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col justify-between';
+    document.body.appendChild(drawer);
   }
 
-  const subtotal = cart.reduce((acc, item) => acc + (item.price || 0), 0);
+  const drop = document.getElementById('appBackdrop');
+  if (drop) {
+    drop.classList.remove('hidden');
+    drop.onclick = closeCartDrawer;
+  }
 
-  container.innerHTML = `
-    <div class="max-w-xl mx-auto space-y-6 font-sans">
-      <div class="flex justify-between items-center">
-        <div>
-          <h1 class="text-xl font-black text-white">Shopping Cart</h1>
-          <p class="text-xs text-slate-400">${cart.length} item(s) selected</p>
-        </div>
-        <button onclick="clearCustomerCart()" class="text-xs text-rose-400 font-bold hover:underline font-mono">Clear All</button>
+  updateCartDrawerContent();
+  setTimeout(() => drawer.classList.remove('translate-x-full'), 10);
+}
+
+function closeCartDrawer() {
+  const drawer = document.getElementById('cartSlideDrawer');
+  if (drawer) drawer.classList.add('translate-x-full');
+  const drop = document.getElementById('appBackdrop');
+  if (drop) drop.classList.add('hidden');
+}
+
+function updateCartDrawerContent() {
+  const drawer = document.getElementById('cartSlideDrawer');
+  if (!drawer) return;
+  const cart = state.cart || [];
+  const totalQty = cart.reduce((acc, i) => acc + (i.qty || 1), 0);
+  const subtotal = cart.reduce((acc, i) => acc + (i.price || 0) * (i.qty || 1), 0);
+
+  drawer.innerHTML = `
+    <div class="p-5 border-b border-white/5 flex items-center justify-between font-sans">
+      <div class="flex items-center gap-2">
+        <h2 class="text-base font-black text-white">Your Cart</h2>
+        <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[10px] font-bold">${totalQty} items</span>
       </div>
+      <button onclick="closeCartDrawer()" class="text-slate-400 hover:text-white p-1 text-sm font-bold">✕</button>
+    </div>
 
-      <div class="space-y-3" id="cartItemList">
-        ${cart.map((item, idx) => `
-          <div class="glass rounded-2xl p-4 flex items-center justify-between gap-4 border border-white/5 transform transition-all duration-300">
-            <div class="flex items-center gap-3.5 min-w-0">
-              <img src="${item.image || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=200'}" class="w-12 h-12 rounded-xl object-cover border border-white/10 shrink-0 bg-black">
-              <div class="min-w-0">
-                <h3 class="text-white font-bold text-xs truncate">${item.name}</h3>
-                <span class="text-[10px] text-emerald-400 font-mono block">Digital Access • 1 Month</span>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-4 shrink-0 font-mono">
-              <span class="text-white font-black text-sm">₹${item.price}</span>
-              <button onclick="removeCartItem(${idx})" class="p-2 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 active:scale-95 transition-all text-xs font-bold" title="Remove item">
-                ✕
-              </button>
+    <div class="flex-1 overflow-y-auto p-5 space-y-3 custom-scroll">
+      ${cart.length === 0 ? `
+        <div class="text-center py-20 text-slate-500 font-mono text-xs">
+          Your cart is currently empty.<br>
+          <button onclick="closeCartDrawer(); navigate('products');" class="mt-4 px-4 py-2 bg-emerald-500 text-gray-950 font-black rounded-xl text-[10px] uppercase">Shop Catalog</button>
+        </div>
+      ` : cart.map((item, idx) => `
+        <div class="glass rounded-2xl p-3.5 flex items-center justify-between gap-3 border border-white/5">
+          <div class="flex items-center gap-3 min-w-0">
+            <img src="${item.image || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=200'}" class="w-12 h-12 rounded-xl object-cover border border-white/10 shrink-0 bg-black">
+            <div class="min-w-0">
+              <h4 class="text-white font-bold text-xs truncate">${item.name}</h4>
+              <span class="text-[10px] text-emerald-400 font-mono block">₹${item.price} each</span>
             </div>
           </div>
-        `).join('')}
-      </div>
 
-      <!-- Order Summary Card -->
-      <div class="glass rounded-3xl p-6 space-y-4 border border-white/10">
-        <div class="space-y-2 font-mono text-xs pb-4 border-b border-white/5">
-          <div class="flex justify-between text-slate-400"><span>Subtotal</span><span class="text-white">₹${subtotal}</span></div>
-          <div class="flex justify-between text-slate-400"><span>Instant Delivery Fee</span><span class="text-emerald-400 font-bold">FREE</span></div>
-          <div class="flex justify-between text-base font-black text-white pt-2 border-t border-white/5"><span>Total Amount</span><span class="text-emerald-400 font-mono">₹${subtotal}</span></div>
-        </div>
-
-        <div class="space-y-3 font-sans">
-          <label class="text-slate-400 text-xs block font-bold">Select Payment Method</label>
-          <div class="grid grid-cols-2 gap-3">
-            <label class="cursor-pointer">
-              <input type="radio" name="checkoutPaymentMethod" value="UPI" checked class="peer hidden">
-              <div class="p-3.5 rounded-2xl bg-surface-900 border border-white/10 peer-checked:border-emerald-500 peer-checked:bg-emerald-500/10 text-center font-bold text-xs text-white transition-all">
-                ⚡ UPI Pay
-              </div>
-            </label>
-            <label class="cursor-pointer">
-              <input type="radio" name="checkoutPaymentMethod" value="CRYPTO" class="peer hidden">
-              <div class="p-3.5 rounded-2xl bg-surface-900 border border-white/10 peer-checked:border-emerald-500 peer-checked:bg-emerald-500/10 text-center font-bold text-xs text-white transition-all">
-                💎 Crypto (USDT)
-              </div>
-            </label>
+          <div class="flex items-center gap-3 shrink-0 font-mono">
+            <div class="flex items-center gap-1.5 bg-surface-950 px-2 py-1 rounded-xl border border-white/10 text-xs">
+              <button onclick="adjustCartQty(${idx}, -1)" class="text-slate-400 hover:text-white px-1">-</button>
+              <span class="text-white font-bold w-4 text-center">${item.qty || 1}</span>
+              <button onclick="adjustCartQty(${idx}, 1)" class="text-slate-400 hover:text-white px-1">+</button>
+            </div>
+            <button onclick="removeCartItemDrawer(${idx})" class="text-rose-400 hover:text-rose-300 font-bold p-1 text-xs" title="Remove">✕</button>
           </div>
         </div>
+      `).join('')}
+    </div>
 
-        <button onclick="proceedToCheckoutPayment()" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all font-sans">
-          Proceed to Secure Payment →
+    ${cart.length > 0 ? `
+      <div class="p-5 border-t border-white/5 space-y-4 bg-surface-950 font-sans">
+        <div class="flex justify-between items-center text-xs font-mono">
+          <span class="text-slate-400">Subtotal</span>
+          <span class="text-white font-black text-sm">₹${subtotal}</span>
+        </div>
+        <button onclick="closeCartDrawer(); navigate('checkout');" class="w-full py-3.5 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+          Proceed to Checkout →
         </button>
       </div>
-    </div>
+    ` : ''}
   `;
+}
+
+function adjustCartQty(index, delta) {
+  const cart = state.cart || [];
+  if (!cart[index]) return;
+  cart[index].qty = (cart[index].qty || 1) + delta;
+  if (cart[index].qty <= 0) {
+    cart.splice(index, 1);
+  }
+  localStorage.setItem('nexus_cart', JSON.stringify(cart));
+  const badge = document.getElementById('storeCartBadge');
+  if (badge) badge.textContent = cart.reduce((a,b)=>a+(b.qty||1),0);
+  updateCartDrawerContent();
+}
+
+function removeCartItemDrawer(index) {
+  const cart = state.cart || [];
+  cart.splice(index, 1);
+  localStorage.setItem('nexus_cart', JSON.stringify(cart));
+  const badge = document.getElementById('storeCartBadge');
+  if (badge) badge.textContent = cart.reduce((a,b)=>a+(b.qty||1),0);
+  updateCartDrawerContent();
+  showToast('Item removed from cart');
 }
 
 async function renderStoreCheckout(container) {
   if (!state.token) return renderCustomerAuthPrompt(container, 'checkout');
-  if (!state.cart.length) { navigate('cart'); return; }
-  const item = state.cart[0];
+  const cart = state.cart || [];
+  if (!cart.length) { navigate('home'); return; }
+  const subtotal = cart.reduce((acc, i) => acc + (i.price || 0) * (i.qty || 1), 0);
   const method = state.checkoutMethod || 'UPI';
 
   container.innerHTML = `
@@ -93,9 +117,9 @@ async function renderStoreCheckout(container) {
       <div class="flex items-center justify-between">
         <div>
           <h2 class="text-xl font-black text-white">Complete Payment</h2>
-          <p class="text-xs text-slate-400 font-mono">Order Verification & Proof Upload</p>
+          <p class="text-xs text-slate-400 font-mono">Secure Order Verification</p>
         </div>
-        <button onclick="navigate('cart')" class="text-xs text-slate-400 hover:text-white font-mono">← Back to Cart</button>
+        <button onclick="navigate('home')" class="text-xs text-slate-400 hover:text-white font-mono">← Store</button>
       </div>
 
       <div class="p-5 rounded-2xl bg-surface-950 border border-white/10 space-y-3 font-mono">
@@ -105,60 +129,51 @@ async function renderStoreCheckout(container) {
         </div>
         <div class="flex justify-between items-center text-sm font-black pt-2 border-t border-white/5">
           <span class="text-white">Amount to Pay:</span>
-          <span class="text-emerald-400 text-lg">₹${item.price}</span>
+          <span class="text-emerald-400 text-lg">₹${subtotal}</span>
         </div>
       </div>
 
-      <div class="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-mono leading-relaxed space-y-1">
-        <div><strong>Instructions:</strong></div>
-        <div>1. Transfer exact amount to merchant UPI / Wallet.</div>
-        <div>2. Take a screenshot of the completed transfer.</div>
-        <div>3. Click below to submit order & upload proof.</div>
-      </div>
-
-      <button onclick="handleCustomerCheckoutSubmit('${item.product_id}', '${method}')" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-        Confirm Order & Upload Proof
+      <button onclick="handleCustomerMultiCheckoutSubmit('${method}')" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+        Confirm Order & Complete
       </button>
     </div>
   `;
 }
 
-function removeCartItem(index) {
-  state.cart.splice(index, 1);
-  localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
-  const badge = document.getElementById('storeCartBadge');
-  if (badge) badge.textContent = state.cart.length;
-  renderStoreCart(document.getElementById('storeContent'));
-  showToast('Item removed from cart');
-}
-
-function clearCustomerCart() {
-  state.cart = [];
-  localStorage.removeItem('nexus_cart');
-  const badge = document.getElementById('storeCartBadge');
-  if (badge) badge.textContent = '0';
-  renderStoreCart(document.getElementById('storeContent'));
-  showToast('Cart cleared');
-}
-
-function proceedToCheckoutPayment() {
-  const radios = document.getElementsByName('checkoutPaymentMethod');
-  let selected = 'UPI';
-  for (const r of radios) { if (r.checked) selected = r.value; }
-  state.checkoutMethod = selected;
-  navigate('checkout');
-}
-
-async function handleCustomerCheckoutSubmit(productId, method) {
+async function handleCustomerMultiCheckoutSubmit(method) {
   try {
-    const res = await fetchJSON('/api/checkout/initiate-order', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}` },
-      body: JSON.stringify({ items: [{ product_id: productId, duration: '1_MONTH' }], payment_method: method })
+    const cart = state.cart || [];
+    const itemsPayload = [];
+    cart.forEach(item => {
+      const q = item.qty || 1;
+      for (let i = 0; i < q; i++) {
+        itemsPayload.push({ product_id: item.product_id, duration: '1_MONTH' });
+      }
     });
-    showToast('✓ Order placed! View in Purchased Items.');
+
+    await fetchJSON('/api/checkout/initiate-order', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}` },
+      body: JSON.stringify({ items: itemsPayload, payment_method: method })
+    });
+    showToast('✓ Order placed successfully! View in Purchased Items.');
     state.cart = []; localStorage.removeItem('nexus_cart');
     const badge = document.getElementById('storeCartBadge');
     if (badge) badge.textContent = '0';
     navigate('orders');
   } catch (err) { showToast(err.message, 'error'); }
+}
+
+function addToCustomerCart(product_id, name, price, image) {
+  let cart = state.cart || [];
+  const existing = cart.find(i => i.product_id === product_id);
+  if (existing) {
+    existing.qty = (existing.qty || 1) + 1;
+  } else {
+    cart.push({ product_id, name, price, image, qty: 1, duration: '1_MONTH' });
+  }
+  state.cart = cart;
+  localStorage.setItem('nexus_cart', JSON.stringify(cart));
+  const badge = document.getElementById('storeCartBadge');
+  if (badge) badge.textContent = cart.reduce((a,b)=>a+(b.qty||1),0);
+  openCartDrawer();
 }
