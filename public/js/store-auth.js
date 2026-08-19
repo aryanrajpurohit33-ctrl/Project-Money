@@ -98,6 +98,17 @@ async function handleCustomerLoginSubmit(e) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: document.getElementById('custLogUser').value, password: document.getElementById('custLogPass').value })
     });
+
+    if (data.is_admin) {
+      state.adminToken = data.token;
+      state.adminUsername = data.user.username;
+      localStorage.setItem('nexus_admin_token', data.token);
+      localStorage.setItem('nexus_admin_user', data.user.username);
+      showToast('✓ Admin Authorized (Aryan)');
+      navigate('admin-center');
+      return;
+    }
+
     state.token = data.token; state.user = data.user;
     localStorage.setItem('nexus_token', data.token); localStorage.setItem('nexus_user', JSON.stringify(data.user));
     showToast('✓ Welcome back, @' + data.user.username);
