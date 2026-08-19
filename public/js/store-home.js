@@ -1,39 +1,21 @@
 async function renderStoreHome(container) {
   const isAllProductsView = state.currentView === 'products';
   
-  // Use cached products instantly if available so there is zero layout shift or loading text
-  if (!state.cachedProducts || !state.cachedProducts.length) {
-    container.innerHTML = `
-      <div class="space-y-8 pb-12 opacity-0 transition-opacity duration-300" id="storeHomeWrapper">
-        ${!isAllProductsView ? `
-          <div class="glass rounded-3xl p-6 sm:p-10 relative overflow-hidden border border-emerald-500/20 auth-glow space-y-3">
-            <span class="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-bold text-[10px] uppercase font-mono">⚡ Instant Digital Delivery</span>
-            <h1 class="text-2xl sm:text-4xl font-black text-white tracking-tight">Premium Digital Subscriptions & Access</h1>
-            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">Secure, verified digital accounts and license keys delivered instantly after payment confirmation.</p>
-          </div>
-        ` : `
-          <div class="space-y-1">
-            <h1 class="text-xl sm:text-2xl font-black text-white">All Digital Products</h1>
-            <p class="text-xs text-slate-400 font-mono">Exploring available digital goods</p>
-          </div>
-        `}
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6" id="storeProductsGrid"></div>
-      </div>
-    `;
-  } else {
-    buildStoreProductsHTML(container, state.cachedProducts, isAllProductsView);
-  }
+  // Render instantly using cached data if available, eliminating any loading state
+  const products = state.cachedProducts || [];
+  buildStoreProductsHTML(container, products, isAllProductsView);
 
+  // Fetch fresh data in the background silently
   try {
-    const products = await fetchJSON('/api/products');
-    state.cachedProducts = products;
-    buildStoreProductsHTML(container, products, isAllProductsView);
+    const freshProducts = await fetchJSON('/api/products');
+    state.cachedProducts = freshProducts;
+    buildStoreProductsHTML(container, freshProducts, isAllProductsView);
   } catch (err) {}
 }
 
 function buildStoreProductsHTML(container, products, isAllProductsView) {
   container.innerHTML = `
-    <div class="space-y-8 pb-12 animate-fadeIn transform transition-all duration-300">
+    <div class="space-y-8 pb-12 animate-fadeIn">
       ${!isAllProductsView ? `
         <div class="glass rounded-3xl p-6 sm:p-10 relative overflow-hidden border border-emerald-500/20 auth-glow space-y-3">
           <span class="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-bold text-[10px] uppercase font-mono">⚡ Instant Digital Delivery</span>

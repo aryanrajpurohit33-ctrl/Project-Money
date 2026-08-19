@@ -37,6 +37,8 @@
     .admin-card { background-color: #0f1422; border: 1px solid #1c2438; }
     .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
     .custom-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 999px; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-fadeIn { animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased">
@@ -78,7 +80,8 @@
       currentView: 'home',
       adminSection: 'dashboard',
       dashboardRange: '30d',
-      loadedProducts: []
+      loadedProducts: [],
+      cachedProducts: null
     };
 
     function showToast(message, type = 'success') {
@@ -111,6 +114,14 @@
       } catch (err) { throw err; }
     }
 
+    // Pre-fetch products globally upon startup for instant page transitions
+    async function prefetchGlobalData() {
+      try {
+        const products = await fetchJSON('/api/products');
+        state.cachedProducts = products;
+      } catch (e) {}
+    }
+
     function closeAllDrawers() {
       document.getElementById('appBackdrop').classList.add('hidden');
       const cSide = document.getElementById('customerSidebar');
@@ -137,7 +148,7 @@
     function navigate(view, params = {}) {
       state.currentView = view;
       closeAllDrawers();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'instant' });
 
       const viewport = document.getElementById('mainViewport');
       if (view === 'admin-center') {
@@ -150,7 +161,7 @@
 
     function renderStorefrontLayout(viewport, view, params) {
       viewport.innerHTML = `
-        <div class="flex flex-1 min-h-screen relative w-full bg-surface-950">
+        <div class="flex flex-1 min-h-screen relative w-full bg-surface-950 animate-fadeIn">
           <aside id="customerSidebar" class="fixed lg:static top-0 bottom-0 left-0 w-64 bg-surface-900 border-r border-white/5 z-50 flex flex-col justify-between transition-transform duration-300 -translate-x-full lg:translate-x-0">
             <div>
               <div class="p-6 border-b border-white/5 flex items-center justify-between">
@@ -190,7 +201,7 @@
 
     function renderAdminLogin(viewport) {
       viewport.innerHTML = `
-        <div class="min-h-screen w-full bg-admin-bg flex items-center justify-center p-4">
+        <div class="min-h-screen w-full bg-admin-bg flex items-center justify-center p-4 animate-fadeIn">
           <div class="admin-card max-w-md w-full rounded-3xl p-8 space-y-6 shadow-2xl border border-admin-border">
             <div class="text-center space-y-1">
               <h2 class="text-xl font-black text-white tracking-wider font-sans">NEXUS CONTROL CENTER</h2>
@@ -221,7 +232,7 @@
 
     function renderAdminSaaSLayout(viewport) {
       viewport.innerHTML = `
-        <div class="flex flex-1 min-h-screen w-full bg-admin-bg font-sans text-slate-200 relative">
+        <div class="flex flex-1 min-h-screen w-full bg-admin-bg font-sans text-slate-200 relative animate-fadeIn">
           <aside id="adminSidebar" class="fixed lg:static top-0 bottom-0 left-0 w-64 bg-admin-sidebar border-r border-admin-border flex flex-col justify-between z-50 transition-transform duration-300 -translate-x-full lg:translate-x-0">
             <div>
               <div class="p-6 border-b border-admin-border flex items-center justify-between">
@@ -280,7 +291,10 @@
       navigate('home');
     }
 
-    document.addEventListener('DOMContentLoaded', () => { navigate('home'); });
+    document.addEventListener('DOMContentLoaded', async () => {
+      await prefetchGlobalData();
+      navigate('home');
+    });
   </script>
 </body>
 </html>
