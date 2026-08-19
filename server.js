@@ -14,14 +14,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 const JWT_SECRET = process.env.JWT_SECRET || 'nexus_digital_super_secret_jwt_2026_key';
 
 // ----------------------------------------------------
-// PERFORMANCE, TRAFFIC & FUNNEL LOGGERS
+// PERFORMANCE & PRESENCE LOGGERS
 // ----------------------------------------------------
 const requestLogs = [];
 const appErrorLogs = [];
 const activeSessions = new Map();
 const activityFeed = [];
 
-// Funnel counters
 const funnelStats = {
   visitors: 0,
   product_views: 0,
@@ -150,7 +149,7 @@ const SubscriptionSchema = new mongoose.Schema({
   product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
   assigned_slot_id: { type: mongoose.Schema.Types.ObjectId, ref: 'InventorySlot', default: null },
   product_name: String,
-  duration: { type: String, enum: ['1_MONTH', '6_MONTHS', '1_YEAR', 'ONE_TIME', 'CUSTOM'], required: true },
+  duration: { type: String, default: '1_MONTH' },
   start_at: { type: Date, default: Date.now },
   expires_at: { type: Date, required: true },
   status: { type: String, enum: ['ACTIVE', 'EXPIRED', 'REVOKED', 'CANCELLED'], default: 'ACTIVE' },
@@ -173,7 +172,7 @@ const TransactionSchema = new mongoose.Schema({
   customer_email: String,
   product_name: String,
   product_type: String,
-  duration: { type: String, default: 'ONE_TIME' },
+  duration: { type: String, default: '1_MONTH' },
   amount: { type: Number, required: true },
   payment_method: { type: String, enum: ['UPI', 'CRYPTO'], required: true },
   proof_screenshot: { type: String, default: '' },
@@ -237,7 +236,25 @@ const Order = mongoose.model('Order', OrderSchema);
 const PaymentSettings = mongoose.model('PaymentSettings', PaymentSettingsSchema);
 
 // ----------------------------------------------------
-// DATABASE INITIALIZATION
+// DURATION CALCULATOR (STRICT ACCURATE CALENDAR MATH)
+// ----------------------------------------------------
+function calculateAccurateExpiry(startAt, durationStr) {
+  const expiry = new Date(startAt);
+  const dur = String(durationStr || '').toUpperCase().trim();
+
+  if (dur.includes('1_YEAR') || dur.includes('1 YEAR') || dur.includes('ONE_YEAR') || dur.includes('12_MONTH')) {
+    expiry.setFullYear(expiry.getFullYear() + 1);
+  } else if (dur.includes('6_MONTH') || dur.includes('6 MONTH') || dur.includes('SIX_MONTH')) {
+    expiry.setMonth(expiry.getMonth() + 6);
+  } else {
+    // Default subscription period is strictly 1 month!
+    expiry.setMonth(expiry.getMonth() + 1);
+  }
+  return expiry;
+}
+
+// ----------------------------------------------------
+// DATABASE INITIALIZATION & AUTO-CORRECTION FIX
 // ----------------------------------------------------
 async function initializeSystem() {
   try {
@@ -251,6 +268,24 @@ async function initializeSystem() {
 
     const existingPaymentSettings = await PaymentSettings.findOne();
     if (!existingPaymentSettings) await PaymentSettings.create({});
+
+    // AUTO-FIX: Correct any glitched 50-year subscriptions back to their accurate duration
+    const glitchedSubs = await Subscription.find({});
+    for (const sub of glitchedSubs) {
+      const start = new Date(sub.start_at || sub.created_at || Date.now());
+      const currentExpiry = new Date(sub.expires_at);
+      const diffYears = currentExpiry.getFullYear() - start.getFullYear();
+
+      if (diffYears >= 2) {
+        // Fix to accurate 1 month or specified duration
+        const correctedExpiry = calculateAccurateExpiry(start, sub.duration || '1_MONTH');
+        sub.expires_at = correctedExpiry;
+        sub.duration = sub.duration || '1_MONTH';
+        await sub.save();
+        console.log(`✓ Fixed glitched subscription #${sub._id} expiry to ${correctedExpiry.toLocaleDateString()}`);
+      }
+    }
+
   } catch (err) {
     console.error('Init error:', err.message);
   }
@@ -286,139 +321,6 @@ function authAdmin(req, res, next) {
     return res.status(403).json({ error: 'Forbidden: Admin session invalid' });
   }
 }
-
-// ----------------------------------------------------
-// SYSTEM & INFRASTRUCTURE MONITORING
-// ----------------------------------------------------
-app.get('/api/admin/system/infrastructure', authAdmin, async (req, res) => {
-  try {
-    const memUsage = process.memoryUsage();
-    const rssMB = Math.round((memUsage.rss / 1024 / 1024) * 10) / 10;
-    const heapUsedMB = Math.round((memUsage.heapUsed / 1024 / 1024) * 10) / 10;
-    const heapTotalMB = Math.round((memUsage.heapTotal / 1024 / 1024) * 10) / 10;
-
-    const osFreeMemMB = Math.round(os.freemem() / 1024 / 1024);
-    const osTotalMemMB = Math.round(os.totalmem() / 1024 / 1024);
-    const osUsedMemMB = osTotalMemMB - osFreeMemMB;
-    const osMemPercent = Math.round((osUsedMemMB / osTotalMemMB) * 100);
-
-    let dbStatus = 'Disconnected';
-    let dbDataSizeMB = 0;
-    let dbStorageSizeMB = 0;
-    let dbIndexesSizeMB = 0;
-    let dbCollectionsCount = 0;
-    let dbPingMs = 0;
-
-    if (mongoose.connection.readyState === 1) {
-      dbStatus = 'Connected';
-      const pingStart = Date.now();
-      const stats = await mongoose.connection.db.stats();
-      dbPingMs = Date.now() - pingStart;
-
-      dbDataSizeMB = Math.round((stats.dataSize / 1024 / 1024) * 100) / 100;
-      dbStorageSizeMB = Math.round((stats.storageSize / 1024 / 1024) * 100) / 100;
-      dbIndexesSizeMB = Math.round((stats.indexSize / 1024 / 1024) * 100) / 100;
-      dbCollectionsCount = stats.collections;
-    }
-
-    const [usersCount, productsCount, ordersCount, txnsCount, invCount, subsCount] = await Promise.all([
-      User.countDocuments(),
-      Product.countDocuments(),
-      Order.countDocuments(),
-      Transaction.countDocuments(),
-      InventorySlot.countDocuments(),
-      Subscription.countDocuments()
-    ]);
-
-    const recentRequests = requestLogs.slice(0, 50);
-    const avgResponseTime = recentRequests.length > 0
-      ? Math.round(recentRequests.reduce((a, b) => a + b.responseTime, 0) / recentRequests.length)
-      : 12;
-
-    const errorCount = recentRequests.filter(r => r.statusCode >= 400).length;
-    const errorRatePercent = recentRequests.length > 0
-      ? Math.round((errorCount / recentRequests.length) * 100)
-      : 0;
-
-    const uptimeSec = Math.floor(process.uptime());
-    const days = Math.floor(uptimeSec / 86400);
-    const hours = Math.floor((uptimeSec % 86400) / 3600);
-    const mins = Math.floor((uptimeSec % 3600) / 60);
-    const formattedUptime = `${days > 0 ? days + 'd ' : ''}${hours}h ${mins}m ${uptimeSec % 60}s`;
-
-    const isRender = !!process.env.RENDER;
-    const hostingDetails = {
-      provider: isRender ? 'Render Cloud (Production)' : 'Node.js Standalone Container',
-      service_id: process.env.RENDER_SERVICE_ID || 'Container-Local',
-      node_version: process.version,
-      platform: `${os.type()} ${os.arch()}`,
-      environment: process.env.NODE_ENV || 'production'
-    };
-
-    res.json({
-      server: {
-        status: 'Operational',
-        uptime_seconds: uptimeSec,
-        uptime_formatted: formattedUptime,
-        service_memory_rss_mb: rssMB,
-        heap_used_mb: heapUsedMB,
-        heap_total_mb: heapTotalMB,
-        os_used_mem_mb: osUsedMemMB,
-        os_total_mem_mb: osTotalMemMB,
-        os_mem_percent: osMemPercent,
-        avg_response_time_ms: avgResponseTime,
-        error_rate_percent: errorRatePercent,
-        request_count_tracked: requestLogs.length,
-        hosting: hostingDetails
-      },
-      database: {
-        status: dbStatus,
-        ping_latency_ms: dbPingMs,
-        data_size_mb: dbDataSizeMB,
-        storage_size_mb: dbStorageSizeMB,
-        indexes_size_mb: dbIndexesSizeMB,
-        collections_count: dbCollectionsCount,
-        collections: [
-          { name: 'Users', count: usersCount, status: 'Healthy' },
-          { name: 'Products', count: productsCount, status: 'Healthy' },
-          { name: 'Subscriptions', count: subsCount, status: 'Healthy' },
-          { name: 'Orders', count: ordersCount, status: 'Healthy' },
-          { name: 'Transactions', count: txnsCount, status: 'Healthy' },
-          { name: 'Account Slots', count: invCount, status: 'Healthy' }
-        ]
-      },
-      recent_api_metrics: requestLogs.slice(0, 8),
-      recent_errors: appErrorLogs.slice(0, 10),
-      timestamp: new Date()
-    });
-
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/admin/system/health-check', authAdmin, async (req, res) => {
-  const results = {
-    frontend: { status: 'Operational', latency_ms: 2 },
-    backend: { status: 'Operational', uptime_sec: Math.floor(process.uptime()) },
-    database: { status: 'Disconnected', latency_ms: null },
-    auth_service: { status: 'Operational', algorithm: 'HS256' },
-    payment_gateway: { status: 'Operational', configured: true },
-    digital_delivery: { status: 'Operational', stock_ready: true }
-  };
-
-  try {
-    const dbStart = Date.now();
-    await mongoose.connection.db.admin().ping();
-    results.database.status = 'Connected';
-    results.database.latency_ms = Date.now() - dbStart;
-    res.json({ success: true, timestamp: new Date(), checks: results });
-  } catch (err) {
-    results.database.status = 'Degraded';
-    results.database.error = err.message;
-    res.status(500).json({ success: false, checks: results });
-  }
-});
 
 // ----------------------------------------------------
 // STORE & CUSTOMER APIS
@@ -526,32 +428,33 @@ app.post('/api/checkout/initiate-order', authCustomer, async (req, res) => {
     const orderItems = [];
 
     let mainProductName = '';
-    let mainProductType = 'ONE_TIME';
-    let mainDuration = 'ONE_TIME';
+    let mainProductType = 'SUBSCRIPTION';
+    let mainDuration = '1_MONTH';
 
     for (const item of items) {
       const p = await Product.findById(item.product_id);
       if (!p) throw new Error(`Product not found`);
 
+      let duration = item.duration || '1_MONTH';
       let itemPrice = p.sale_price;
-      let duration = item.duration || 'ONE_TIME';
 
       if (p.product_type === 'SUBSCRIPTION') {
-        if (duration === '1_MONTH') itemPrice = p.subscription_pricing.one_month;
-        else if (duration === '6_MONTHS') itemPrice = p.subscription_pricing.six_months;
-        else if (duration === '1_YEAR') itemPrice = p.subscription_pricing.one_year;
+        const d = String(duration).toUpperCase();
+        if (d.includes('YEAR') || d.includes('12')) itemPrice = p.subscription_pricing.one_year;
+        else if (d.includes('6')) itemPrice = p.subscription_pricing.six_months;
+        else itemPrice = p.subscription_pricing.one_month;
       }
 
       subtotal += itemPrice;
       mainProductName = p.name;
-      mainProductType = p.product_type;
+      mainProductType = p.product_type || 'SUBSCRIPTION';
       mainDuration = duration;
 
       orderItems.push({
         product_id: p._id,
         name: p.name,
         price: itemPrice,
-        product_type: p.product_type,
+        product_type: p.product_type || 'SUBSCRIPTION',
         duration,
         delivery_type: p.delivery_type,
         subscription_id: null
@@ -623,7 +526,6 @@ app.post('/api/checkout/upload-proof-json', authCustomer, async (req, res) => {
   }
 });
 
-// Customer Purchased Items
 app.get('/api/customer/orders', authCustomer, async (req, res) => {
   try {
     const orders = await Order.find({ user_id: req.user.id })
@@ -683,8 +585,6 @@ app.get('/api/customer/orders', authCustomer, async (req, res) => {
 // ----------------------------------------------------
 // DEDICATED SUBSCRIPTION MANAGEMENT APIS (ADMIN ONLY)
 // ----------------------------------------------------
-
-// 1. Comprehensive Subscriptions Query with Filters, Search, and Live Exact Time-Remaining
 app.get('/api/admin/subscriptions/advanced', authAdmin, async (req, res) => {
   try {
     const { status, expiring_within_days, search, product_id, sort_by } = req.query;
@@ -715,19 +615,16 @@ app.get('/api/admin/subscriptions/advanced', authAdmin, async (req, res) => {
       .populate('assigned_slot_id', 'account_label email max_active_users')
       .sort(sortOption);
 
-    // Calculate exact remaining time string & auto status derivation
     const enrichedSubs = await Promise.all(rawSubs.map(async (s) => {
       const exp = new Date(s.expires_at);
       const diffMs = exp - now;
       const isExpired = diffMs <= 0;
 
-      // Auto update status if expired
       let currentStatus = s.status;
       if (s.status === 'ACTIVE' && isExpired) {
         currentStatus = 'EXPIRED';
       }
 
-      // Format exact remaining string
       let timeRemainingText = 'Expired';
       let daysLeft = 0;
       if (!isExpired && currentStatus === 'ACTIVE') {
@@ -751,7 +648,6 @@ app.get('/api/admin/subscriptions/advanced', authAdmin, async (req, res) => {
         }
       }
 
-      // People using this slot count
       let slotUsage = '1 / 1';
       if (s.assigned_slot_id) {
         const activeOnSlot = await Subscription.countDocuments({
@@ -772,7 +668,6 @@ app.get('/api/admin/subscriptions/advanced', authAdmin, async (req, res) => {
       };
     }));
 
-    // In-memory search filter for populated fields
     let finalSubs = enrichedSubs;
     if (search) {
       const q = search.toLowerCase();
@@ -785,7 +680,6 @@ app.get('/api/admin/subscriptions/advanced', authAdmin, async (req, res) => {
       );
     }
 
-    // Overall Live Statistics
     const allSubs = await Subscription.find();
     const sevenDaysFuture = new Date();
     sevenDaysFuture.setDate(sevenDaysFuture.getDate() + 7);
@@ -810,7 +704,6 @@ app.get('/api/admin/subscriptions/advanced', authAdmin, async (req, res) => {
   }
 });
 
-// 2. Extend Subscription Duration
 app.post('/api/admin/subscriptions/:id/extend', authAdmin, async (req, res) => {
   try {
     const { extend_type, custom_days } = req.body;
@@ -841,7 +734,6 @@ app.post('/api/admin/subscriptions/:id/extend', authAdmin, async (req, res) => {
   }
 });
 
-// 3. Reassign Subscription to Another Available Slot
 app.post('/api/admin/subscriptions/:id/reassign-slot', authAdmin, async (req, res) => {
   try {
     const { new_slot_id } = req.body;
@@ -853,7 +745,6 @@ app.post('/api/admin/subscriptions/:id/reassign-slot', authAdmin, async (req, re
       return res.status(400).json({ error: 'Target slot is invalid or disabled' });
     }
 
-    const previousSlotId = sub.assigned_slot_id;
     sub.assigned_slot_id = targetSlot._id;
     sub.history.push({
       action: 'REASSIGN_SLOT',
@@ -878,7 +769,6 @@ app.post('/api/admin/subscriptions/:id/reassign-slot', authAdmin, async (req, re
   }
 });
 
-// 4. Revoke or Cancel Subscription Access Immediately
 app.post('/api/admin/subscriptions/:id/revoke', authAdmin, async (req, res) => {
   try {
     const { reason, action_type } = req.body;
@@ -903,7 +793,7 @@ app.post('/api/admin/subscriptions/:id/revoke', authAdmin, async (req, res) => {
 });
 
 // ----------------------------------------------------
-// ADVANCED DASHBOARD ANALYTICS APIS
+// DASHBOARD FULL OVERVIEW
 // ----------------------------------------------------
 app.get('/api/admin/dashboard/full-overview', authAdmin, async (req, res) => {
   try {
@@ -917,7 +807,6 @@ app.get('/api/admin/dashboard/full-overview', authAdmin, async (req, res) => {
     const monthStart = new Date();
     monthStart.setDate(monthStart.getDate() - 30);
 
-    // Sales Aggregations
     const [todaySalesAgg, weekSalesAgg, monthSalesAgg, totalSalesAgg] = await Promise.all([
       Order.aggregate([
         { $match: { payment_status: 'Paid', created_at: { $gte: todayStart } } },
@@ -941,7 +830,6 @@ app.get('/api/admin/dashboard/full-overview', authAdmin, async (req, res) => {
     const totalRev = totalSalesAgg[0]?.total || 0;
     const avgOrderVal = totalOrdersCount > 0 ? Math.round(totalRev / totalOrdersCount) : 0;
 
-    // Subscriptions Statuses
     const allSubs = await Subscription.find();
     const sevenDaysFuture = new Date();
     sevenDaysFuture.setDate(sevenDaysFuture.getDate() + 7);
@@ -949,12 +837,10 @@ app.get('/api/admin/dashboard/full-overview', authAdmin, async (req, res) => {
     const activeSubsList = allSubs.filter(s => s.status === 'ACTIVE' && new Date(s.expires_at) > now);
     const expiringSoonList = allSubs.filter(s => s.status === 'ACTIVE' && new Date(s.expires_at) > now && new Date(s.expires_at) <= sevenDaysFuture);
 
-    // Customer metrics
     const totalCustomers = await User.countDocuments();
     const todayCustomers = await User.countDocuments({ created_at: { $gte: todayStart } });
     const weekCustomers = await User.countDocuments({ created_at: { $gte: weekStart } });
 
-    // Product breakdown
     const allProducts = await Product.find().sort({ sales_count: -1 });
     const totalProducts = allProducts.length;
     const publishedProducts = allProducts.filter(p => p.status === 'active').length;
@@ -962,7 +848,6 @@ app.get('/api/admin/dashboard/full-overview', authAdmin, async (req, res) => {
     const oneTimeCount = allProducts.filter(p => p.product_type === 'ONE_TIME').length;
     const topSelling = allProducts.slice(0, 5);
 
-    // Account Slots Metrics
     const allSlots = await InventorySlot.find();
     const slotStats = {
       total: allSlots.length,
@@ -972,7 +857,6 @@ app.get('/api/admin/dashboard/full-overview', authAdmin, async (req, res) => {
       active_users: activeSubsList.length
     };
 
-    // Recent Tables
     const [recentTxns, recentOrders, expiringSoonDetailed] = await Promise.all([
       Transaction.find().sort({ created_at: -1 }).limit(5),
       Order.find().sort({ created_at: -1 }).limit(5),
@@ -982,7 +866,6 @@ app.get('/api/admin/dashboard/full-overview', authAdmin, async (req, res) => {
         .limit(5)
     ]);
 
-    // Live Visitors Breakdown
     const visitors = Array.from(activeSessions.values());
     const liveStats = {
       total: visitors.length,
@@ -992,7 +875,6 @@ app.get('/api/admin/dashboard/full-overview', authAdmin, async (req, res) => {
       checkout: visitors.filter(v => v.page === 'checkout').length
     };
 
-    // System Alerts List
     const alerts = [];
     const pendingTxnsCount = await Transaction.countDocuments({ status: 'PROCESSING' });
     if (pendingTxnsCount > 0) alerts.push({ type: 'danger', text: `${pendingTxnsCount} payments waiting for admin verification.` });
@@ -1040,39 +922,6 @@ app.get('/api/admin/dashboard/full-overview', authAdmin, async (req, res) => {
       expiring_soon_list: expiringSoonDetailed
     });
 
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Admin Customers Management API
-app.get('/api/admin/customers/list', authAdmin, async (req, res) => {
-  try {
-    const users = await User.find().sort({ created_at: -1 });
-    const now = new Date();
-
-    const customerDetails = await Promise.all(users.map(async (u) => {
-      const [orderCount, activeSubs, historySubs] = await Promise.all([
-        Order.countDocuments({ user_id: u._id, payment_status: 'Paid' }),
-        Subscription.find({ user_id: u._id, status: 'ACTIVE', expires_at: { $gt: now } })
-          .populate('product_id', 'name')
-          .populate('assigned_slot_id', 'account_label email'),
-        Subscription.find({ user_id: u._id }).populate('product_id', 'name').sort({ created_at: -1 })
-      ]);
-
-      return {
-        _id: u._id,
-        name: u.name,
-        email: u.email,
-        mobile: u.mobile,
-        created_at: u.created_at,
-        orders_count: orderCount,
-        active_subscriptions: activeSubs,
-        subscription_history: historySubs
-      };
-    }));
-
-    res.json(customerDetails);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1196,7 +1045,7 @@ app.put('/api/admin/slots/:id', authAdmin, async (req, res) => {
   try {
     const { account_label, email, password, custom_text, notes, max_active_users, status } = req.body;
     const slot = await InventorySlot.findById(req.params.id);
-    if (!slot) return res.status(404).json({ error: 'Account slot not found' });
+    if (!slot) return res.status(404).json({ error: 'Account slot not found in database' });
 
     if (account_label !== undefined) slot.account_label = account_label;
     if (email !== undefined) slot.email = email.trim();
@@ -1229,14 +1078,14 @@ app.delete('/api/admin/slots/:id', authAdmin, async (req, res) => {
     }
 
     await InventorySlot.findByIdAndDelete(req.params.id);
-    res.json({ success: true });
+    res.json({ success: true, message: 'Slot deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // ----------------------------------------------------
-// ADMIN TRANSACTIONS & CONFIRMATION
+// ADMIN TRANSACTIONS & CONFIRMATION (ACCURATE SUBSCRIPTION MATH)
 // ----------------------------------------------------
 app.post('/api/admin/login', async (req, res) => {
   try {
@@ -1247,6 +1096,22 @@ app.post('/api/admin/login', async (req, res) => {
     if (!match) return res.status(400).json({ error: 'Invalid admin credentials' });
     const token = jwt.sign({ id: admin._id, username: admin.username, role: 'admin' }, JWT_SECRET, { expiresIn: '12h' });
     res.json({ token, username: admin.username });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/stats', authAdmin, async (req, res) => {
+  try {
+    const totalRevenueAgg = await Order.aggregate([
+      { $match: { payment_status: 'Paid' } },
+      { $group: { _id: null, total: { $sum: '$total_amount' } } }
+    ]);
+    const totalRevenue = totalRevenueAgg[0]?.total || 0;
+    const pendingPayments = await Transaction.countDocuments({ status: 'PROCESSING' });
+    const activeSubs = await Subscription.countDocuments({ status: 'ACTIVE', expires_at: { $gt: new Date() } });
+
+    res.json({ totalRevenue, pendingPayments, activeSubs });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1313,6 +1178,7 @@ app.get('/api/admin/transactions/:id/proof', authAdmin, async (req, res) => {
   }
 });
 
+// Confirmation & Slot Assignment with Strict Accurate Calendar Expiry Calculation
 app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -1377,12 +1243,9 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
     }
 
     const startAt = new Date();
-    const expiresAt = new Date(startAt);
-
-    if (item.duration === '1_MONTH') expiresAt.setMonth(expiresAt.getMonth() + 1);
-    else if (item.duration === '6_MONTHS') expiresAt.setMonth(expiresAt.getMonth() + 6);
-    else if (item.duration === '1_YEAR') expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-    else expiresAt.setFullYear(expiresAt.getFullYear() + 50);
+    // Use the normalized duration string (e.g. '1_MONTH', '6_MONTHS', '1_YEAR')
+    const customerPurchasedDuration = item.duration || txn.duration || '1_MONTH';
+    const expiresAt = calculateAccurateExpiry(startAt, customerPurchasedDuration);
 
     const createdSub = await Subscription.create([{
       order_id: order._id,
@@ -1390,14 +1253,14 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
       product_id: item.product_id,
       assigned_slot_id: slot._id,
       product_name: item.name,
-      duration: item.duration,
+      duration: customerPurchasedDuration,
       start_at: startAt,
       expires_at: expiresAt,
       status: 'ACTIVE',
       history: [{
         action: 'CONFIRM_PAYMENT',
         performed_by: req.admin.username,
-        details: `Assigned to slot "${slot.account_label}" (${slot.email})`
+        details: `Assigned to slot "${slot.account_label}" (${slot.email}) for ${customerPurchasedDuration.replace('_', ' ')}`
       }]
     }], { session });
 
@@ -1407,7 +1270,7 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
       customer_name: order.customer_name,
       customer_email: order.customer_email,
       order_id: order.order_number,
-      duration: item.duration,
+      duration: customerPurchasedDuration,
       start_at: startAt,
       expires_at: expiresAt
     });
@@ -1426,7 +1289,7 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
     await session.commitTransaction();
     session.endSession();
 
-    recordActivity('subscription_activated', `Payment verified. Bound slot "${slot.account_label}" to ${order.customer_name}`);
+    recordActivity('subscription_activated', `Payment verified. Bound slot "${slot.account_label}" to ${order.customer_name} (${customerPurchasedDuration})`);
     res.json({ success: true });
 
   } catch (err) {
