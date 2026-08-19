@@ -58,7 +58,7 @@ async function renderAdminProductsStudio(container) {
           </select>
         </div>
 
-        <!-- 📱 MOBILE RESPONSIVE CARDS VIEW (< md) -->
+        <!-- Mobile Cards -->
         <div class="block md:hidden space-y-3" id="productMobileCards">
           ${prods.length === 0 ? `
             <div class="admin-card rounded-2xl p-8 text-center text-slate-500">No products yet.</div>
@@ -85,7 +85,7 @@ async function renderAdminProductsStudio(container) {
           `).join('')}
         </div>
 
-        <!-- 💻 DESKTOP TABLE VIEW (>= md) -->
+        <!-- Desktop Table -->
         <div class="hidden md:block admin-card rounded-3xl p-6">
           <div class="overflow-x-auto custom-scroll w-full">
             <table class="w-full text-left min-w-[850px]">
@@ -154,11 +154,9 @@ async function openProductStudioModal(productId) {
   modal.classList.remove('hidden'); modal.classList.add('flex');
 
   let p = {
-    name: '', slug: '', category: 'Software & Digital Goods', sku: 'SKU-' + Date.now(),
-    product_type: 'ONE_TIME', original_price: 999, sale_price: 499,
-    short_description: '', description: '', customer_instructions: '',
-    images: ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'],
-    delivery_type: 'EMAIL_PASSWORD', status: 'active', unlimited_stock: true, stock_quantity: 100
+    name: '', category: 'Software & Digital Goods', original_price: 999, sale_price: 499,
+    description: '', images: ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'],
+    delivery_type: 'EMAIL_PASSWORD', status: 'active'
   };
 
   if (!isNew) {
@@ -174,7 +172,7 @@ async function openProductStudioModal(productId) {
         <p class="text-slate-400 text-xs">Configure professional details, pricing, and digital delivery.</p>
       </div>
 
-      <form onsubmit="handleProductFormSubmit(event, '${productId}')" oninput="state.productStudioDirty=true" class="space-y-4 font-mono">
+      <form id="productStudioForm" onsubmit="handleProductFormSubmit(event, '${productId}')" class="space-y-4 font-mono">
         <div>
           <label class="text-slate-400 block mb-1">Product Title *</label>
           <input type="text" id="pName" required value="${p.name || ''}" placeholder="Product Title" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs font-bold">
@@ -183,11 +181,11 @@ async function openProductStudioModal(productId) {
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="text-slate-400 block mb-1">Real Price (₹)</label>
-            <input type="number" id="pOrigPrice" value="${p.original_price || 999}" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs">
+            <input type="number" id="pOrigPrice" required value="${p.original_price || 999}" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs">
           </div>
           <div>
             <label class="text-slate-400 block mb-1">Selling Price (₹)</label>
-            <input type="number" id="pSalePrice" value="${p.sale_price || 499}" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-emerald-400 font-bold text-xs">
+            <input type="number" id="pSalePrice" required value="${p.sale_price || 499}" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-emerald-400 font-bold text-xs">
           </div>
         </div>
 
@@ -200,7 +198,7 @@ async function openProductStudioModal(productId) {
           <div>
             <label class="text-slate-400 block mb-1">Status</label>
             <select id="pStatus" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-emerald-400 font-bold text-xs">
-              <option value="active" ${p.status === 'active' ? 'selected' : ''}>Published</option>
+              <option value="active" ${p.status === 'active' ? 'selected' : ''}>Published (active)</option>
               <option value="draft" ${p.status === 'draft' ? 'selected' : ''}>Draft</option>
               <option value="out_of_stock" ${p.status === 'out_of_stock' ? 'selected' : ''}>Out of Stock</option>
             </select>
@@ -208,9 +206,9 @@ async function openProductStudioModal(productId) {
           <div>
             <label class="text-slate-400 block mb-1">Delivery Type</label>
             <select id="pDelivery" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs">
-              <option value="EMAIL_PASSWORD">Email + Password</option>
-              <option value="STANDARD_LINK">Standard Link</option>
-              <option value="LICENSE_KEY">License Key</option>
+              <option value="EMAIL_PASSWORD" ${p.delivery_type === 'EMAIL_PASSWORD' ? 'selected' : ''}>Email + Password</option>
+              <option value="STANDARD_LINK" ${p.delivery_type === 'STANDARD_LINK' ? 'selected' : ''}>Standard Link</option>
+              <option value="LICENSE_KEY" ${p.delivery_type === 'LICENSE_KEY' ? 'selected' : ''}>License Key</option>
             </select>
           </div>
         </div>
@@ -220,8 +218,8 @@ async function openProductStudioModal(productId) {
           <input type="text" id="pImage" value="${p.images?.[0] || ''}" placeholder="https://..." class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs">
         </div>
 
-        <button type="submit" id="saveProductSubmitBtn" class="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95 transition-all text-xs">
-          ${isNew ? 'Create Product' : 'Save Product Changes'}
+        <button type="submit" id="saveProductSubmitBtn" class="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95 transition-all text-xs cursor-pointer">
+          ${isNew ? 'CREATE PRODUCT' : 'SAVE CHANGES'}
         </button>
       </form>
     </div>
@@ -232,8 +230,10 @@ async function handleProductFormSubmit(e, productId) {
   e.preventDefault();
   const isNew = productId === 'new';
   const btn = document.getElementById('saveProductSubmitBtn');
-  btn.disabled = true;
-  btn.innerHTML = `${SVG_SPINNER} Saving...`;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `${SVG_SPINNER} Saving...`;
+  }
 
   const imgUrl = document.getElementById('pImage').value.trim();
   const payload = {
@@ -247,18 +247,20 @@ async function handleProductFormSubmit(e, productId) {
   };
 
   try {
-    await fetchJSON(isNew ? '/api/admin/products' : `/api/admin/products/${productId}`, {
+    const result = await fetchJSON(isNew ? '/api/admin/products' : `/api/admin/products/${productId}`, {
       method: isNew ? 'POST' : 'PUT',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
       body: JSON.stringify(payload)
     });
-    state.productStudioDirty = false;
+
     showToast(isNew ? '✓ Product created successfully.' : '✓ Product updated successfully.');
     document.getElementById('globalModal').classList.add('hidden');
     renderAdminProductsStudio(document.getElementById('adminMainContent'));
   } catch (err) {
-    btn.disabled = false;
-    btn.innerHTML = isNew ? 'Create Product' : 'Save Product Changes';
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = isNew ? 'CREATE PRODUCT' : 'SAVE CHANGES';
+    }
     showToast(err.message, 'error');
   }
 }
