@@ -34,6 +34,7 @@
     body { background-color: #030712; color: #f3f4f6; overflow-x: hidden; }
     .glass { background: rgba(17, 24, 39, 0.75); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); }
     .glass-card { background: linear-gradient(135deg, rgba(31, 41, 55, 0.45) 0%, rgba(17, 24, 39, 0.6) 100%); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.06); transition: all 0.25s; }
+    .glass-card:hover { border-color: rgba(16, 185, 129, 0.4); transform: translateY(-4px); }
     .admin-card { background-color: #0f1422; border: 1px solid #1c2438; }
     .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
     .custom-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 999px; }
@@ -49,7 +50,7 @@
     <div class="glass max-w-5xl w-full rounded-3xl p-5 sm:p-8 relative max-h-[94vh] overflow-y-auto custom-scroll shadow-2xl border border-white/10" id="globalModalContent"></div>
   </div>
 
-  <!-- Load Modular Page Scripts -->
+  <!-- Load Modular Admin Scripts -->
   <script src="/js/dashboard.js"></script>
   <script src="/js/product-studio.js"></script>
   <script src="/js/account-slots.js"></script>
@@ -58,6 +59,14 @@
   <script src="/js/customers.js"></script>
   <script src="/js/payment-settings.js"></script>
   <script src="/js/website-status.js"></script>
+
+  <!-- Load Modular Storefront Scripts -->
+  <script src="/js/store-header.js"></script>
+  <script src="/js/store-home.js"></script>
+  <script src="/js/store-product.js"></script>
+  <script src="/js/store-cart-checkout.js"></script>
+  <script src="/js/store-orders.js"></script>
+  <script src="/js/store-auth.js"></script>
 
   <script>
     const state = {
@@ -126,13 +135,54 @@
       state.currentView = view;
       closeAllDrawers();
       window.scrollTo({ top: 0, behavior: 'smooth' });
+
       const viewport = document.getElementById('mainViewport');
       if (view === 'admin-center') {
         if (!state.adminToken) renderAdminLogin(viewport);
         else renderAdminSaaSLayout(viewport);
         return;
       }
-      viewport.innerHTML = `<div class="p-8 text-center text-white text-xs font-mono">Storefront active. Access Admin Panel via /admin-center</div>`;
+      renderStorefrontLayout(viewport, view, params);
+    }
+
+    function renderStorefrontLayout(viewport, view, params) {
+      viewport.innerHTML = `
+        <div class="flex flex-1 min-h-screen relative w-full bg-surface-950">
+          <aside id="customerSidebar" class="fixed lg:static top-0 bottom-0 left-0 w-64 bg-surface-900 border-r border-white/5 z-50 flex flex-col justify-between transition-transform duration-300 -translate-x-full lg:translate-x-0">
+            <div>
+              <div class="p-6 border-b border-white/5 flex items-center justify-between">
+                <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('home')">
+                  <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center font-black text-gray-950 shadow-lg shadow-emerald-500/20">N</div>
+                  <div><span class="font-extrabold text-sm tracking-wider text-white block">NEXUS</span><span class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">DIGITAL VAULT</span></div>
+                </div>
+                <button onclick="toggleCustomerDrawer(false)" class="lg:hidden text-slate-400 p-1">✕</button>
+              </div>
+              <nav class="p-4 space-y-1.5 text-xs font-semibold">
+                <button onclick="navigate('home')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5"><span>🏠</span> Home</button>
+                <button onclick="navigate('products')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5"><span>🛍</span> All Products</button>
+                <button onclick="navigate('orders')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5"><span>📦</span> Purchased Items</button>
+                <button onclick="navigate('account')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5"><span>👤</span> Account</button>
+              </nav>
+            </div>
+            <div class="p-4 border-t border-white/5">
+              <button onclick="navigate('admin-center')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-slate-400 bg-white/[0.03] hover:text-emerald-400 border border-white/5">🔐 Admin Panel</button>
+            </div>
+          </aside>
+          <div class="flex-1 flex flex-col min-w-0">
+            <div id="storeHeaderContainer"></div>
+            <main id="storeContent" class="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-8"></main>
+          </div>
+        </div>
+      `;
+
+      renderStoreHeader(document.getElementById('storeHeaderContainer'));
+      const storeContent = document.getElementById('storeContent');
+
+      if (view === 'home' || view === 'products') renderStoreHome(storeContent);
+      else if (view === 'product-details') renderStoreProductDetails(storeContent, params.id);
+      else if (view === 'cart' || view === 'checkout') renderStoreCheckout(storeContent);
+      else if (view === 'orders') renderStoreOrders(storeContent);
+      else if (view === 'account') renderCustomerAuthPrompt(storeContent, 'account');
     }
 
     function renderAdminLogin(viewport) {
@@ -227,7 +277,7 @@
       navigate('home');
     }
 
-    document.addEventListener('DOMContentLoaded', () => { navigate('admin-center'); });
+    document.addEventListener('DOMContentLoaded', () => { navigate('home'); });
   </script>
 </body>
 </html>
