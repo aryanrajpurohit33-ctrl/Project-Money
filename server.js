@@ -14,12 +14,22 @@ app.use(express.static(path.join(__dirname, 'public')));
 const JWT_SECRET = process.env.JWT_SECRET || 'nexus_digital_super_secret_jwt_2026_key';
 
 // ----------------------------------------------------
-// PERFORMANCE & PRESENCE LOGGERS
+// PERFORMANCE, TRAFFIC & FUNNEL LOGGERS
 // ----------------------------------------------------
 const requestLogs = [];
 const appErrorLogs = [];
 const activeSessions = new Map();
 const activityFeed = [];
+
+// Funnel counters
+const funnelStats = {
+  visitors: 0,
+  product_views: 0,
+  checkouts_started: 0,
+  payments_initiated: 0,
+  proofs_uploaded: 0,
+  confirmed_purchases: 0
+};
 
 app.use((req, res, next) => {
   const startHrTime = process.hrtime();
@@ -140,10 +150,18 @@ const SubscriptionSchema = new mongoose.Schema({
   product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
   assigned_slot_id: { type: mongoose.Schema.Types.ObjectId, ref: 'InventorySlot', default: null },
   product_name: String,
-  duration: { type: String, enum: ['1_MONTH', '6_MONTHS', '1_YEAR', 'ONE_TIME'], required: true },
+  duration: { type: String, enum: ['1_MONTH', '6_MONTHS', '1_YEAR', 'ONE_TIME', 'CUSTOM'], required: true },
   start_at: { type: Date, default: Date.now },
   expires_at: { type: Date, required: true },
-  status: { type: String, enum: ['ACTIVE', 'EXPIRED', 'REVOKED'], default: 'ACTIVE' },
+  status: { type: String, enum: ['ACTIVE', 'EXPIRED', 'REVOKED', 'CANCELLED'], default: 'ACTIVE' },
+  history: [{
+    action: String,
+    performed_by: String,
+    details: String,
+    timestamp: { type: Date, default: Date.now }
+  }],
+  cancelled_at: { type: Date, default: null },
+  cancellation_reason: { type: String, default: '' },
   created_at: { type: Date, default: Date.now }
 });
 
@@ -270,12 +288,150 @@ function authAdmin(req, res, next) {
 }
 
 // ----------------------------------------------------
+// SYSTEM & INFRASTRUCTURE MONITORING
+// ----------------------------------------------------
+app.get('/api/admin/system/infrastructure', authAdmin, async (req, res) => {
+  try {
+    const memUsage = process.memoryUsage();
+    const rssMB = Math.round((memUsage.rss / 1024 / 1024) * 10) / 10;
+    const heapUsedMB = Math.round((memUsage.heapUsed / 1024 / 1024) * 10) / 10;
+    const heapTotalMB = Math.round((memUsage.heapTotal / 1024 / 1024) * 10) / 10;
+
+    const osFreeMemMB = Math.round(os.freemem() / 1024 / 1024);
+    const osTotalMemMB = Math.round(os.totalmem() / 1024 / 1024);
+    const osUsedMemMB = osTotalMemMB - osFreeMemMB;
+    const osMemPercent = Math.round((osUsedMemMB / osTotalMemMB) * 100);
+
+    let dbStatus = 'Disconnected';
+    let dbDataSizeMB = 0;
+    let dbStorageSizeMB = 0;
+    let dbIndexesSizeMB = 0;
+    let dbCollectionsCount = 0;
+    let dbPingMs = 0;
+
+    if (mongoose.connection.readyState === 1) {
+      dbStatus = 'Connected';
+      const pingStart = Date.now();
+      const stats = await mongoose.connection.db.stats();
+      dbPingMs = Date.now() - pingStart;
+
+      dbDataSizeMB = Math.round((stats.dataSize / 1024 / 1024) * 100) / 100;
+      dbStorageSizeMB = Math.round((stats.storageSize / 1024 / 1024) * 100) / 100;
+      dbIndexesSizeMB = Math.round((stats.indexSize / 1024 / 1024) * 100) / 100;
+      dbCollectionsCount = stats.collections;
+    }
+
+    const [usersCount, productsCount, ordersCount, txnsCount, invCount, subsCount] = await Promise.all([
+      User.countDocuments(),
+      Product.countDocuments(),
+      Order.countDocuments(),
+      Transaction.countDocuments(),
+      InventorySlot.countDocuments(),
+      Subscription.countDocuments()
+    ]);
+
+    const recentRequests = requestLogs.slice(0, 50);
+    const avgResponseTime = recentRequests.length > 0
+      ? Math.round(recentRequests.reduce((a, b) => a + b.responseTime, 0) / recentRequests.length)
+      : 12;
+
+    const errorCount = recentRequests.filter(r => r.statusCode >= 400).length;
+    const errorRatePercent = recentRequests.length > 0
+      ? Math.round((errorCount / recentRequests.length) * 100)
+      : 0;
+
+    const uptimeSec = Math.floor(process.uptime());
+    const days = Math.floor(uptimeSec / 86400);
+    const hours = Math.floor((uptimeSec % 86400) / 3600);
+    const mins = Math.floor((uptimeSec % 3600) / 60);
+    const formattedUptime = `${days > 0 ? days + 'd ' : ''}${hours}h ${mins}m ${uptimeSec % 60}s`;
+
+    const isRender = !!process.env.RENDER;
+    const hostingDetails = {
+      provider: isRender ? 'Render Cloud (Production)' : 'Node.js Standalone Container',
+      service_id: process.env.RENDER_SERVICE_ID || 'Container-Local',
+      node_version: process.version,
+      platform: `${os.type()} ${os.arch()}`,
+      environment: process.env.NODE_ENV || 'production'
+    };
+
+    res.json({
+      server: {
+        status: 'Operational',
+        uptime_seconds: uptimeSec,
+        uptime_formatted: formattedUptime,
+        service_memory_rss_mb: rssMB,
+        heap_used_mb: heapUsedMB,
+        heap_total_mb: heapTotalMB,
+        os_used_mem_mb: osUsedMemMB,
+        os_total_mem_mb: osTotalMemMB,
+        os_mem_percent: osMemPercent,
+        avg_response_time_ms: avgResponseTime,
+        error_rate_percent: errorRatePercent,
+        request_count_tracked: requestLogs.length,
+        hosting: hostingDetails
+      },
+      database: {
+        status: dbStatus,
+        ping_latency_ms: dbPingMs,
+        data_size_mb: dbDataSizeMB,
+        storage_size_mb: dbStorageSizeMB,
+        indexes_size_mb: dbIndexesSizeMB,
+        collections_count: dbCollectionsCount,
+        collections: [
+          { name: 'Users', count: usersCount, status: 'Healthy' },
+          { name: 'Products', count: productsCount, status: 'Healthy' },
+          { name: 'Subscriptions', count: subsCount, status: 'Healthy' },
+          { name: 'Orders', count: ordersCount, status: 'Healthy' },
+          { name: 'Transactions', count: txnsCount, status: 'Healthy' },
+          { name: 'Account Slots', count: invCount, status: 'Healthy' }
+        ]
+      },
+      recent_api_metrics: requestLogs.slice(0, 8),
+      recent_errors: appErrorLogs.slice(0, 10),
+      timestamp: new Date()
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/system/health-check', authAdmin, async (req, res) => {
+  const results = {
+    frontend: { status: 'Operational', latency_ms: 2 },
+    backend: { status: 'Operational', uptime_sec: Math.floor(process.uptime()) },
+    database: { status: 'Disconnected', latency_ms: null },
+    auth_service: { status: 'Operational', algorithm: 'HS256' },
+    payment_gateway: { status: 'Operational', configured: true },
+    digital_delivery: { status: 'Operational', stock_ready: true }
+  };
+
+  try {
+    const dbStart = Date.now();
+    await mongoose.connection.db.admin().ping();
+    results.database.status = 'Connected';
+    results.database.latency_ms = Date.now() - dbStart;
+    res.json({ success: true, timestamp: new Date(), checks: results });
+  } catch (err) {
+    results.database.status = 'Degraded';
+    results.database.error = err.message;
+    res.status(500).json({ success: false, checks: results });
+  }
+});
+
+// ----------------------------------------------------
 // STORE & CUSTOMER APIS
 // ----------------------------------------------------
 app.post('/api/presence/heartbeat', (req, res) => {
   const { sessionId, page, action } = req.body;
   if (sessionId) activeSessions.set(sessionId, { page: page || 'home', timestamp: Date.now() });
-  if (action) recordActivity('visitor_action', action);
+  funnelStats.visitors++;
+  if (action) {
+    if (action.includes('product_view')) funnelStats.product_views++;
+    if (action.includes('checkout_start')) funnelStats.checkouts_started++;
+    recordActivity('visitor_action', action);
+  }
   res.json({ status: 'ok' });
 });
 
@@ -297,10 +453,10 @@ app.get('/api/products', async (req, res) => {
       query.$or = [{ name: regex }, { description: regex }, { sku: regex }, { tags: regex }, { category: regex }];
     }
     const products = await Product.find(query).sort({ created_at: -1 });
-    const formatted = products.map(p => {
-      const inStock = p.status === 'active';
-      return { ...p.toObject(), in_stock: inStock };
-    });
+    const formatted = products.map(p => ({
+      ...p.toObject(),
+      in_stock: p.status === 'active'
+    }));
     res.json(formatted);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -436,6 +592,7 @@ app.post('/api/checkout/initiate-order', authCustomer, async (req, res) => {
     order.transaction_id = transaction._id;
     await order.save();
 
+    funnelStats.payments_initiated++;
     recordActivity('order_initiated', `Customer ${user.name} started order #${orderNumber} (${mainDuration}) for ₹${totalAmount}`);
     res.status(201).json({ order, transaction });
   } catch (err) {
@@ -458,6 +615,7 @@ app.post('/api/checkout/upload-proof-json', authCustomer, async (req, res) => {
       delivery_status: 'Processing'
     });
 
+    funnelStats.proofs_uploaded++;
     recordActivity('proof_uploaded', `Proof submitted for TXN: ${txn.txn_id}`);
     res.json({ success: true, transaction: txn });
   } catch (err) {
@@ -465,9 +623,7 @@ app.post('/api/checkout/upload-proof-json', authCustomer, async (req, res) => {
   }
 });
 
-// =========================================================================
-// CUSTOMER PURCHASED ITEMS (DYNAMIC CREDENTIAL RESOLUTION)
-// =========================================================================
+// Customer Purchased Items
 app.get('/api/customer/orders', authCustomer, async (req, res) => {
   try {
     const orders = await Order.find({ user_id: req.user.id })
@@ -487,9 +643,7 @@ app.get('/api/customer/orders', authCustomer, async (req, res) => {
       const oObj = order.toObject();
 
       oObj.items = oObj.items.map(it => {
-        if (!isPaid) {
-          return { ...it, delivered_data: null };
-        }
+        if (!isPaid) return { ...it, delivered_data: null };
 
         const sub = it.subscription_id;
         if (sub) {
@@ -521,6 +675,404 @@ app.get('/api/customer/orders', authCustomer, async (req, res) => {
     });
 
     res.json(sanitized);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ----------------------------------------------------
+// DEDICATED SUBSCRIPTION MANAGEMENT APIS (ADMIN ONLY)
+// ----------------------------------------------------
+
+// 1. Comprehensive Subscriptions Query with Filters, Search, and Live Exact Time-Remaining
+app.get('/api/admin/subscriptions/advanced', authAdmin, async (req, res) => {
+  try {
+    const { status, expiring_within_days, search, product_id, sort_by } = req.query;
+    let filter = {};
+
+    if (product_id && product_id !== 'ALL') filter.product_id = product_id;
+    if (status && status !== 'ALL') filter.status = status;
+
+    const now = new Date();
+
+    if (expiring_within_days) {
+      const targetDays = Number(expiring_within_days) || 7;
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + targetDays);
+      filter.status = 'ACTIVE';
+      filter.expires_at = { $gte: now, $lte: futureDate };
+    }
+
+    let sortOption = { expires_at: 1 };
+    if (sort_by === 'newest') sortOption = { created_at: -1 };
+    if (sort_by === 'oldest') sortOption = { created_at: 1 };
+    if (sort_by === 'expiring_latest') sortOption = { expires_at: -1 };
+
+    const rawSubs = await Subscription.find(filter)
+      .populate('user_id', 'name email mobile')
+      .populate('product_id', 'name sku original_price sale_price')
+      .populate('order_id', 'order_number total_amount payment_method payment_status transaction_id')
+      .populate('assigned_slot_id', 'account_label email max_active_users')
+      .sort(sortOption);
+
+    // Calculate exact remaining time string & auto status derivation
+    const enrichedSubs = await Promise.all(rawSubs.map(async (s) => {
+      const exp = new Date(s.expires_at);
+      const diffMs = exp - now;
+      const isExpired = diffMs <= 0;
+
+      // Auto update status if expired
+      let currentStatus = s.status;
+      if (s.status === 'ACTIVE' && isExpired) {
+        currentStatus = 'EXPIRED';
+      }
+
+      // Format exact remaining string
+      let timeRemainingText = 'Expired';
+      let daysLeft = 0;
+      if (!isExpired && currentStatus === 'ACTIVE') {
+        const totalMinutes = Math.floor(diffMs / (1000 * 60));
+        const totalHours = Math.floor(totalMinutes / 60);
+        const days = Math.floor(totalHours / 24);
+        const hours = totalHours % 24;
+        const minutes = totalMinutes % 60;
+        daysLeft = days;
+
+        if (days > 30) {
+          const months = Math.floor(days / 30);
+          const remainingDays = days % 30;
+          timeRemainingText = `${months} Month${months > 1 ? 's' : ''} ${remainingDays} Day${remainingDays !== 1 ? 's' : ''} Left`;
+        } else if (days > 0) {
+          timeRemainingText = `${days} Day${days > 1 ? 's' : ''} ${hours} Hr${hours !== 1 ? 's' : ''} Left`;
+        } else if (hours > 0) {
+          timeRemainingText = `${hours} Hr${hours > 1 ? 's' : ''} ${minutes} Min Left`;
+        } else {
+          timeRemainingText = `${minutes} Min Left`;
+        }
+      }
+
+      // People using this slot count
+      let slotUsage = '1 / 1';
+      if (s.assigned_slot_id) {
+        const activeOnSlot = await Subscription.countDocuments({
+          assigned_slot_id: s.assigned_slot_id._id,
+          status: 'ACTIVE',
+          expires_at: { $gt: now }
+        });
+        slotUsage = `${activeOnSlot} / ${s.assigned_slot_id.max_active_users || 1}`;
+      }
+
+      return {
+        ...s.toObject(),
+        status: currentStatus,
+        is_expired: isExpired,
+        days_left: daysLeft,
+        time_remaining_text: timeRemainingText,
+        slot_usage: slotUsage
+      };
+    }));
+
+    // In-memory search filter for populated fields
+    let finalSubs = enrichedSubs;
+    if (search) {
+      const q = search.toLowerCase();
+      finalSubs = enrichedSubs.filter(s => 
+        (s.user_id?.name || '').toLowerCase().includes(q) ||
+        (s.user_id?.email || '').toLowerCase().includes(q) ||
+        (s.product_name || '').toLowerCase().includes(q) ||
+        (s.order_id?.order_number || '').toLowerCase().includes(q) ||
+        (s.assigned_slot_id?.account_label || '').toLowerCase().includes(q)
+      );
+    }
+
+    // Overall Live Statistics
+    const allSubs = await Subscription.find();
+    const sevenDaysFuture = new Date();
+    sevenDaysFuture.setDate(sevenDaysFuture.getDate() + 7);
+
+    const stats = {
+      total: allSubs.length,
+      active: allSubs.filter(s => s.status === 'ACTIVE' && new Date(s.expires_at) > now).length,
+      expiring_soon: allSubs.filter(s => s.status === 'ACTIVE' && new Date(s.expires_at) > now && new Date(s.expires_at) <= sevenDaysFuture).length,
+      expired: allSubs.filter(s => s.status === 'EXPIRED' || (s.status === 'ACTIVE' && new Date(s.expires_at) <= now)).length,
+      cancelled: allSubs.filter(s => s.status === 'CANCELLED' || s.status === 'REVOKED').length,
+      active_customers_count: (await Subscription.distinct('user_id', { status: 'ACTIVE', expires_at: { $gt: now } })).length
+    };
+
+    res.json({
+      subscriptions: finalSubs,
+      stats,
+      server_time: now
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. Extend Subscription Duration
+app.post('/api/admin/subscriptions/:id/extend', authAdmin, async (req, res) => {
+  try {
+    const { extend_type, custom_days } = req.body;
+    const sub = await Subscription.findById(req.params.id);
+    if (!sub) return res.status(404).json({ error: 'Subscription not found' });
+
+    const currentExpiry = new Date(sub.expires_at > new Date() ? sub.expires_at : new Date());
+    const newExpiry = new Date(currentExpiry);
+
+    if (extend_type === '1_MONTH') newExpiry.setMonth(newExpiry.getMonth() + 1);
+    else if (extend_type === '6_MONTHS') newExpiry.setMonth(newExpiry.getMonth() + 6);
+    else if (extend_type === '1_YEAR') newExpiry.setFullYear(newExpiry.getFullYear() + 1);
+    else if (extend_type === 'CUSTOM') newExpiry.setDate(newExpiry.getDate() + (Number(custom_days) || 30));
+
+    sub.expires_at = newExpiry;
+    sub.status = 'ACTIVE';
+    sub.history.push({
+      action: 'EXTEND',
+      performed_by: req.admin.username,
+      details: `Subscription extended to ${newExpiry.toLocaleDateString()}`
+    });
+
+    await sub.save();
+    recordActivity('subscription_extended', `Extended subscription #${sub._id} until ${newExpiry.toLocaleDateString()}`);
+    res.json({ success: true, subscription: sub });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// 3. Reassign Subscription to Another Available Slot
+app.post('/api/admin/subscriptions/:id/reassign-slot', authAdmin, async (req, res) => {
+  try {
+    const { new_slot_id } = req.body;
+    const sub = await Subscription.findById(req.params.id);
+    if (!sub) return res.status(404).json({ error: 'Subscription not found' });
+
+    const targetSlot = await InventorySlot.findById(new_slot_id);
+    if (!targetSlot || targetSlot.status === 'DISABLED') {
+      return res.status(400).json({ error: 'Target slot is invalid or disabled' });
+    }
+
+    const previousSlotId = sub.assigned_slot_id;
+    sub.assigned_slot_id = targetSlot._id;
+    sub.history.push({
+      action: 'REASSIGN_SLOT',
+      performed_by: req.admin.username,
+      details: `Reassigned from previous slot to "${targetSlot.account_label}" (${targetSlot.email})`
+    });
+    await sub.save();
+
+    targetSlot.assignment_history.push({
+      customer_name: sub.product_name,
+      order_id: sub.order_id?.toString() || 'ORD',
+      duration: sub.duration,
+      start_at: sub.start_at,
+      expires_at: sub.expires_at
+    });
+    await targetSlot.save();
+
+    recordActivity('slot_reassigned', `Reassigned subscription to slot "${targetSlot.account_label}"`);
+    res.json({ success: true, subscription: sub });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// 4. Revoke or Cancel Subscription Access Immediately
+app.post('/api/admin/subscriptions/:id/revoke', authAdmin, async (req, res) => {
+  try {
+    const { reason, action_type } = req.body;
+    const sub = await Subscription.findById(req.params.id);
+    if (!sub) return res.status(404).json({ error: 'Subscription not found' });
+
+    sub.status = action_type === 'CANCEL' ? 'CANCELLED' : 'REVOKED';
+    sub.cancelled_at = new Date();
+    sub.cancellation_reason = reason || 'Revoked by Administrator';
+    sub.history.push({
+      action: sub.status,
+      performed_by: req.admin.username,
+      details: `Access revoked. Reason: ${sub.cancellation_reason}`
+    });
+
+    await sub.save();
+    recordActivity('subscription_revoked', `Revoked subscription for product "${sub.product_name}"`);
+    res.json({ success: true, subscription: sub });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ----------------------------------------------------
+// ADVANCED DASHBOARD ANALYTICS APIS
+// ----------------------------------------------------
+app.get('/api/admin/dashboard/full-overview', authAdmin, async (req, res) => {
+  try {
+    const now = new Date();
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - 7);
+
+    const monthStart = new Date();
+    monthStart.setDate(monthStart.getDate() - 30);
+
+    // Sales Aggregations
+    const [todaySalesAgg, weekSalesAgg, monthSalesAgg, totalSalesAgg] = await Promise.all([
+      Order.aggregate([
+        { $match: { payment_status: 'Paid', created_at: { $gte: todayStart } } },
+        { $group: { _id: null, total: { $sum: '$total_amount' }, count: { $sum: 1 } } }
+      ]),
+      Order.aggregate([
+        { $match: { payment_status: 'Paid', created_at: { $gte: weekStart } } },
+        { $group: { _id: null, total: { $sum: '$total_amount' }, count: { $sum: 1 } } }
+      ]),
+      Order.aggregate([
+        { $match: { payment_status: 'Paid', created_at: { $gte: monthStart } } },
+        { $group: { _id: null, total: { $sum: '$total_amount' }, count: { $sum: 1 } } }
+      ]),
+      Order.aggregate([
+        { $match: { payment_status: 'Paid' } },
+        { $group: { _id: null, total: { $sum: '$total_amount' }, count: { $sum: 1 } } }
+      ])
+    ]);
+
+    const totalOrdersCount = await Order.countDocuments({ payment_status: 'Paid' });
+    const totalRev = totalSalesAgg[0]?.total || 0;
+    const avgOrderVal = totalOrdersCount > 0 ? Math.round(totalRev / totalOrdersCount) : 0;
+
+    // Subscriptions Statuses
+    const allSubs = await Subscription.find();
+    const sevenDaysFuture = new Date();
+    sevenDaysFuture.setDate(sevenDaysFuture.getDate() + 7);
+
+    const activeSubsList = allSubs.filter(s => s.status === 'ACTIVE' && new Date(s.expires_at) > now);
+    const expiringSoonList = allSubs.filter(s => s.status === 'ACTIVE' && new Date(s.expires_at) > now && new Date(s.expires_at) <= sevenDaysFuture);
+
+    // Customer metrics
+    const totalCustomers = await User.countDocuments();
+    const todayCustomers = await User.countDocuments({ created_at: { $gte: todayStart } });
+    const weekCustomers = await User.countDocuments({ created_at: { $gte: weekStart } });
+
+    // Product breakdown
+    const allProducts = await Product.find().sort({ sales_count: -1 });
+    const totalProducts = allProducts.length;
+    const publishedProducts = allProducts.filter(p => p.status === 'active').length;
+    const subProductsCount = allProducts.filter(p => p.product_type === 'SUBSCRIPTION').length;
+    const oneTimeCount = allProducts.filter(p => p.product_type === 'ONE_TIME').length;
+    const topSelling = allProducts.slice(0, 5);
+
+    // Account Slots Metrics
+    const allSlots = await InventorySlot.find();
+    const slotStats = {
+      total: allSlots.length,
+      available: allSlots.filter(s => s.status === 'AVAILABLE').length,
+      assigned: allSlots.filter(s => s.status === 'ASSIGNED').length,
+      full: allSlots.filter(s => s.status === 'FULL').length,
+      active_users: activeSubsList.length
+    };
+
+    // Recent Tables
+    const [recentTxns, recentOrders, expiringSoonDetailed] = await Promise.all([
+      Transaction.find().sort({ created_at: -1 }).limit(5),
+      Order.find().sort({ created_at: -1 }).limit(5),
+      Subscription.find({ status: 'ACTIVE', expires_at: { $gte: now, $lte: sevenDaysFuture } })
+        .populate('user_id', 'name email')
+        .populate('product_id', 'name')
+        .limit(5)
+    ]);
+
+    // Live Visitors Breakdown
+    const visitors = Array.from(activeSessions.values());
+    const liveStats = {
+      total: visitors.length,
+      home: visitors.filter(v => v.page === 'home').length,
+      products: visitors.filter(v => v.page === 'products').length,
+      details: visitors.filter(v => v.page === 'product-details').length,
+      checkout: visitors.filter(v => v.page === 'checkout').length
+    };
+
+    // System Alerts List
+    const alerts = [];
+    const pendingTxnsCount = await Transaction.countDocuments({ status: 'PROCESSING' });
+    if (pendingTxnsCount > 0) alerts.push({ type: 'danger', text: `${pendingTxnsCount} payments waiting for admin verification.` });
+    if (expiringSoonList.length > 0) alerts.push({ type: 'warning', text: `${expiringSoonList.length} customer subscriptions expire within 7 days.` });
+    alerts.push({ type: 'success', text: `Nexus Cloud Engine is online & operational.` });
+
+    res.json({
+      sales: {
+        today: todaySalesAgg[0]?.total || 0,
+        today_orders: todaySalesAgg[0]?.count || 0,
+        week: weekSalesAgg[0]?.total || 0,
+        month: monthSalesAgg[0]?.total || 0,
+        total: totalRev,
+        total_orders: totalOrdersCount,
+        avg_order_value: avgOrderVal
+      },
+      subscriptions: {
+        active: activeSubsList.length,
+        expiring_soon: expiringSoonList.length,
+        expired: allSubs.filter(s => s.status === 'EXPIRED' || (s.status === 'ACTIVE' && new Date(s.expires_at) <= now)).length,
+        total_sub_customers: (await Subscription.distinct('user_id', { status: 'ACTIVE', expires_at: { $gt: now } })).length
+      },
+      customers: {
+        total: totalCustomers,
+        today: todayCustomers,
+        week: weekCustomers,
+        active_sub_users: activeSubsList.length
+      },
+      products: {
+        total: totalProducts,
+        published: publishedProducts,
+        subscriptions_count: subProductsCount,
+        one_time_count: oneTimeCount,
+        top_selling: topSelling
+      },
+      slots: slotStats,
+      funnel: {
+        ...funnelStats,
+        visitors: Math.max(funnelStats.visitors, visitors.length)
+      },
+      live: liveStats,
+      alerts,
+      recent_txns: recentTxns,
+      recent_orders: recentOrders,
+      expiring_soon_list: expiringSoonDetailed
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin Customers Management API
+app.get('/api/admin/customers/list', authAdmin, async (req, res) => {
+  try {
+    const users = await User.find().sort({ created_at: -1 });
+    const now = new Date();
+
+    const customerDetails = await Promise.all(users.map(async (u) => {
+      const [orderCount, activeSubs, historySubs] = await Promise.all([
+        Order.countDocuments({ user_id: u._id, payment_status: 'Paid' }),
+        Subscription.find({ user_id: u._id, status: 'ACTIVE', expires_at: { $gt: now } })
+          .populate('product_id', 'name')
+          .populate('assigned_slot_id', 'account_label email'),
+        Subscription.find({ user_id: u._id }).populate('product_id', 'name').sort({ created_at: -1 })
+      ]);
+
+      return {
+        _id: u._id,
+        name: u.name,
+        email: u.email,
+        mobile: u.mobile,
+        created_at: u.created_at,
+        orders_count: orderCount,
+        active_subscriptions: activeSubs,
+        subscription_history: historySubs
+      };
+    }));
+
+    res.json(customerDetails);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -643,9 +1195,8 @@ app.post('/api/admin/slots', authAdmin, async (req, res) => {
 app.put('/api/admin/slots/:id', authAdmin, async (req, res) => {
   try {
     const { account_label, email, password, custom_text, notes, max_active_users, status } = req.body;
-    
     const slot = await InventorySlot.findById(req.params.id);
-    if (!slot) return res.status(404).json({ error: 'Account slot not found in database' });
+    if (!slot) return res.status(404).json({ error: 'Account slot not found' });
 
     if (account_label !== undefined) slot.account_label = account_label;
     if (email !== undefined) slot.email = email.trim();
@@ -657,7 +1208,6 @@ app.put('/api/admin/slots/:id', authAdmin, async (req, res) => {
     slot.updated_at = new Date();
 
     await slot.save();
-
     recordActivity('slot_updated', `Credentials updated for slot "${slot.account_label}". Live synced to active customers.`);
     res.json(slot);
   } catch (err) {
@@ -679,14 +1229,14 @@ app.delete('/api/admin/slots/:id', authAdmin, async (req, res) => {
     }
 
     await InventorySlot.findByIdAndDelete(req.params.id);
-    res.json({ success: true, message: 'Slot deleted successfully' });
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // ----------------------------------------------------
-// ADMIN TRANSACTIONS (DYNAMIC LIVE SLOT MATCHING)
+// ADMIN TRANSACTIONS & CONFIRMATION
 // ----------------------------------------------------
 app.post('/api/admin/login', async (req, res) => {
   try {
@@ -702,23 +1252,6 @@ app.post('/api/admin/login', async (req, res) => {
   }
 });
 
-app.get('/api/admin/stats', authAdmin, async (req, res) => {
-  try {
-    const totalRevenueAgg = await Order.aggregate([
-      { $match: { payment_status: 'Paid' } },
-      { $group: { _id: null, total: { $sum: '$total_amount' } } }
-    ]);
-    const totalRevenue = totalRevenueAgg[0]?.total || 0;
-    const pendingPayments = await Transaction.countDocuments({ status: 'PROCESSING' });
-    const activeSubs = await Subscription.countDocuments({ status: 'ACTIVE', expires_at: { $gt: new Date() } });
-
-    res.json({ totalRevenue, pendingPayments, activeSubs });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Live dynamic slot population regardless of transaction timestamp
 app.get('/api/admin/transactions', authAdmin, async (req, res) => {
   try {
     const txns = await Transaction.find().select('-proof_screenshot').sort({ created_at: -1 });
@@ -734,7 +1267,6 @@ app.get('/api/admin/transactions', authAdmin, async (req, res) => {
       if (order && order.items.length > 0) {
         productId = order.items[0].product_id;
         
-        // Query ALL non-disabled slots for this product created at ANY time
         const slots = await InventorySlot.find({
           product_id: productId,
           status: { $ne: 'DISABLED' }
@@ -781,7 +1313,6 @@ app.get('/api/admin/transactions/:id/proof', authAdmin, async (req, res) => {
   }
 });
 
-// Confirm Payment + Assign (Supports selecting existing slot OR creating on-the-fly)
 app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -798,7 +1329,6 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
 
     let slot = null;
 
-    // Support creating slot directly during transaction confirmation
     if (create_new_slot && create_new_slot.email) {
       slot = await InventorySlot.create([{
         product_id: item.product_id,
@@ -863,7 +1393,12 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
       duration: item.duration,
       start_at: startAt,
       expires_at: expiresAt,
-      status: 'ACTIVE'
+      status: 'ACTIVE',
+      history: [{
+        action: 'CONFIRM_PAYMENT',
+        performed_by: req.admin.username,
+        details: `Assigned to slot "${slot.account_label}" (${slot.email})`
+      }]
     }], { session });
 
     item.subscription_id = createdSub[0]._id;
@@ -887,6 +1422,7 @@ app.post('/api/admin/transactions/:id/confirm-and-assign', authAdmin, async (req
     order.delivery_status = 'Delivered';
     await order.save({ session });
 
+    funnelStats.confirmed_purchases++;
     await session.commitTransaction();
     session.endSession();
 

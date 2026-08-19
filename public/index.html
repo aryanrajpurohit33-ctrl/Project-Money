@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>NEXUS DIGITAL — Digital Goods & Account Slots</title>
+  <title>NEXUS DIGITAL — Subscriptions & Digital Goods</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -72,7 +72,7 @@
   <div id="appBackdrop" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden transition-opacity"></div>
   <div id="mainViewport" class="flex flex-1 min-h-screen"></div>
 
-  <!-- Global Modal -->
+  <!-- Global Modal for Inspection, Extensions & Edit Forms -->
   <div id="globalModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
     <div class="glass max-w-3xl w-full rounded-3xl p-6 relative max-h-[90vh] overflow-y-auto custom-scroll" id="globalModalContent"></div>
   </div>
@@ -88,9 +88,10 @@
       currentView: 'home',
       adminSection: 'dashboard',
       paymentSettings: null,
-      slotFilterProduct: 'ALL',
-      slotFilterStatus: 'ALL',
-      loadedSlots: []
+      subFilterStatus: 'ALL',
+      subExpiringDays: '',
+      subSearch: '',
+      loadedSubs: []
     };
 
     function showToast(message, type = 'success') {
@@ -202,7 +203,10 @@
                 <button onclick="toggleCustomerDrawer(true)" class="lg:hidden p-2 rounded-xl bg-white/5 text-slate-300">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
-                <span class="text-xs font-bold text-slate-400">Digital Goods & Subscriptions</span>
+                <div class="relative w-48 sm:w-80">
+                  <input type="text" oninput="handleStoreSearch(this.value)" placeholder="Search products, accounts, keys..." class="w-full pl-9 pr-4 py-2 rounded-xl bg-surface-900 border border-white/10 text-xs text-white placeholder-slate-500 focus:border-emerald-500 outline-none">
+                  <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
               </div>
               <div class="flex items-center gap-3">
                 <button onclick="navigate('cart')" class="relative p-2.5 rounded-xl bg-surface-900 border border-white/5 text-slate-300">
@@ -245,36 +249,45 @@
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            ${products.map(p => `
-              <div class="glass-card rounded-3xl overflow-hidden flex flex-col justify-between border border-white/5 relative group cursor-pointer" onclick="navigate('product-details', { id: '${p._id}' })">
-                <span class="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full ${p.product_type === 'SUBSCRIPTION' ? 'bg-indigo-500' : 'bg-emerald-500'} text-white font-black text-[10px] uppercase">
-                  ${p.product_type === 'SUBSCRIPTION' ? '🔄 Subscription' : '⚡ One-Time'}
-                </span>
+            ${products.map(p => {
+              const savings = p.original_price > p.sale_price ? p.original_price - p.sale_price : 0;
+              return `
+                <div class="glass-card rounded-3xl overflow-hidden flex flex-col justify-between border border-white/5 relative group cursor-pointer" onclick="navigate('product-details', { id: '${p._id}' })">
+                  ${p.discount_percentage > 0 ? `
+                    <span class="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full bg-rose-500 text-white font-black text-[10px] uppercase">
+                      ${p.discount_percentage}% OFF
+                    </span>
+                  ` : ''}
+                  <span class="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-full bg-surface-950/80 border border-white/10 text-emerald-400 font-bold text-[9px] uppercase">
+                    ${p.product_type === 'SUBSCRIPTION' ? '🔄 Subscription' : '⚡ One-Time'}
+                  </span>
 
-                <div>
-                  <div class="h-48 w-full overflow-hidden bg-surface-900">
-                    <img src="${p.images && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                  </div>
-                  <div class="p-5 space-y-2">
-                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">${p.category || 'Digital Good'}</span>
-                    <h3 class="text-sm font-bold text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">${p.name}</h3>
-                    <p class="text-xs text-slate-400 line-clamp-2">${p.short_description || p.description}</p>
-                  </div>
-                </div>
-
-                <div class="px-5 pb-5 pt-2 flex items-center justify-between border-t border-white/5" onclick="event.stopPropagation()">
                   <div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-base font-black text-white">₹${p.sale_price}</span>
-                      ${p.original_price > p.sale_price ? `<span class="text-xs text-slate-500 line-through">₹${p.original_price}</span>` : ''}
+                    <div class="h-48 w-full overflow-hidden bg-surface-900">
+                      <img src="${p.images && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                    </div>
+                    <div class="p-5 space-y-2">
+                      <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">${p.category || 'Digital Good'}</span>
+                      <h3 class="text-sm font-bold text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">${p.name}</h3>
+                      <p class="text-xs text-slate-400 line-clamp-2">${p.short_description || p.description}</p>
                     </div>
                   </div>
-                  <button onclick="navigate('product-details', { id: '${p._id}' })" class="px-4 py-2 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95">
-                    View Details
-                  </button>
+
+                  <div class="px-5 pb-5 pt-2 flex items-center justify-between border-t border-white/5" onclick="event.stopPropagation()">
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span class="text-base font-black text-white">₹${p.sale_price}</span>
+                        ${p.original_price > p.sale_price ? `<span class="text-xs text-slate-500 line-through">₹${p.original_price}</span>` : ''}
+                      </div>
+                      ${savings > 0 ? `<span class="text-[10px] text-emerald-400 font-bold block">Save ₹${savings}</span>` : ''}
+                    </div>
+                    <button onclick="navigate('product-details', { id: '${p._id}' })" class="px-4 py-2 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95">
+                      View Details
+                    </button>
+                  </div>
                 </div>
-              </div>
-            `).join('')}
+              `;
+            }).join('')}
           </div>
         </div>
       `;
@@ -298,6 +311,8 @@
       const savings = p.original_price > currentSelectedPrice ? p.original_price - currentSelectedPrice : 0;
       const isAvailable = p.in_stock;
 
+      sendHeartbeat(`product_view_${p.name}`);
+
       container.innerHTML = `
         <div class="space-y-12">
           <div class="flex items-center justify-between text-xs text-slate-400">
@@ -319,6 +334,14 @@
                   </span>
                 ` : ''}
               </div>
+
+              ${imagesList.length > 1 ? `
+                <div class="flex gap-3 overflow-x-auto pb-2 custom-scroll">
+                  ${imagesList.map(img => `
+                    <img onclick="document.getElementById('detailMainImage').src='${img}'" src="${img}" class="w-20 h-20 rounded-2xl object-cover glass cursor-pointer border border-white/10 hover:border-emerald-400 transition-all">
+                  `).join('')}
+                </div>
+              ` : ''}
             </div>
 
             <div class="lg:col-span-5 space-y-6">
@@ -368,6 +391,69 @@
                 <button onclick="addToCart('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${currentSelectedPrice}, '${imagesList[0]}', '${p.delivery_type}')" ${!isAvailable ? 'disabled' : ''} class="w-full py-4 rounded-2xl glass hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all">
                   Add to Cart
                 </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div class="lg:col-span-8 space-y-8">
+              <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
+                <h3 class="text-sm font-black text-white uppercase tracking-wider">About This Product</h3>
+                <div class="text-xs text-slate-300 leading-relaxed whitespace-pre-line">${p.description}</div>
+              </div>
+
+              ${p.features && p.features.length ? `
+                <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
+                  <h3 class="text-sm font-black text-white uppercase tracking-wider">Key Features</h3>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    ${p.features.map(f => `
+                      <div class="flex items-center gap-3 p-3 rounded-2xl bg-surface-950 text-xs text-slate-300">
+                        <span class="text-emerald-400 font-black">✓</span> <span>${f}</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : ''}
+
+              ${p.whats_included && p.whats_included.length ? `
+                <div class="glass rounded-3xl p-6 sm:p-8 space-y-4">
+                  <h3 class="text-sm font-black text-white uppercase tracking-wider">What's Included</h3>
+                  <div class="space-y-2">
+                    ${p.whats_included.map(item => `
+                      <div class="p-3.5 rounded-2xl bg-surface-950 text-xs text-slate-300 flex items-center gap-3">
+                        <span class="text-emerald-400">📦</span> <span>${item}</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+
+            <div class="lg:col-span-4 space-y-6">
+              ${p.specifications && p.specifications.length ? `
+                <div class="glass rounded-3xl p-6 space-y-4">
+                  <h3 class="text-sm font-black text-white uppercase tracking-wider">Product Specifications</h3>
+                  <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                      <tbody class="divide-y divide-white/5">
+                        ${p.specifications.map(s => `
+                          <tr>
+                            <td class="py-2.5 text-slate-400 font-medium">${s.label}</td>
+                            <td class="py-2.5 text-white font-bold text-right">${s.value}</td>
+                          </tr>
+                        `).join('')}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ` : ''}
+
+              <div class="glass rounded-3xl p-6 space-y-3">
+                <h3 class="text-sm font-black text-white uppercase tracking-wider">Delivery Information</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">
+                  Delivery Method: <strong class="text-emerald-400">${p.delivery_type?.replace('_', ' ') || ''}</strong>.
+                  Credentials or license keys are assigned and accessible under your "Purchased Items" tab as soon as your payment screenshot is verified.
+                </p>
               </div>
             </div>
           </div>
@@ -454,6 +540,8 @@
       state.paymentSettings = await pRes.json();
       const item = state.cart[0];
 
+      sendHeartbeat('checkout_start');
+
       container.innerHTML = `
         <div class="max-w-3xl mx-auto space-y-8">
           <div>
@@ -503,7 +591,7 @@
         document.getElementById('radioUPI').className = 'w-4 h-4 rounded-full border-2 border-emerald-400 bg-emerald-400';
         document.getElementById('radioCrypto').className = 'w-4 h-4 rounded-full border-2 border-slate-600';
       } else {
-        document.getElementById('methodCardCrypto').className = 'glass rounded-3xl p-6 cursor-pointer border-2 border-emerald-500/80 flex items-center justify-between';
+        document.getElementById('methodCardCrypto').className = 'glass rounded-3xl p-6 cursor-pointer border border-white/5 flex items-center justify-between';
         document.getElementById('methodCardUPI').className = 'glass rounded-3xl p-6 cursor-pointer border border-white/5 flex items-center justify-between';
         document.getElementById('radioCrypto').className = 'w-4 h-4 rounded-full border-2 border-emerald-400 bg-emerald-400';
         document.getElementById('radioUPI').className = 'w-4 h-4 rounded-full border-2 border-slate-600';
@@ -653,7 +741,7 @@
     }
 
     // =========================================================================
-    // CUSTOMER PURCHASED ITEMS (LIVE CREDENTIALS)
+    // CUSTOMER PURCHASED ITEMS
     // =========================================================================
     async function renderStoreOrders(container) {
       if (!state.token) return renderCustomerAuthPrompt(container, 'orders');
@@ -845,6 +933,11 @@
       navigate('home');
     }
 
+    function handleStoreSearch(val) {
+      if (!val.trim()) return renderStoreProducts(document.getElementById('storeContent'));
+      renderStoreProducts(document.getElementById('storeContent'), { search: val, title: `Search results for "${val}"` });
+    }
+
     // =========================================================================
     // DEDICATED SAAS ADMIN CONTROL CENTER
     // =========================================================================
@@ -906,16 +999,18 @@
                 <button onclick="toggleAdminDrawer(false)" class="lg:hidden text-slate-400 p-1">✕</button>
               </div>
 
-              <nav class="p-4 space-y-1 text-xs font-bold">
+              <nav class="p-4 space-y-1 text-xs font-bold font-mono">
                 <button onclick="switchAdminSection('dashboard')" id="adnav-dashboard" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">📊 <span>Overview Dashboard</span></button>
+                <button onclick="switchAdminSection('products')" id="adnav-products" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">📦 <span>Product Studio</span></button>
+                <button onclick="switchAdminSection('slots')" id="adnav-slots" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🔐 <span>Account Slots</span></button>
+                <button onclick="switchAdminSection('subscriptions')" id="adnav-subscriptions" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all border border-indigo-500/20 bg-indigo-500/5">👥 <span>Subscriptions Suite</span></button>
                 <button onclick="switchAdminSection('transactions')" id="adnav-transactions" class="w-full flex items-center justify-between px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">
-                  <div class="flex items-center gap-3">💳 <span>Transactions Queue</span></div>
+                  <div class="flex items-center gap-3">💳 <span>Transactions</span></div>
                   <span id="pendingTxnCountBadge" class="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-400 font-mono">0</span>
                 </button>
-                <button onclick="switchAdminSection('slots')" id="adnav-slots" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all border border-emerald-500/20 bg-emerald-500/5">🔑 <span>Account Slots</span></button>
-                <button onclick="switchAdminSection('products')" id="adnav-products" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🛍 <span>Product Studio</span></button>
+                <button onclick="switchAdminSection('customers')" id="adnav-customers" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">👤 <span>Customers</span></button>
                 <button onclick="switchAdminSection('payment-settings')" id="adnav-payment-settings" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">💰 <span>Payment Gateway</span></button>
-                <button onclick="switchAdminSection('system-monitor')" id="adnav-system-monitor" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🖥️ <span>System & Infrastructure</span></button>
+                <button onclick="switchAdminSection('system-monitor')" id="adnav-system-monitor" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 transition-all">🌐 <span>Website Status</span></button>
               </nav>
             </div>
 
@@ -953,127 +1048,327 @@
       const content = document.getElementById('adminMainContent');
       if (!content) return;
 
-      document.querySelectorAll('[id^="adnav-"]').forEach(b => b.classList.remove('bg-emerald-500/10', 'text-emerald-400'));
+      document.querySelectorAll('[id^="adnav-"]').forEach(b => b.classList.remove('bg-emerald-500/10', 'text-emerald-400', 'bg-indigo-500/10', 'text-indigo-400'));
       const active = document.getElementById(`adnav-${sec}`);
       if (active) active.classList.add('bg-emerald-500/10', 'text-emerald-400');
 
       switch(sec) {
         case 'dashboard': renderAdminOverview(content); break;
-        case 'transactions': renderAdminTransactions(content); break;
-        case 'slots': renderAdminAccountSlots(content); break;
         case 'products': renderAdminProductsStudio(content); break;
+        case 'slots': renderAdminAccountSlots(content); break;
+        case 'subscriptions': renderAdminSubscriptions(content); break;
+        case 'transactions': renderAdminTransactions(content); break;
+        case 'customers': renderAdminCustomers(content); break;
         case 'payment-settings': renderAdminPaymentSettings(content); break;
         case 'system-monitor': renderAdminSystemMonitor(content); break;
       }
     }
 
+    // =========================================================================
+    // ADVANCED COMPREHENSIVE ADMIN OVERVIEW DASHBOARD
+    // =========================================================================
     async function renderAdminOverview(container) {
-      const statsRes = await fetch('/api/admin/stats', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
-      const stats = await statsRes.json();
-      const pBadge = document.getElementById('pendingTxnCountBadge');
-      if (pBadge) pBadge.textContent = stats.pendingPayments || '0';
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading live enterprise dashboard...</div>';
 
-      container.innerHTML = `
-        <div class="space-y-6">
-          <h1 class="text-xl font-black text-white font-sans">Overview Dashboard</h1>
-          <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            <div class="admin-card rounded-2xl p-5"><span class="text-[10px] text-slate-500 font-mono uppercase">Total Revenue</span><div class="text-2xl font-black text-emerald-400 font-mono">₹${stats.totalRevenue}</div></div>
-            <div class="admin-card rounded-2xl p-5"><span class="text-[10px] text-slate-500 font-mono uppercase">Pending Payments</span><div class="text-2xl font-black text-amber-400 font-mono">${stats.pendingPayments}</div></div>
-            <div class="admin-card rounded-2xl p-5"><span class="text-[10px] text-slate-500 font-mono uppercase">Active Subscriptions</span><div class="text-2xl font-black text-indigo-400 font-mono">${stats.activeSubs}</div></div>
-          </div>
-        </div>
-      `;
-    }
+      try {
+        const res = await fetch('/api/admin/dashboard/full-overview', {
+          headers: { 'Authorization': `Bearer ${state.adminToken}` }
+        });
+        const d = await res.json();
 
-    // =========================================================================
-    // TRANSACTIONS QUEUE (WITH INSTANT INLINE SLOT CREATION + SELECTION)
-    // =========================================================================
-    async function renderAdminTransactions(container) {
-      container.innerHTML = '<div class="text-center py-12 text-slate-500 font-mono">Loading transactions...</div>';
-      const res = await fetch('/api/admin/transactions', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
-      const txns = await res.json();
-
-      container.innerHTML = `
-        <div class="space-y-6">
-          <div class="flex justify-between items-center">
-            <div>
-              <h2 class="text-lg font-black text-white">Manual Payment & Subscription Verification Queue</h2>
-              <p class="text-xs text-slate-400">Verify screenshots and assign an existing slot or create a new one on-the-fly</p>
+        container.innerHTML = `
+          <div class="space-y-8 font-mono text-xs pb-12">
+            
+            <!-- Header & Global Quick Actions -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h1 class="text-xl font-black text-white font-sans">Business & Infrastructure Overview</h1>
+                <p class="text-slate-400">Live transaction analytics, active subscription tenures, and conversion funnel</p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button onclick="switchAdminSection('products')" class="px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">+ Product</button>
+                <button onclick="switchAdminSection('slots')" class="px-3 py-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-bold">+ Slot</button>
+                <button onclick="switchAdminSection('transactions')" class="px-3 py-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold">💳 Transactions</button>
+                <button onclick="switchAdminSection('subscriptions')" class="px-3 py-2 rounded-xl bg-teal-500/10 text-teal-400 border border-teal-500/20 font-bold">👥 Subscriptions</button>
+              </div>
             </div>
-            <button onclick="switchAdminSection('transactions')" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs">
-              ↻ Refresh Queue
-            </button>
-          </div>
 
-          <div class="admin-card rounded-3xl p-6">
-            <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs min-w-[780px]">
-                <thead>
-                  <tr class="border-b border-admin-border text-slate-500 font-mono">
-                    <th class="pb-3">TXN / Order</th>
-                    <th class="pb-3">Customer</th>
-                    <th class="pb-3">Product / Duration</th>
-                    <th class="pb-3">Amount</th>
-                    <th class="pb-3">Proof</th>
-                    <th class="pb-3">Assign Account Slot</th>
-                    <th class="pb-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-admin-border font-mono">
-                  ${txns.map(t => `
-                    <tr>
-                      <td class="py-3.5">
-                        <span class="font-bold text-white block">${t.txn_id}</span>
-                        <span class="text-[10px] text-slate-500">${t.payment_method}</span>
-                      </td>
-                      <td class="py-3.5 text-slate-300">${t.customer_name}</td>
-                      <td class="py-3.5">
-                        <span class="text-white font-bold block">${t.product_name || 'Product'}</span>
-                        <span class="text-[10px] ${t.duration !== 'ONE_TIME' ? 'text-indigo-400 font-bold' : 'text-slate-500'}">${t.duration.replace('_', ' ')}</span>
-                      </td>
-                      <td class="py-3.5 text-emerald-400 font-bold">₹${t.amount}</td>
-                      <td class="py-3.5">
-                        ${t.has_proof ? `
-                          <button onclick="viewProofModal('${t._id}', '${t.txn_id}')" class="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-bold text-[11px]">
-                            🔍 View Proof
-                          </button>
-                        ` : '<span class="text-slate-500">No proof</span>'}
-                      </td>
-                      <td class="py-3.5">
-                        ${t.status === 'PROCESSING' ? `
-                          <div class="flex items-center gap-1.5">
-                            <select id="slotSelect-${t._id}" class="px-3 py-1.5 rounded-xl bg-surface-950 border border-admin-border text-[11px] text-emerald-400 max-w-[200px]">
-                              ${(t.available_slots || []).map(s => `
-                                <option value="${s._id}">${s.account_label} (${s.email}) [${s.usage}]</option>
-                              `).join('')}
-                              ${!(t.available_slots && t.available_slots.length) ? '<option value="">✕ No slots available</option>' : ''}
-                            </select>
-                            <button type="button" onclick="openInlineSlotModal('${t._id}', '${t.product_id}', '${(t.product_name || '').replace(/'/g, "\\'")}')" class="px-2 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-[10px] font-bold whitespace-nowrap">
-                              + New Slot
-                            </button>
-                          </div>
-                        ` : '<span class="text-slate-500">Bound & Assigned</span>'}
-                      </td>
-                      <td class="py-3.5 text-right space-x-2">
-                        ${t.status === 'PROCESSING' ? `
-                          <button onclick="confirmAndAssignTransaction('${t._id}')" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-gray-950 font-black">Confirm</button>
-                          <button onclick="rejectTransaction('${t._id}')" class="px-3 py-1.5 rounded-lg bg-rose-500/20 text-rose-400 font-bold">Reject</button>
-                        ` : `
-                          <span class="px-2 py-0.5 rounded text-[10px] ${t.status === 'CONFIRMED' ? 'text-emerald-400 bg-emerald-500/10' : 'text-rose-400 bg-rose-500/10'}">${t.status}</span>
-                        `}
-                      </td>
-                    </tr>
+            <!-- Live Alerts Banner -->
+            ${d.alerts && d.alerts.length ? `
+              <div class="space-y-2">
+                ${d.alerts.map(a => `
+                  <div class="p-3.5 rounded-2xl ${a.type === 'danger' ? 'bg-rose-500/10 border border-rose-500/30 text-rose-300' : (a.type === 'warning' ? 'bg-amber-500/10 border border-amber-500/30 text-amber-300' : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300')} flex justify-between items-center">
+                    <span>🔔 ${a.text}</span>
+                    <span class="text-[10px] font-bold uppercase">Active</span>
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+
+            <!-- 1. Financial KPI Cards -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div class="admin-card rounded-2xl p-5 space-y-1">
+                <span class="text-[10px] text-slate-500 uppercase">Today's Sales</span>
+                <div class="text-2xl font-black text-emerald-400">₹${d.sales.today}</div>
+                <div class="text-[10px] text-slate-400">${d.sales.today_orders} orders today</div>
+              </div>
+              <div class="admin-card rounded-2xl p-5 space-y-1">
+                <span class="text-[10px] text-slate-500 uppercase">This Month</span>
+                <div class="text-2xl font-black text-white">₹${d.sales.month}</div>
+                <div class="text-[10px] text-slate-400">Avg Value: ₹${d.sales.avg_order_value}</div>
+              </div>
+              <div class="admin-card rounded-2xl p-5 space-y-1">
+                <span class="text-[10px] text-slate-500 uppercase">All-Time Revenue</span>
+                <div class="text-2xl font-black text-emerald-400">₹${d.sales.total}</div>
+                <div class="text-[10px] text-slate-400">${d.sales.total_orders} total orders</div>
+              </div>
+              <div class="admin-card rounded-2xl p-5 space-y-1">
+                <span class="text-[10px] text-slate-500 uppercase">Active Subscriptions</span>
+                <div class="text-2xl font-black text-indigo-400">${d.subscriptions.active}</div>
+                <div class="text-[10px] text-amber-400 font-bold">${d.subscriptions.expiring_soon} expiring in 7d</div>
+              </div>
+            </div>
+
+            <!-- 2. Real-Time Conversion Funnel & Live Traffic -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              <!-- Conversion Funnel -->
+              <div class="lg:col-span-8 admin-card rounded-3xl p-6 space-y-4">
+                <h3 class="text-xs font-bold uppercase text-slate-400 font-sans">Real-Time Conversion Funnel</h3>
+                <div class="grid grid-cols-2 sm:grid-cols-6 gap-2 text-center">
+                  <div class="p-3 rounded-2xl bg-surface-950 border border-admin-border"><span class="text-slate-400 block text-[10px]">Visitors</span><span class="text-base font-bold text-white">${d.funnel.visitors}</span></div>
+                  <div class="p-3 rounded-2xl bg-surface-950 border border-admin-border"><span class="text-slate-400 block text-[10px]">Views</span><span class="text-base font-bold text-white">${d.funnel.product_views}</span></div>
+                  <div class="p-3 rounded-2xl bg-surface-950 border border-admin-border"><span class="text-slate-400 block text-[10px]">Checkout</span><span class="text-base font-bold text-white">${d.funnel.checkouts_started}</span></div>
+                  <div class="p-3 rounded-2xl bg-surface-950 border border-admin-border"><span class="text-slate-400 block text-[10px]">Payments</span><span class="text-base font-bold text-white">${d.funnel.payments_initiated}</span></div>
+                  <div class="p-3 rounded-2xl bg-surface-950 border border-admin-border"><span class="text-slate-400 block text-[10px]">Proofs</span><span class="text-base font-bold text-white">${d.funnel.proofs_uploaded}</span></div>
+                  <div class="p-3 rounded-2xl bg-emerald-950/30 border border-emerald-500/30"><span class="text-emerald-400 block text-[10px]">Confirmed</span><span class="text-base font-bold text-emerald-400">${d.funnel.confirmed_purchases}</span></div>
+                </div>
+              </div>
+
+              <!-- Live Visitors Breakdown -->
+              <div class="lg:col-span-4 admin-card rounded-3xl p-6 space-y-3">
+                <div class="flex justify-between items-center">
+                  <h3 class="text-xs font-bold uppercase text-slate-400 font-sans">Live Presence (${d.live.total})</h3>
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                </div>
+                <div class="space-y-1.5 text-xs text-slate-300">
+                  <div class="flex justify-between p-2 rounded-xl bg-surface-950"><span>Homepage</span><span class="font-bold text-white">${d.live.home}</span></div>
+                  <div class="flex justify-between p-2 rounded-xl bg-surface-950"><span>Catalog</span><span class="font-bold text-white">${d.live.products}</span></div>
+                  <div class="flex justify-between p-2 rounded-xl bg-surface-950"><span>Product Details</span><span class="font-bold text-white">${d.live.details}</span></div>
+                  <div class="flex justify-between p-2 rounded-xl bg-surface-950"><span>Checkout</span><span class="font-bold text-emerald-400">${d.live.checkout}</span></div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- 3. Expiring Soon Subscriptions & Recent Transactions Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              <!-- Expiring Soon -->
+              <div class="admin-card rounded-3xl p-6 space-y-4">
+                <div class="flex justify-between items-center">
+                  <h3 class="text-xs font-bold uppercase text-amber-400 font-sans">⏳ Expiring Within 7 Days (${d.expiring_soon_list.length})</h3>
+                  <button onclick="state.subExpiringDays='7'; switchAdminSection('subscriptions')" class="text-[10px] text-emerald-400 hover:underline">View All →</button>
+                </div>
+                <div class="space-y-2">
+                  ${d.expiring_soon_list.length === 0 ? '<div class="p-4 rounded-xl bg-surface-950 text-slate-500 text-center">No subscriptions expiring in the next 7 days.</div>' : ''}
+                  ${d.expiring_soon_list.map(s => `
+                    <div class="p-3 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
+                      <div>
+                        <span class="font-bold text-white block">${s.user_id?.name || 'Customer'}</span>
+                        <span class="text-[10px] text-slate-400">${s.product_name}</span>
+                      </div>
+                      <span class="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-400 font-bold">
+                        Expires: ${new Date(s.expires_at).toLocaleDateString()}
+                      </span>
+                    </div>
                   `).join('')}
-                </tbody>
-              </table>
+                </div>
+              </div>
+
+              <!-- Recent Transactions -->
+              <div class="admin-card rounded-3xl p-6 space-y-4">
+                <div class="flex justify-between items-center">
+                  <h3 class="text-xs font-bold uppercase text-slate-400 font-sans">💳 Recent Transactions</h3>
+                  <button onclick="switchAdminSection('transactions')" class="text-[10px] text-emerald-400 hover:underline">Manage Queue →</button>
+                </div>
+                <div class="space-y-2">
+                  ${d.recent_txns.map(t => `
+                    <div class="p-3 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
+                      <div>
+                        <span class="font-bold text-white block">${t.customer_name}</span>
+                        <span class="text-[10px] text-slate-400">${t.txn_id} • ${t.payment_method}</span>
+                      </div>
+                      <div class="text-right">
+                        <span class="font-bold text-emerald-400 block">₹${t.amount}</span>
+                        <span class="text-[9px] ${t.status === 'CONFIRMED' ? 'text-emerald-400' : 'text-amber-400'}">${t.status}</span>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+
             </div>
+
           </div>
-        </div>
-      `;
+        `;
+      } catch (err) {
+        container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">Dashboard Error: ${err.message}</div>`;
+      }
     }
 
-    // Modal to create and immediately assign a slot to this transaction
-    function openInlineSlotModal(txnId, productId, productName) {
+    // =========================================================================
+    // DEDICATED SUBSCRIPTIONS SUITE (CENTRAL PLACE FOR ALL SUBSCRIPTIONS)
+    // =========================================================================
+    async function renderAdminSubscriptions(container) {
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading central subscription engine from MongoDB Atlas...</div>';
+
+      try {
+        let queryUrl = `/api/admin/subscriptions/advanced?`;
+        if (state.subFilterStatus !== 'ALL') queryUrl += `status=${state.subFilterStatus}&`;
+        if (state.subExpiringDays) queryUrl += `expiring_within_days=${state.subExpiringDays}&`;
+        if (state.subSearch) queryUrl += `search=${encodeURIComponent(state.subSearch)}&`;
+
+        const res = await fetch(queryUrl, { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+        const data = await res.json();
+        state.loadedSubs = data.subscriptions || [];
+        const stats = data.stats || { total: 0, active: 0, expiring_soon: 0, expired: 0, cancelled: 0, active_customers_count: 0 };
+
+        container.innerHTML = `
+          <div class="space-y-8 font-mono text-xs">
+            
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h1 class="text-xl font-black text-white font-sans">Central Subscription Management Suite</h1>
+                <p class="text-slate-400">Live database-backed remaining times, extensions, slot reassignments, and access revocations</p>
+              </div>
+              <button onclick="switchAdminSection('subscriptions')" class="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold font-sans">
+                ↻ Refresh Subscriptions
+              </button>
+            </div>
+
+            <!-- Live KPI Statistics -->
+            <div class="grid grid-cols-2 sm:grid-cols-6 gap-3">
+              <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase block">Total</span><span class="text-xl font-black text-white">${stats.total}</span></div>
+              <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-emerald-400 uppercase block">🟢 Active</span><span class="text-xl font-black text-emerald-400">${stats.active}</span></div>
+              <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-amber-400 uppercase block">⏳ Expiring 7d</span><span class="text-xl font-black text-amber-400">${stats.expiring_soon}</span></div>
+              <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-rose-400 uppercase block">⚪ Expired</span><span class="text-xl font-black text-rose-400">${stats.expired}</span></div>
+              <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-slate-500 uppercase block">🔴 Cancelled</span><span class="text-xl font-black text-slate-400">${stats.cancelled}</span></div>
+              <div class="admin-card rounded-2xl p-4"><span class="text-[10px] text-teal-400 uppercase block">👥 Customers</span><span class="text-xl font-black text-teal-400">${stats.active_customers_count}</span></div>
+            </div>
+
+            <!-- Filters & Real-Time Search Bar -->
+            <div class="admin-card rounded-2xl p-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
+              <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <select id="subStatusFilter" onchange="state.subFilterStatus=this.value; state.subExpiringDays=''; renderAdminSubscriptions(document.getElementById('adminMainContent'))" class="px-3 py-2 rounded-xl bg-surface-950 border border-admin-border text-white">
+                  <option value="ALL" ${state.subFilterStatus === 'ALL' && !state.subExpiringDays ? 'selected' : ''}>All Subscriptions</option>
+                  <option value="ACTIVE" ${state.subFilterStatus === 'ACTIVE' && !state.subExpiringDays ? 'selected' : ''}>🟢 Active Only</option>
+                  <option value="EXPIRED" ${state.subFilterStatus === 'EXPIRED' ? 'selected' : ''}>⚪ Expired</option>
+                  <option value="CANCELLED" ${state.subFilterStatus === 'CANCELLED' ? 'selected' : ''}>🔴 Cancelled / Revoked</option>
+                </select>
+
+                <select id="subExpiringDropdown" onchange="state.subExpiringDays=this.value; renderAdminSubscriptions(document.getElementById('adminMainContent'))" class="px-3 py-2 rounded-xl bg-surface-950 border border-admin-border text-amber-400 font-bold">
+                  <option value="" ${!state.subExpiringDays ? 'selected' : ''}>Filter By Expiry Window...</option>
+                  <option value="1" ${state.subExpiringDays === '1' ? 'selected' : ''}>🔴 Expires Today (1 Day)</option>
+                  <option value="3" ${state.subExpiringDays === '3' ? 'selected' : ''}>🟠 3 Days Left</option>
+                  <option value="7" ${state.subExpiringDays === '7' ? 'selected' : ''}>🟡 7 Days Left</option>
+                  <option value="30" ${state.subExpiringDays === '30' ? 'selected' : ''}>30 Days Left</option>
+                </select>
+              </div>
+
+              <input type="text" value="${state.subSearch || ''}" oninput="state.subSearch=this.value; handleSubSearchLive(this.value)" placeholder="Search by customer, email, product, or slot..." class="w-full sm:w-72 px-4 py-2 rounded-xl bg-surface-950 border border-admin-border text-white placeholder-slate-500">
+            </div>
+
+            <!-- Master Subscriptions Table -->
+            <div class="admin-card rounded-3xl p-6">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left min-w-[900px]" id="subscriptionsMasterTable">
+                  <thead>
+                    <tr class="border-b border-admin-border text-slate-500">
+                      <th class="pb-3">Customer</th>
+                      <th class="pb-3">Product</th>
+                      <th class="pb-3">Bound Slot</th>
+                      <th class="pb-3">Duration</th>
+                      <th class="pb-3">Start Date</th>
+                      <th class="pb-3">Expiry Date</th>
+                      <th class="pb-3">Exact Time Left</th>
+                      <th class="pb-3">Status</th>
+                      <th class="pb-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-admin-border">
+                    ${data.subscriptions.length === 0 ? `
+                      <tr>
+                        <td colspan="9" class="py-8 text-center text-slate-500">No subscriptions matching the filter criteria.</td>
+                      </tr>
+                    ` : data.subscriptions.map(s => {
+                      const isLive = s.status === 'ACTIVE' && !s.is_expired;
+                      return `
+                        <tr class="hover:bg-white/[0.02] transition-colors">
+                          <td class="py-3.5">
+                            <span class="font-bold text-white block">${s.user_id?.name || 'Customer'}</span>
+                            <span class="text-[10px] text-slate-500">${s.user_id?.email || ''}</span>
+                          </td>
+                          <td class="py-3.5 text-slate-300 font-bold">${s.product_name}</td>
+                          <td class="py-3.5">
+                            <span class="text-indigo-400 font-bold block">${s.assigned_slot_id?.account_label || 'Slot'}</span>
+                            <span class="text-[10px] text-slate-500">${s.assigned_slot_id?.email || ''}</span>
+                          </td>
+                          <td class="py-3.5">${s.duration.replace('_', ' ')}</td>
+                          <td class="py-3.5 text-slate-400">${new Date(s.start_at).toLocaleDateString()}</td>
+                          <td class="py-3.5 text-slate-300 font-bold">${new Date(s.expires_at).toLocaleDateString()}</td>
+                          <td class="py-3.5">
+                            <span class="font-bold ${isLive ? (s.days_left <= 3 ? 'text-amber-400' : 'text-emerald-400') : 'text-slate-500'}">
+                              ${s.time_remaining_text}
+                            </span>
+                          </td>
+                          <td class="py-3.5">
+                            <span class="px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
+                              isLive ? 'bg-emerald-500/10 text-emerald-400' :
+                              s.status === 'EXPIRED' || s.is_expired ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-500/10 text-slate-400'
+                            }">${isLive ? '🟢 ACTIVE' : s.status}</span>
+                          </td>
+                          <td class="py-3.5 text-right space-x-1.5">
+                            <button onclick="openSubscriptionDetailsModal('${s._id}')" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white font-bold">
+                              👁 View
+                            </button>
+                            ${isLive ? `
+                              <button onclick="openExtendModal('${s._id}')" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 font-bold">
+                                + Extend
+                              </button>
+                              <button onclick="openReassignModal('${s._id}', '${s.product_id?._id || s.product_id}')" class="px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 font-bold">
+                                🔄 Reassign
+                              </button>
+                            ` : ''}
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        `;
+      } catch (err) {
+        container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">Error: ${err.message}</div>`;
+      }
+    }
+
+    function handleSubSearchLive(val) {
+      const q = val.toLowerCase();
+      document.querySelectorAll('#subscriptionsMasterTable tbody tr').forEach(row => {
+        if (row.textContent.toLowerCase().includes(q)) row.classList.remove('hidden');
+        else row.classList.add('hidden');
+      });
+    }
+
+    // Modal to View Full Subscription Record & Actions
+    function openSubscriptionDetailsModal(subId) {
+      const s = state.loadedSubs.find(item => item._id === subId);
+      if (!s) return;
+
       const modal = document.getElementById('globalModal');
       const content = document.getElementById('globalModalContent');
       modal.classList.remove('hidden');
@@ -1081,151 +1376,360 @@
 
       content.innerHTML = `
         <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
-        <div class="space-y-4 font-mono text-xs">
+        <div class="space-y-6 font-mono text-xs">
+          
           <div>
-            <h3 class="text-base font-black text-white font-sans">+ Create & Assign Slot Instantly</h3>
-            <p class="text-xs text-slate-400 font-sans">For Product: <strong class="text-emerald-400">${productName}</strong></p>
+            <span class="text-[10px] text-indigo-400 uppercase tracking-widest block font-sans">Subscription Details</span>
+            <h2 class="text-lg font-black text-white font-sans">${s.product_name}</h2>
           </div>
 
-          <form onsubmit="handleInlineSlotSubmit(event, '${txnId}')" class="space-y-3">
-            <div>
-              <label class="text-slate-400 block mb-1">Slot Label</label>
-              <input type="text" id="inlineSlotLabel" required value="Slot 1 (Private)" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            
+            <!-- Customer Details Card -->
+            <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-2">
+              <span class="text-slate-500 uppercase text-[10px] block">Customer Information</span>
+              <div class="text-white font-bold">${s.user_id?.name || 'Customer'}</div>
+              <div class="text-slate-400">${s.user_id?.email || ''}</div>
+              <div class="text-slate-500 text-[10px]">Mobile: ${s.user_id?.mobile || 'N/A'}</div>
             </div>
 
-            <div>
-              <label class="text-slate-400 block mb-1">Email / Username</label>
-              <input type="email" id="inlineSlotEmail" required placeholder="account@example.com" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white">
+            <!-- Bound Slot Card -->
+            <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-2">
+              <span class="text-slate-500 uppercase text-[10px] block">Bound Credential Slot</span>
+              <div class="text-emerald-400 font-bold">${s.assigned_slot_id?.account_label || 'Slot'}</div>
+              <div class="text-slate-300 select-all">${s.assigned_slot_id?.email || ''}</div>
+              <div class="text-slate-500 text-[10px]">People Using Slot: ${s.slot_usage || '1 / 1'}</div>
             </div>
 
+          </div>
+
+          <!-- Subscription Tenure & Live Expiry -->
+          <div class="p-4 rounded-2xl bg-surface-950 border border-admin-border space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="text-slate-500">Status:</span>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${s.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">${s.status}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Duration:</span>
+              <span class="text-white">${s.duration.replace('_', ' ')}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Started On:</span>
+              <span class="text-white">${new Date(s.start_at).toLocaleString()}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Expires At:</span>
+              <span class="text-white font-bold">${new Date(s.expires_at).toLocaleString()}</span>
+            </div>
+            <div class="flex justify-between pt-1 border-t border-admin-border">
+              <span class="text-slate-500">Exact Time Remaining:</span>
+              <span class="text-emerald-400 font-bold">${s.time_remaining_text}</span>
+            </div>
+          </div>
+
+          <!-- Audit History Log -->
+          <div class="space-y-2">
+            <h3 class="text-xs font-bold text-slate-400 uppercase font-sans">Subscription Action History</h3>
+            <div class="space-y-1.5 max-h-36 overflow-y-auto custom-scroll">
+              ${(s.history || []).length === 0 ? '<div class="p-3 bg-surface-950 text-slate-500 text-center">No action records.</div>' : ''}
+              ${(s.history || []).map(h => `
+                <div class="p-2.5 rounded-xl bg-surface-950 text-[10px] flex justify-between text-slate-400">
+                  <span><strong>${h.action}</strong>: ${h.details} (${h.performed_by})</span>
+                  <span>${new Date(h.timestamp).toLocaleTimeString()}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex flex-wrap justify-end gap-2 pt-2 border-t border-admin-border">
+            <button onclick="openExtendModal('${s._id}')" class="px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 font-bold">+ Extend</button>
+            <button onclick="openReassignModal('${s._id}', '${s.product_id?._id || s.product_id}')" class="px-3 py-2 rounded-xl bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 font-bold">🔄 Reassign Slot</button>
+            <button onclick="revokeSubscriptionAccess('${s._id}', 'REVOKE')" class="px-3 py-2 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 font-bold">✕ Revoke Access</button>
+            <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="px-4 py-2 rounded-xl bg-white/5 text-slate-400">Close</button>
+          </div>
+
+        </div>
+      `;
+    }
+
+    // Modal to Extend Subscription
+    function openExtendModal(subId) {
+      const s = state.loadedSubs.find(item => item._id === subId);
+      if (!s) return;
+
+      const modal = document.getElementById('globalModal');
+      const content = document.getElementById('globalModalContent');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      content.innerHTML = `
+        <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+        <div class="space-y-5 font-mono text-xs">
+          <div>
+            <h3 class="text-base font-black text-white font-sans">Extend Subscription</h3>
+            <p class="text-xs text-slate-400 font-sans">Customer: ${s.user_id?.name} (${s.product_name})</p>
+          </div>
+
+          <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border">
+            <span class="text-slate-500 block text-[10px]">Current Expiration Date:</span>
+            <span class="text-white font-bold text-sm">${new Date(s.expires_at).toLocaleString()}</span>
+          </div>
+
+          <form onsubmit="handleExtendSubmit(event, '${s._id}')" class="space-y-4">
             <div>
-              <label class="text-slate-400 block mb-1">Password</label>
-              <input type="text" id="inlineSlotPass" required placeholder="Enter password" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-emerald-400 font-bold">
+              <label class="text-slate-400 block mb-1">Choose Extension Tenure</label>
+              <select id="extendTypeSelect" onchange="toggleCustomDays(this.value)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-bold">
+                <option value="1_MONTH">+ 1 Month Extension</option>
+                <option value="6_MONTHS">+ 6 Months Extension</option>
+                <option value="1_YEAR">+ 1 Year Extension</option>
+                <option value="CUSTOM">Custom Number of Days</option>
+              </select>
             </div>
 
-            <div>
-              <label class="text-slate-400 block mb-1">Max Users Capacity</label>
-              <input type="number" id="inlineSlotMax" min="1" max="100" value="1" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white">
+            <div id="customDaysContainer" class="hidden">
+              <label class="text-slate-400 block mb-1">Enter Additional Days</label>
+              <input type="number" id="customDaysInput" value="30" min="1" max="365" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white font-bold">
             </div>
 
-            <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95">
-              Create Slot & Confirm Order
+            <button type="submit" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+              Confirm Extension
             </button>
           </form>
         </div>
       `;
     }
 
-    async function handleInlineSlotSubmit(e, txnId) {
-      e.preventDefault();
-      const payload = {
-        create_new_slot: {
-          account_label: document.getElementById('inlineSlotLabel').value.trim(),
-          email: document.getElementById('inlineSlotEmail').value.trim(),
-          password: document.getElementById('inlineSlotPass').value.trim(),
-          max_active_users: Number(document.getElementById('inlineSlotMax').value) || 1
-        }
-      };
-
-      try {
-        const res = await fetch(`/api/admin/transactions/${txnId}/confirm-and-assign`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${state.adminToken}`
-          },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to create and assign slot');
-
-        showToast('Slot created in MongoDB and assigned to customer!');
-        document.getElementById('globalModal').classList.add('hidden');
-        renderAdminTransactions(document.getElementById('adminMainContent'));
-      } catch (err) {
-        showToast(err.message, 'error');
-      }
+    function toggleCustomDays(val) {
+      if (val === 'CUSTOM') document.getElementById('customDaysContainer').classList.remove('hidden');
+      else document.getElementById('customDaysContainer').classList.add('hidden');
     }
 
-    async function viewProofModal(txnDbId, txnId) {
+    async function handleExtendSubmit(e, subId) {
+      e.preventDefault();
+      const extType = document.getElementById('extendTypeSelect').value;
+      const customDays = document.getElementById('customDaysInput')?.value;
+
+      try {
+        const res = await fetch(`/api/admin/subscriptions/${subId}/extend`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
+          body: JSON.stringify({ extend_type: extType, custom_days: customDays })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Extension failed');
+
+        showToast('Subscription extended successfully!');
+        document.getElementById('globalModal').classList.add('hidden');
+        renderAdminSubscriptions(document.getElementById('adminMainContent'));
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    // Modal to Reassign Slot
+    async function openReassignModal(subId, productId) {
       const modal = document.getElementById('globalModal');
       const content = document.getElementById('globalModalContent');
       modal.classList.remove('hidden');
       modal.classList.add('flex');
 
-      content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono">Loading proof...</div>';
+      content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono">Loading available slots for this product...</div>';
 
       try {
-        const res = await fetch(`/api/admin/transactions/${txnDbId}/proof`, {
+        const res = await fetch(`/api/admin/slots?product_id=${productId}&status=AVAILABLE`, {
           headers: { 'Authorization': `Bearer ${state.adminToken}` }
         });
         const data = await res.json();
+        const availableSlots = data.slots || [];
 
         content.innerHTML = `
           <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
-          <h3 class="text-base font-bold text-white mb-3 font-mono">Payment Proof (${txnId})</h3>
-          <div class="rounded-2xl overflow-hidden glass max-h-[75vh] flex items-center justify-center bg-black/90 p-2">
-            <img src="${data.proof_screenshot}" class="max-h-[70vh] w-auto object-contain rounded-xl shadow-2xl">
+          <div class="space-y-5 font-mono text-xs">
+            <div>
+              <h3 class="text-base font-black text-white font-sans">Reassign Account Slot</h3>
+              <p class="text-xs text-slate-400 font-sans">Select a new slot. The customer's Purchased Items will immediately sync to the new credentials.</p>
+            </div>
+
+            <form onsubmit="handleReassignSubmit(event, '${subId}')" class="space-y-4">
+              <div>
+                <label class="text-slate-400 block mb-1">Select Available Target Slot</label>
+                <select id="targetSlotSelect" required class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-emerald-400 font-bold">
+                  ${availableSlots.map(s => `
+                    <option value="${s._id}">${s.account_label} (${s.email}) [${s.active_users_count}/${s.max_active_users}]</option>
+                  `).join('')}
+                  ${availableSlots.length === 0 ? '<option value="">✕ No available slots for this product</option>' : ''}
+                </select>
+              </div>
+
+              <button type="submit" ${availableSlots.length === 0 ? 'disabled' : ''} class="w-full py-4 rounded-2xl bg-indigo-500 text-white font-black uppercase tracking-wider font-sans shadow-lg active:scale-95 transition-all">
+                Confirm Slot Reassignment
+              </button>
+            </form>
           </div>
         `;
-      } catch (err) {
-        content.innerHTML = `<div class="text-center py-8 text-rose-400">Error: ${err.message}</div>`;
-      }
+      } catch (err) { content.innerHTML = `<div class="text-rose-400 text-center py-6">${err.message}</div>`; }
     }
 
-    async function confirmAndAssignTransaction(id) {
-      const selectEl = document.getElementById(`slotSelect-${id}`);
-      const slot_id = selectEl ? selectEl.value : null;
-
-      if (!slot_id) {
-        alert('Please select an available slot or click "+ New Slot" to create one instantly.');
-        return;
-      }
-
-      if (!confirm('Confirm this payment, bind the selected account slot, and activate the customer subscription?')) return;
+    async function handleReassignSubmit(e, subId) {
+      e.preventDefault();
+      const targetSlotId = document.getElementById('targetSlotSelect').value;
+      if (!targetSlotId) return;
 
       try {
-        const res = await fetch(`/api/admin/transactions/${id}/confirm-and-assign`, {
+        const res = await fetch(`/api/admin/subscriptions/${subId}/reassign-slot`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${state.adminToken}`
-          },
-          body: JSON.stringify({ slot_id })
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
+          body: JSON.stringify({ new_slot_id: targetSlotId })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
+        if (!res.ok) throw new Error(data.error || 'Reassignment failed');
 
-        showToast('Subscription activated and account slot bound!');
-        renderAdminTransactions(document.getElementById('adminMainContent'));
+        showToast('Slot reassigned! Customer credentials updated.');
+        document.getElementById('globalModal').classList.add('hidden');
+        renderAdminSubscriptions(document.getElementById('adminMainContent'));
       } catch (err) { showToast(err.message, 'error'); }
     }
 
-    async function rejectTransaction(id) {
-      const reason = prompt('Enter rejection reason:', 'Payment screenshot invalid.');
+    async function revokeSubscriptionAccess(subId, actionType = 'REVOKE') {
+      const reason = prompt('Enter revocation reason (e.g. Terms violation, refunded):', 'Revoked by admin');
       if (reason === null) return;
 
       try {
-        const res = await fetch(`/api/admin/transactions/${id}/reject`, {
+        const res = await fetch(`/api/admin/subscriptions/${subId}/revoke`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${state.adminToken}`
-          },
-          body: JSON.stringify({ reason })
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.adminToken}` },
+          body: JSON.stringify({ reason, action_type: actionType })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        showToast('Transaction rejected');
-        renderAdminTransactions(document.getElementById('adminMainContent'));
+        if (!res.ok) throw new Error(data.error || 'Revocation failed');
+
+        showToast('Subscription access revoked immediately.');
+        document.getElementById('globalModal').classList.add('hidden');
+        renderAdminSubscriptions(document.getElementById('adminMainContent'));
       } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    // =========================================================================
+    // ADMIN CUSTOMERS DIRECTORY & PROFILES
+    // =========================================================================
+    async function renderAdminCustomers(container) {
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading customer directory...</div>';
+
+      try {
+        const res = await fetch('/api/admin/customers/list', {
+          headers: { 'Authorization': `Bearer ${state.adminToken}` }
+        });
+        const customers = await res.json();
+
+        container.innerHTML = `
+          <div class="space-y-6 font-mono text-xs">
+            <div>
+              <h1 class="text-xl font-black text-white font-sans">Registered Customers & Subscription Profiles</h1>
+              <p class="text-slate-400">${customers.length} registered customers</p>
+            </div>
+
+            <div class="admin-card rounded-3xl p-6">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left min-w-[700px]">
+                  <thead>
+                    <tr class="border-b border-admin-border text-slate-500">
+                      <th class="pb-3">Customer</th>
+                      <th class="pb-3">Email</th>
+                      <th class="pb-3">Paid Orders</th>
+                      <th class="pb-3">Active Subscriptions</th>
+                      <th class="pb-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-admin-border">
+                    ${customers.map(c => `
+                      <tr>
+                        <td class="py-3.5 font-bold text-white">${c.name}</td>
+                        <td class="py-3.5 text-slate-300">${c.email}</td>
+                        <td class="py-3.5 font-bold text-emerald-400">${c.orders_count}</td>
+                        <td class="py-3.5">
+                          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${c.active_subscriptions.length ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}">
+                            ${c.active_subscriptions.length} Active
+                          </span>
+                        </td>
+                        <td class="py-3.5 text-right">
+                          <button onclick="openCustomerProfileModal('${c._id}')" class="px-3 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white font-bold">
+                            👁 Profile
+                          </button>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        `;
+      } catch (err) {
+        container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">Error: ${err.message}</div>`;
+      }
+    }
+
+    async function openCustomerProfileModal(userId) {
+      const modal = document.getElementById('globalModal');
+      const content = document.getElementById('globalModalContent');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      content.innerHTML = '<div class="text-center py-12 text-slate-400 font-mono">Loading customer profile...</div>';
+
+      try {
+        const res = await fetch('/api/admin/customers/list', { headers: { 'Authorization': `Bearer ${state.adminToken}` } });
+        const allCusts = await res.json();
+        const c = allCusts.find(u => u._id === userId);
+
+        content.innerHTML = `
+          <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+          <div class="space-y-6 font-mono text-xs">
+            <div>
+              <span class="text-[10px] text-emerald-400 uppercase tracking-widest block font-sans">Customer Profile</span>
+              <h2 class="text-lg font-black text-white font-sans">${c.name}</h2>
+              <p class="text-slate-400 text-[10px]">${c.email} • Mobile: ${c.mobile || 'N/A'}</p>
+            </div>
+
+            <!-- Active Subscriptions -->
+            <div class="space-y-2">
+              <h3 class="text-xs font-bold uppercase text-white font-sans">Active Subscriptions (${c.active_subscriptions.length})</h3>
+              <div class="space-y-2">
+                ${c.active_subscriptions.length === 0 ? '<div class="p-3 rounded-xl bg-surface-950 text-slate-500 text-center">No active subscriptions.</div>' : ''}
+                ${c.active_subscriptions.map(s => `
+                  <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border flex justify-between items-center">
+                    <div>
+                      <span class="text-white font-bold block">${s.product_id?.name || 'Product'}</span>
+                      <span class="text-[10px] text-emerald-400">${s.assigned_slot_id?.account_label || 'Slot'} (${s.assigned_slot_id?.email || ''})</span>
+                    </div>
+                    <span class="text-[10px] text-slate-400 font-bold">Expires: ${new Date(s.expires_at).toLocaleDateString()}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Historical Subscriptions -->
+            <div class="space-y-2">
+              <h3 class="text-xs font-bold uppercase text-slate-400 font-sans">Subscription History (${c.subscription_history.length})</h3>
+              <div class="space-y-1.5 max-h-36 overflow-y-auto custom-scroll">
+                ${c.subscription_history.map(h => `
+                  <div class="p-2.5 rounded-xl bg-surface-950 text-[10px] flex justify-between text-slate-400">
+                    <span>${h.product_id?.name || 'Product'} (${h.duration?.replace('_', ' ')})</span>
+                    <span class="${h.status === 'ACTIVE' ? 'text-emerald-400 font-bold' : 'text-slate-500'}">${h.status} (${new Date(h.expires_at).toLocaleDateString()})</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+          </div>
+        `;
+      } catch (err) { content.innerHTML = `<div class="text-rose-400 text-center py-6">${err.message}</div>`; }
     }
 
     // =========================================================================
     // DEDICATED ACCOUNT SLOTS PAGE
     // =========================================================================
     async function renderAdminAccountSlots(container) {
-      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading Account Slots from database...</div>';
+      container.innerHTML = '<div class="text-center py-16 text-slate-500 font-mono animate-pulse">Loading Account Slots suite from MongoDB Atlas...</div>';
 
       try {
         let queryUrl = `/api/admin/slots?`;
@@ -1243,11 +1747,11 @@
         const stats = data.stats || { total: 0, available: 0, assigned: 0, full: 0, disabled: 0, total_active_users: 0 };
 
         container.innerHTML = `
-          <div class="space-y-8 font-mono">
+          <div class="space-y-8 font-mono text-xs">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h1 class="text-xl font-black text-white font-sans">Account Slots Management</h1>
-                <p class="text-xs text-slate-400">Single source of truth for credentials. Updating credentials live-syncs to active customers.</p>
+                <p class="text-slate-400">Single source of truth for credentials. Updating credentials live-syncs to active customers.</p>
               </div>
               <button onclick="openSlotFormModal('new')" class="px-5 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider font-sans shadow-lg shadow-emerald-500/20 active:scale-95">
                 + Add New Slot
@@ -1265,12 +1769,12 @@
 
             <div class="admin-card rounded-2xl p-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
               <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                <select id="slotProductFilter" onchange="state.slotFilterProduct=this.value; renderAdminAccountSlots(document.getElementById('adminMainContent'))" class="px-3 py-2 rounded-xl bg-surface-950 border border-admin-border text-xs text-white">
+                <select id="slotProductFilter" onchange="state.slotFilterProduct=this.value; renderAdminAccountSlots(document.getElementById('adminMainContent'))" class="px-3 py-2 rounded-xl bg-surface-950 border border-admin-border text-white">
                   <option value="ALL">All Products / Services</option>
                   ${products.map(p => `<option value="${p._id}" ${state.slotFilterProduct === p._id ? 'selected' : ''}>${p.name}</option>`).join('')}
                 </select>
 
-                <select id="slotStatusFilter" onchange="state.slotFilterStatus=this.value; renderAdminAccountSlots(document.getElementById('adminMainContent'))" class="px-3 py-2 rounded-xl bg-surface-950 border border-admin-border text-xs text-white">
+                <select id="slotStatusFilter" onchange="state.slotFilterStatus=this.value; renderAdminAccountSlots(document.getElementById('adminMainContent'))" class="px-3 py-2 rounded-xl bg-surface-950 border border-admin-border text-white">
                   <option value="ALL" ${state.slotFilterStatus === 'ALL' ? 'selected' : ''}>All Statuses</option>
                   <option value="AVAILABLE" ${state.slotFilterStatus === 'AVAILABLE' ? 'selected' : ''}>Available</option>
                   <option value="ASSIGNED" ${state.slotFilterStatus === 'ASSIGNED' ? 'selected' : ''}>Assigned</option>
@@ -1279,14 +1783,14 @@
                 </select>
               </div>
 
-              <input type="text" oninput="handleSlotSearch(this.value)" placeholder="Search by slot, email, or customer..." class="w-full sm:w-64 px-4 py-2 rounded-xl bg-surface-950 border border-admin-border text-xs text-white placeholder-slate-500">
+              <input type="text" oninput="handleSlotSearch(this.value)" placeholder="Search by slot, email, or customer..." class="w-full sm:w-64 px-4 py-2 rounded-xl bg-surface-950 border border-admin-border text-white placeholder-slate-500">
             </div>
 
             <div class="admin-card rounded-3xl p-6">
               <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs min-w-[850px]" id="accountSlotsTable">
+                <table class="w-full text-left min-w-[850px]" id="accountSlotsTable">
                   <thead>
-                    <tr class="border-b border-admin-border text-slate-500 font-mono">
+                    <tr class="border-b border-admin-border text-slate-500">
                       <th class="pb-3">Slot</th>
                       <th class="pb-3">Product</th>
                       <th class="pb-3">Email / Username</th>
@@ -1296,7 +1800,7 @@
                       <th class="pb-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody class="divide-y divide-admin-border font-mono">
+                  <tbody class="divide-y divide-admin-border">
                     ${data.slots.length === 0 ? `
                       <tr>
                         <td colspan="7" class="py-8 text-center text-slate-500">No account slots found. Click "+ Add New Slot" to create one.</td>
@@ -1557,7 +2061,7 @@
       const products = await res.json();
 
       container.innerHTML = `
-        <div class="space-y-6">
+        <div class="space-y-6 font-mono text-xs">
           <div class="flex justify-between items-center">
             <div>
               <h2 class="text-lg font-black text-white font-sans">Master Product Studio</h2>
@@ -1570,7 +2074,7 @@
 
           <div class="admin-card rounded-3xl p-6">
             <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs font-mono min-w-[780px]">
+              <table class="w-full text-left min-w-[780px]">
                 <thead>
                   <tr class="border-b border-admin-border text-slate-500">
                     <th class="pb-2">Image</th>
