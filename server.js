@@ -147,7 +147,7 @@ const Subscription = mongoose.models.Subscription || mongoose.model('Subscriptio
 const Transaction = mongoose.models.Transaction || mongoose.model('Transaction', TransactionSchema);
 const PaymentSettings = mongoose.models.PaymentSettings || mongoose.model('PaymentSettings', PaymentSettingsSchema);
 
-// --- Initialization ---
+// --- System Initialization ---
 async function initializeSystem() {
   try {
     const existingAdmin = await Admin.findOne({ username: 'Aryan' });
@@ -191,7 +191,7 @@ function authCustomer(req, res, next) {
   }
 }
 
-// --- Auth Routes ---
+// --- Auth Endpoints ---
 app.post(['/api/admin/login', '/api/auth/customer/login', '/api/auth/login'], async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -246,6 +246,15 @@ app.post(['/api/auth/register', '/api/auth/customer/register'], async (req, res)
 
     const token = jwt.sign({ id: user._id, role: 'customer', username: user.username, email: user.email, mobile: user.mobile }, JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ token, user: { id: user._id, username: user.username, name: user.name, email: user.email, mobile: user.mobile } });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/auth/me', authCustomer, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password_hash');
+    res.json(user);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -396,7 +405,7 @@ app.delete('/api/admin/subscriptions/:id', authAdmin, async (req, res) => {
   }
 });
 
-// --- Customers Management ---
+// --- Customers Management (Includes Mobile Phone) ---
 app.get(['/api/admin/customers', '/api/admin/customers/list'], authAdmin, async (req, res) => {
   try {
     res.json(await User.find().select('-password_hash').sort({ created_at: -1 }).lean());
@@ -537,14 +546,13 @@ app.get(['/api/admin/system-status', '/api/admin/system-monitor', '/api/admin/sy
 // --- Checkout & Orders ---
 app.post(['/api/checkout', '/api/checkout/initiate-order'], async (req, res) => {
   try {
-    const { txn_id, customer_name, customer_email, product_name, product_id, amount, payment_method, proof_screenshot, user_id } = req.body;
+    const { txn_id, customer_name, customer_email, product_name, product_id, amount, payment_method, proof_screenshot } = req.body;
     const finalTxnId = txn_id || 'TXN-' + Math.floor(100000 + Math.random() * 900000);
     
     const txn = await Transaction.create({
       txn_id: finalTxnId,
       customer_name: customer_name || 'Customer',
       customer_email: customer_email || '',
-      user_id: user_id || null,
       product_name: product_name || 'Digital Item',
       product_id: product_id || '',
       amount: Number(amount) || 499,
@@ -559,28 +567,17 @@ app.post(['/api/checkout', '/api/checkout/initiate-order'], async (req, res) => 
   }
 });
 
-// SECURED: Only return orders matching the logged-in customer's email or username
 app.get(['/api/orders', '/api/customer/orders'], async (req, res) => {
   try {
-    const email = (req.query.email || '').trim();
-    if (!email) {
-      return res.json([]); // Return empty list for unauthenticated/empty requests
-    }
-
-    const orders = await Transaction.find({
-      $or: [
-        { customer_email: email },
-        { customer_name: email }
-      ]
-    }).sort({ created_at: -1 }).lean();
-
-    res.json(orders);
+    const email = req.query.email;
+    const query = email ? { customer_email: email } : {};
+    res.json(await Transaction.find(query).sort({ created_at: -1 }).lean());
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// Safe 404 for API
+// Safe API Catch-All
 app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'API endpoint not found' });
 });
