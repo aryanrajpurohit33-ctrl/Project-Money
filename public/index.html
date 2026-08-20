@@ -5,11 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>NEXUS DIGITAL — Digital Goods & Subscriptions</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
-
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -28,65 +24,19 @@
       }
     }
   </script>
-
-  <style>
-    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-    body { background-color: #030712; color: #f3f4f6; overflow-x: hidden; }
-    .glass { background: rgba(17, 24, 39, 0.9); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); }
-    .glass-card { background: linear-gradient(135deg, rgba(31, 41, 55, 0.45) 0%, rgba(17, 24, 39, 0.6) 100%); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.06); transition: all 0.25s; }
-    .admin-card { background-color: #0f1422; border: 1px solid #1c2438; }
-    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
-    .custom-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 999px; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
-    .animate-fadeIn { animation: fadeIn 0.15s ease-out forwards; }
-
-    @keyframes rotate {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(180deg); }
-    }
-    .custom-loader-container {
-      --uib-size: 38px;
-      --uib-color: #10b981;
-      --uib-speed: .9s;
-      --uib-stroke: 3.5px;
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: var(--uib-size);
-      width: var(--uib-size);
-    }
-    .custom-loader-line {
-      position: absolute;
-      top: calc(50% - var(--uib-stroke) / 2);
-      left: 0;
-      height: var(--uib-stroke);
-      width: 100%;
-      border-radius: calc(var(--uib-stroke) / 2);
-      background-color: var(--uib-color);
-      animation: rotate var(--uib-speed) ease-in-out infinite;
-    }
-    .custom-loader-line:nth-child(1) { animation-delay: calc(var(--uib-speed) * -0.375); }
-    .custom-loader-line:nth-child(2) { animation-delay: calc(var(--uib-speed) * -0.375); opacity: 0.8; }
-    .custom-loader-line:nth-child(3) { animation-delay: calc(var(--uib-speed) * -0.3); opacity: 0.6; }
-    .custom-loader-line:nth-child(4) { animation-delay: calc(var(--uib-speed) * -0.225); opacity: 0.4; }
-    .custom-loader-line:nth-child(5) { animation-delay: calc(var(--uib-speed) * -0.15); opacity: 0.2; }
-    .custom-loader-line:nth-child(6) { animation-delay: calc(var(--uib-speed) * -0.075); opacity: 0.1; }
-  </style>
+  <link rel="stylesheet" href="/css/style.css">
 </head>
 <body class="min-h-screen flex flex-col antialiased">
 
   <div id="toastHub" class="fixed top-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
-  
-  <!-- Backdrop -->
   <div id="appBackdrop" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/60 z-40 hidden transition-opacity duration-200"></div>
 
-  <!-- Persistent Customer Sidebar Drawer -->
+  <!-- Customer Sidebar Drawer -->
   <aside id="customerSidebar" onclick="event.stopPropagation()" class="fixed top-0 bottom-0 left-0 w-64 bg-surface-900 border-r border-white/5 z-50 flex flex-col justify-between transition-transform duration-300 -translate-x-full shadow-2xl">
     <div>
       <div class="p-6 border-b border-white/5 flex items-center justify-between">
         <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('home')">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center font-black text-gray-950 shadow-lg shadow-emerald-500/20">N</div>
+          <div class="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center font-black text-gray-950 shadow-lg shadow-emerald-500/20">N</div>
           <div><span class="font-extrabold text-sm tracking-wider text-white block">NEXUS</span><span class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">DIGITAL VAULT</span></div>
         </div>
         <button onclick="toggleCustomerDrawer(false)" class="text-slate-400 hover:text-white p-2 font-bold text-base">✕</button>
@@ -103,7 +53,7 @@
     </div>
   </aside>
 
-  <!-- Persistent Admin Sidebar Drawer -->
+  <!-- Admin Sidebar Drawer -->
   <aside id="adminSidebar" onclick="event.stopPropagation()" class="fixed top-0 bottom-0 left-0 w-64 bg-admin-sidebar border-r border-admin-border flex flex-col justify-between z-50 transition-transform duration-300 -translate-x-full lg:translate-x-0 shadow-2xl">
     <div>
       <div class="p-6 border-b border-admin-border flex items-center justify-between">
@@ -127,13 +77,28 @@
     </div>
   </aside>
 
+  <!-- Dynamic Screen Viewport -->
   <div id="mainViewport" class="flex flex-1 min-h-screen"></div>
 
+  <!-- Global Modal Dialog Container -->
   <div id="globalModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-2 sm:p-4">
     <div class="glass max-w-5xl w-full rounded-3xl p-5 sm:p-8 relative max-h-[94vh] overflow-y-auto custom-scroll shadow-2xl border border-white/10" id="globalModalContent"></div>
   </div>
 
-  <!-- Load Modular Admin Scripts -->
+  <!-- Core Infrastructure Modules -->
+  <script src="/js/state.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/router.js"></script>
+
+  <!-- Storefront Modules -->
+  <script src="/js/store-home.js"></script>
+  <script src="/js/store-product.js"></script>
+  <script src="/js/store-cart.js"></script>
+  <script src="/js/store-checkout.js"></script>
+  <script src="/js/store-orders.js"></script>
+  <script src="/js/store-auth.js"></script>
+
+  <!-- Admin Suite Modules -->
   <script src="/js/dashboard.js"></script>
   <script src="/js/product-studio.js"></script>
   <script src="/js/slots.js"></script>
@@ -143,251 +108,5 @@
   <script src="/js/payment-settings.js"></script>
   <script src="/js/website-status.js"></script>
 
-  <!-- Load Modular Storefront Scripts -->
-  <script src="/js/store-header.js"></script>
-  <script src="/js/store-home.js"></script>
-  <script src="/js/store-product.js"></script>
-  <script src="/js/store-cart.js"></script>
-  <script src="/js/store-checkout.js"></script>
-  <script src="/js/store-orders.js"></script>
-  <script src="/js/store-auth.js"></script>
-
-  <script>
-    const state = {
-      sessionId: 'sess_' + Math.random().toString(36).substring(2, 12),
-      user: JSON.parse(localStorage.getItem('nexus_user') || 'null'),
-      token: localStorage.getItem('nexus_token') || '',
-      adminToken: localStorage.getItem('nexus_admin_token') || '',
-      adminUsername: localStorage.getItem('nexus_admin_user') || '',
-      cart: JSON.parse(localStorage.getItem('nexus_cart') || '[]'),
-      currentView: 'home',
-      adminSection: 'dashboard',
-      dashboardRange: '30d',
-      loadedProducts: [],
-      cachedProducts: JSON.parse(localStorage.getItem('nexus_local_cache') || 'null')
-    };
-
-    function getLoadingSpinnerHTML() {
-      return `
-        <div class="flex items-center justify-center py-24 w-full">
-          <div class="custom-loader-container">
-            <div class="custom-loader-line"></div>
-            <div class="custom-loader-line"></div>
-            <div class="custom-loader-line"></div>
-            <div class="custom-loader-line"></div>
-            <div class="custom-loader-line"></div>
-            <div class="custom-loader-line"></div>
-          </div>
-        </div>
-      `;
-    }
-
-    function showToast(message, type = 'success') {
-      const hub = document.getElementById('toastHub');
-      const toast = document.createElement('div');
-      const colors = type === 'success' ? 'bg-emerald-500 text-gray-950' : 'bg-rose-500 text-white';
-      toast.className = `px-5 py-3 rounded-2xl font-bold text-xs shadow-2xl flex items-center gap-2 transform transition-all duration-300 opacity-0 ${colors}`;
-      toast.innerHTML = `<span>${type === 'success' ? '✓' : '✕'}</span> <span>${message}</span>`;
-      hub.appendChild(toast);
-      setTimeout(() => toast.classList.remove('opacity-0'), 10);
-      setTimeout(() => { toast.classList.add('opacity-0'); setTimeout(() => toast.remove(), 300); }, 3200);
-    }
-
-    async function fetchJSON(url, options = {}) {
-      try {
-        const res = await fetch(url, options);
-        if (res.status === 401 || res.status === 403) {
-          if (url.includes('/api/admin/')) adminSignOut();
-          throw new Error('Session expired or unauthorized');
-        }
-        const text = await res.text();
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch (e) {
-          throw new Error('Server response error (Invalid JSON)');
-        }
-        if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-        return data;
-      } catch (err) { throw err; }
-    }
-
-    async function prefetchGlobalData() {
-      try {
-        const products = await fetchJSON('/api/products');
-        state.cachedProducts = products;
-        localStorage.setItem('nexus_local_cache', JSON.stringify(products));
-      } catch (e) {}
-    }
-
-    function closeAllDrawers() {
-      document.getElementById('appBackdrop').classList.add('hidden');
-      const cSide = document.getElementById('customerSidebar');
-      if (cSide) cSide.classList.add('-translate-x-full');
-      const aSide = document.getElementById('adminSidebar');
-      if (aSide) aSide.classList.add('-translate-x-full');
-      document.getElementById('globalModal').classList.add('hidden');
-    }
-
-    function toggleCustomerDrawer(open) {
-      const side = document.getElementById('customerSidebar');
-      const drop = document.getElementById('appBackdrop');
-      if (open) { 
-        side.classList.remove('-translate-x-full'); 
-        drop.classList.remove('hidden'); 
-        history.pushState({ drawer: 'customer' }, '');
-      }
-      else { 
-        side.classList.add('-translate-x-full'); 
-        drop.classList.add('hidden'); 
-      }
-    }
-
-    function toggleAdminDrawer(open) {
-      const side = document.getElementById('adminSidebar');
-      const drop = document.getElementById('appBackdrop');
-      if (open) { 
-        if (side) side.classList.remove('-translate-x-full');
-        drop.classList.remove('hidden'); 
-        history.pushState({ drawer: 'admin' }, '');
-      }
-      else { 
-        if (side) side.classList.add('-translate-x-full'); 
-        drop.classList.add('hidden'); 
-      }
-    }
-
-    function navigate(view, params = {}, addToHistory = true) {
-      state.currentView = view;
-      closeAllDrawers();
-      window.scrollTo({ top: 0, behavior: 'instant' });
-
-      if (addToHistory) {
-        history.pushState({ view, params }, '', '#' + view);
-      }
-
-      const viewport = document.getElementById('mainViewport');
-      if (view === 'admin-center') {
-        if (!state.adminToken) renderAdminLogin(viewport);
-        else renderAdminSaaSLayout(viewport);
-        return;
-      }
-      renderStorefrontLayout(viewport, view, params);
-    }
-
-    window.addEventListener('popstate', (e) => {
-      const modal = document.getElementById('globalModal');
-      if (modal && !modal.classList.contains('hidden')) {
-        modal.classList.add('hidden');
-        return;
-      }
-
-      const drop = document.getElementById('appBackdrop');
-      if (drop && !drop.classList.contains('hidden')) {
-        closeAllDrawers();
-        return;
-      }
-
-      if (e.state && e.state.view) {
-        navigate(e.state.view, e.state.params || {}, false);
-      } else {
-        navigate('home', {}, false);
-      }
-    });
-
-    function renderStorefrontLayout(viewport, view, params) {
-      viewport.innerHTML = `
-        <div class="flex flex-1 min-h-screen relative w-full bg-surface-950 animate-fadeIn flex-col">
-          <div id="storeHeaderContainer"></div>
-          <main id="storeContent" class="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-8"></main>
-        </div>
-      `;
-
-      renderStoreHeader(document.getElementById('storeHeaderContainer'));
-      const storeContent = document.getElementById('storeContent');
-
-      if (view === 'home' || view === 'products') renderStoreHome(storeContent);
-      else if (view === 'product-details') renderStoreProductDetails(storeContent, params.id);
-      else if (view === 'cart') renderStoreCart(storeContent);
-      else if (view === 'checkout') renderStoreCheckout(storeContent);
-      else if (view === 'orders') renderStoreOrders(storeContent);
-      else if (view === 'account' || view === 'login') renderCustomerAuthPrompt(storeContent, params.returnView || 'orders', 'login');
-    }
-
-    function renderAdminLogin(viewport) {
-      viewport.innerHTML = `
-        <div class="min-h-screen w-full bg-admin-bg flex items-center justify-center p-4 animate-fadeIn">
-          <div class="admin-card max-w-md w-full rounded-3xl p-8 space-y-6 shadow-2xl border border-admin-border">
-            <div class="text-center space-y-1">
-              <h2 class="text-xl font-black text-white tracking-wider font-sans">NEXUS CONTROL CENTER</h2>
-              <p class="text-xs text-slate-400 font-mono">Admin Authorization Portal</p>
-            </div>
-            <form onsubmit="handleAdminAuth(event)" class="space-y-4 font-mono">
-              <input type="text" id="admUser" required placeholder="Admin Username (Aryan)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-xs text-white outline-none focus:border-emerald-500">
-              <input type="password" id="admPass" required placeholder="Password (5669)" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-xs text-white outline-none focus:border-emerald-500">
-              <button type="submit" class="w-full py-3.5 rounded-xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider font-sans shadow-lg">Authorize Session</button>
-            </form>
-          </div>
-        </div>
-      `;
-    }
-
-    async function handleAdminAuth(e) {
-      e.preventDefault();
-      try {
-        const data = await fetchJSON('/api/admin/login', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: document.getElementById('admUser').value, password: document.getElementById('admPass').value })
-        });
-        state.adminToken = data.token; state.adminUsername = data.username;
-        localStorage.setItem('nexus_admin_token', data.token); localStorage.setItem('nexus_admin_user', data.username);
-        showToast('Admin Authorized'); navigate('admin-center');
-      } catch (err) { showToast(err.message, 'error'); }
-    }
-
-    function renderAdminSaaSLayout(viewport) {
-      viewport.innerHTML = `
-        <div class="flex flex-1 min-h-screen w-full bg-admin-bg font-sans text-slate-200 relative animate-fadeIn flex-col">
-          <header class="h-16 border-b border-admin-border bg-admin-sidebar/50 px-4 sm:px-8 flex items-center justify-between">
-            <button onclick="toggleAdminDrawer(true)" class="lg:hidden p-2 rounded-xl bg-white/5 text-slate-300">☰</button>
-            <span class="text-xs text-slate-400 font-mono">Admin: ${state.adminUsername}</span>
-          </header>
-          <main id="adminMainContent" class="flex-1 p-4 sm:p-8 space-y-8 max-w-7xl w-full mx-auto"></main>
-        </div>
-      `;
-      switchAdminSection(state.adminSection || 'dashboard');
-    }
-
-    function switchAdminSection(sec) {
-      state.adminSection = sec; closeAllDrawers();
-      const content = document.getElementById('adminMainContent');
-      if (!content) return;
-      document.querySelectorAll('[id^="adnav-"]').forEach(b => b.classList.remove('bg-emerald-500/10', 'text-emerald-400'));
-      const active = document.getElementById(`adnav-${sec}`);
-      if (active) active.classList.add('bg-emerald-500/10', 'text-emerald-400');
-
-      if (sec === 'dashboard') renderAdminDashboard(content);
-      else if (sec === 'products') renderAdminProductsStudio(content);
-      else if (sec === 'slots') renderAdminSlots(content);
-      else if (sec === 'subscriptions') renderAdminSubscriptions(content);
-      else if (sec === 'transactions') renderAdminTransactions(content);
-      else if (sec === 'customers') renderAdminCustomers(content);
-      else if (sec === 'payment-settings') renderAdminPaymentSettings(content);
-      else if (sec === 'system-monitor') renderAdminSystemMonitor(content);
-    }
-
-    function adminSignOut() {
-      state.adminToken = '';
-      state.adminUsername = '';
-      localStorage.removeItem('nexus_admin_token');
-      localStorage.removeItem('nexus_admin_user');
-      navigate('home');
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      prefetchGlobalData();
-      navigate('home', {}, false);
-    });
-  </script>
 </body>
 </html>
