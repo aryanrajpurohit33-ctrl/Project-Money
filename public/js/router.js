@@ -129,6 +129,7 @@ function renderStorefrontLayout(viewport, view, params) {
   else if (view === 'cart') renderStoreCart(storeContent);
   else if (view === 'checkout') renderStoreCheckout(storeContent);
   else if (view === 'orders') renderStoreOrders(storeContent);
+  else if (view === 'terms') renderStoreTerms(storeContent);
   else if (view === 'account' || view === 'login') renderCustomerAuthPrompt(storeContent, params.returnView || 'orders', 'login');
 }
 
@@ -193,7 +194,6 @@ function switchAdminSection(sec) {
   const active = document.getElementById(`adnav-${sec}`);
   if (active) active.classList.add('bg-emerald-500/10', 'text-emerald-400');
 
-  // Immediate Instant Switch Without Wiping Out Screen Skeletons
   if (sec === 'dashboard' || sec === 'overview') renderAdminDashboard(content);
   else if (sec === 'products') renderAdminProductsStudio(content);
   else if (sec === 'slots') renderAdminSlots(content);
