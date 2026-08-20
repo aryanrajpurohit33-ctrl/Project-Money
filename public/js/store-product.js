@@ -17,6 +17,7 @@ async function renderStoreProductDetails(container, productId) {
       image: (p.images && p.images[0]) || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800',
       basePrice: basePrice,
       baseOrig: origBase,
+      subscriptionPricing: p.subscription_pricing || {},
       devices: 1,
       duration: '1_MONTH',
       durationLabel: '1 Month (Standard Plan)',
@@ -47,12 +48,11 @@ async function renderStoreProductDetails(container, productId) {
           
           <div class="absolute bottom-4 left-4 right-4 flex items-end justify-between">
             <div>
-              <span class="text-[10px] font-mono tracking-widest text-emerald-400 uppercase font-bold block mb-1">OTT</span>
+              <span class="text-[10px] font-mono tracking-widest text-emerald-400 uppercase font-bold block mb-1">${p.category || 'OTT'}</span>
               <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">${p.name}</h1>
             </div>
-            <span class="px-2.5 py-1 rounded-xl bg-[#00A8E1]/20 border border-[#00A8E1]/30 text-[#00A8E1] font-mono text-[9px] font-black uppercase flex items-center gap-1">
-              <svg class="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/></svg>
-              PRIME VIDEO
+            <span class="px-2.5 py-1 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-mono text-[9px] font-black uppercase flex items-center gap-1">
+              ⚡ ${p.category || 'OTT'}
             </span>
           </div>
         </div>
@@ -74,7 +74,7 @@ async function renderStoreProductDetails(container, productId) {
                 <span id="durationArrowIcon" class="text-slate-400 text-[10px] transition-transform duration-300">▼</span>
               </button>
 
-              <!-- Floating Smooth Slide Menu -->
+              <!-- Floating Menu -->
               <div id="durationDropdownMenu" class="hidden absolute top-full left-0 right-0 mt-2 space-y-1 p-2 rounded-2xl bg-surface-900/95 backdrop-blur-xl border border-white/10 shadow-2xl z-30 transform transition-all duration-300 opacity-0 -translate-y-2">
                 <div onclick="selectDurationCustom('1_MONTH', 1, 50, '1 Month (Standard Plan)', 'STANDARD PLAN')" 
                   class="p-3 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-colors">
@@ -123,7 +123,7 @@ async function renderStoreProductDetails(container, productId) {
               </div>
             </div>
 
-            <!-- Compact Stepper with Fixed Alignment -->
+            <!-- Stepper -->
             <div class="flex flex-col items-end gap-1">
               <span class="text-[9px] font-mono uppercase text-slate-400 tracking-wider">Device Quantity</span>
               <div class="flex items-center gap-2 bg-surface-900 p-1.5 rounded-2xl border border-white/5">
@@ -142,15 +142,14 @@ async function renderStoreProductDetails(container, productId) {
             </div>
           </div>
 
-          <!-- Checkout Button -->
+          <!-- Add to Cart Action Button -->
           <button onclick="addProductToConfiguredCart()" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black tracking-wider uppercase shadow-xl shadow-emerald-500/25 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2 cursor-pointer font-mono mt-2">
-            <span>Checkout Now</span>
-            <span>→</span>
+            <span>+ ADD TO CART</span>
           </button>
 
         </div>
 
-        <!-- Separate Limited Flash Deal Box -->
+        <!-- Limited Flash Deal Box -->
         <div class="bg-surface-900/60 rounded-3xl p-4 flex items-center justify-between font-mono shadow-lg">
           <div class="flex items-center gap-2.5">
             <span class="text-base animate-pulse">🔥</span>
@@ -166,82 +165,6 @@ async function renderStoreProductDetails(container, productId) {
           </div>
         </div>
 
-        <!-- Horizontal Prime Video Exclusive Features -->
-        <div class="space-y-2 pt-1">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <div class="w-4 h-4 rounded bg-[#00A8E1] flex items-center justify-center font-bold text-[9px] text-white">✓</div>
-              <span class="text-slate-300 text-[11px] font-sans font-bold">Prime Video Features</span>
-            </div>
-            <span class="text-[9px] font-mono text-slate-500 uppercase tracking-widest">Swipe →</span>
-          </div>
-
-          <!-- Horizontal Scroll Container -->
-          <div class="flex gap-3 overflow-x-auto custom-scroll pb-2 pt-1 -mx-2 px-2 scroll-smooth">
-            
-            <!-- Feature 1: 4K Ultra HD & HDR -->
-            <div class="min-w-[190px] bg-surface-900/60 p-4 rounded-2xl space-y-2 border border-white/5 shrink-0 flex flex-col justify-between">
-              <div class="space-y-1.5">
-                <div class="w-8 h-8 rounded-xl bg-[#00A8E1]/15 text-[#00A8E1] flex items-center justify-center">
-                  <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 1.99-.9 1.99-2L23 5c0-1.1-.9-2-2-2zm0 14H3V5h18v12zm-5-6l-7 4V7z"/></svg>
-                </div>
-                <strong class="text-white text-xs block font-sans">4K Ultra HD & HDR</strong>
-                <p class="text-slate-400 text-[10px] leading-relaxed">Crystal clear 4K UHD playback with HDR10+ video quality.</p>
-              </div>
-              <span class="text-[9px] font-mono text-[#00A8E1] font-semibold block">Ultra HD Streaming</span>
-            </div>
-
-            <!-- Feature 2: Dolby Atmos Audio -->
-            <div class="min-w-[190px] bg-surface-900/60 p-4 rounded-2xl space-y-2 border border-white/5 shrink-0 flex flex-col justify-between">
-              <div class="space-y-1.5">
-                <div class="w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center">
-                  <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
-                </div>
-                <strong class="text-white text-xs block font-sans">Dolby Atmos Audio</strong>
-                <p class="text-slate-400 text-[10px] leading-relaxed">Cinematic 5.1 surround sound and Dolby Atmos support.</p>
-              </div>
-              <span class="text-[9px] font-mono text-indigo-400 font-semibold block">Cinema Sound</span>
-            </div>
-
-            <!-- Feature 3: Offline Downloads -->
-            <div class="min-w-[190px] bg-surface-900/60 p-4 rounded-2xl space-y-2 border border-white/5 shrink-0 flex flex-col justify-between">
-              <div class="space-y-1.5">
-                <div class="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
-                  <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-                </div>
-                <strong class="text-white text-xs block font-sans">Offline Downloads</strong>
-                <p class="text-slate-400 text-[10px] leading-relaxed">Download movies & TV shows on mobile/tablet to watch anywhere.</p>
-              </div>
-              <span class="text-[9px] font-mono text-emerald-400 font-semibold block">Watch Anywhere</span>
-            </div>
-
-            <!-- Feature 4: Ad-Free Originals & Movies -->
-            <div class="min-w-[190px] bg-surface-900/60 p-4 rounded-2xl space-y-2 border border-white/5 shrink-0 flex flex-col justify-between">
-              <div class="space-y-1.5">
-                <div class="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center">
-                  <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                </div>
-                <strong class="text-white text-xs block font-sans">Prime Originals</strong>
-                <p class="text-slate-400 text-[10px] leading-relaxed">Full access to exclusive Amazon Originals, series, and blockbusters.</p>
-              </div>
-              <span class="text-[9px] font-mono text-amber-400 font-semibold block">Exclusive Catalog</span>
-            </div>
-
-            <!-- Feature 5: PIN Profile Lock & Warranty -->
-            <div class="min-w-[190px] bg-surface-900/60 p-4 rounded-2xl space-y-2 border border-white/5 shrink-0 flex flex-col justify-between">
-              <div class="space-y-1.5">
-                <div class="w-8 h-8 rounded-xl bg-teal-500/15 text-teal-400 flex items-center justify-center">
-                  <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
-                </div>
-                <strong class="text-white text-xs block font-sans">Private PIN Profile</strong>
-                <p class="text-slate-400 text-[10px] leading-relaxed">Dedicated private profile with your personal PIN + full warranty.</p>
-              </div>
-              <span class="text-[9px] font-mono text-teal-400 font-semibold block">100% Replacement</span>
-            </div>
-
-          </div>
-        </div>
-
         <!-- Important Usage Instructions & Rules Card -->
         <div class="bg-surface-900/50 rounded-3xl p-4 sm:p-5 space-y-3 shadow-lg">
           <div class="flex items-center justify-between border-b border-white/5 pb-2.5">
@@ -253,25 +176,26 @@ async function renderStoreProductDetails(container, productId) {
           </div>
 
           <div class="space-y-2.5 text-[11px] text-slate-300 font-sans leading-relaxed">
-            <div class="flex items-start gap-2">
-              <span class="text-rose-400 font-bold text-xs leading-none mt-0.5">•</span>
-              <span><strong class="text-white">Do NOT Share Password:</strong> Keep login credentials strictly confidential. Sharing login credentials with others will lead to an immediate ban and warranty cancellation.</span>
-            </div>
-
-            <div class="flex items-start gap-2">
-              <span class="text-rose-400 font-bold text-xs leading-none mt-0.5">•</span>
-              <span><strong class="text-white">1 Device per Purchase:</strong> You can only log in on <strong class="text-emerald-400">1 device at a time</strong> per purchased slot (unless you choose higher device quantity during checkout).</span>
-            </div>
-
-            <div class="flex items-start gap-2">
-              <span class="text-amber-400 font-bold text-xs leading-none mt-0.5">•</span>
-              <span><strong class="text-white">Do NOT Change Account Details:</strong> Never change account email, master password, or billing settings. Modifying these permanently voids your warranty.</span>
-            </div>
-
-            <div class="flex items-start gap-2">
-              <span class="text-emerald-400 font-bold text-xs leading-none mt-0.5">•</span>
-              <span><strong class="text-white">Profile & PIN Lock:</strong> Use only your assigned profile number. You may set your own 4-digit PIN for privacy.</span>
-            </div>
+            ${p.custom_instructions || p.customer_instructions ? `
+              <div>${(p.custom_instructions || p.customer_instructions).replace(/\\n/g, '<br>')}</div>
+            ` : `
+              <div class="flex items-start gap-2">
+                <span class="text-rose-400 font-bold text-xs leading-none mt-0.5">•</span>
+                <span><strong class="text-white">Do NOT Share Password:</strong> Keep login credentials strictly confidential. Sharing login credentials with others will lead to an immediate ban and warranty cancellation.</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="text-rose-400 font-bold text-xs leading-none mt-0.5">•</span>
+                <span><strong class="text-white">1 Device per Purchase:</strong> You can only log in on <strong class="text-emerald-400">1 device at a time</strong> per purchased slot (unless you choose higher device quantity during checkout).</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="text-amber-400 font-bold text-xs leading-none mt-0.5">•</span>
+                <span><strong class="text-white">Do NOT Change Account Details:</strong> Never change account email, master password, or billing settings. Modifying these permanently voids your warranty.</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="text-emerald-400 font-bold text-xs leading-none mt-0.5">•</span>
+                <span><strong class="text-white">Profile & PIN Lock:</strong> Use only your assigned profile number. You may set your own 4-digit PIN for privacy.</span>
+              </div>
+            `}
           </div>
         </div>
 
@@ -408,8 +332,20 @@ function calculateDynamicPrice() {
   const sel = window.currentProductSelection;
   if (!sel) return;
 
-  const calculatedSale = Math.round(sel.basePrice * sel.deviceMultiplier * sel.durationMultiplier);
-  const calculatedOrig = Math.round(sel.baseOrig * sel.deviceMultiplier * (sel.duration === '1_YEAR' ? 12 : sel.duration === '6_MONTHS' ? 6 : sel.duration === '3_MONTHS' ? 3 : 1));
+  const tiers = sel.subscriptionPricing || {};
+  let baseSale = sel.basePrice;
+  let baseOrig = sel.baseOrig;
+
+  if (tiers[sel.duration]) {
+    baseSale = tiers[sel.duration].sale;
+    baseOrig = tiers[sel.duration].orig;
+  } else {
+    baseSale = Math.round(sel.basePrice * sel.durationMultiplier);
+    baseOrig = Math.round(sel.baseOrig * (sel.duration === '1_YEAR' ? 12 : sel.duration === '6_MONTHS' ? 6 : sel.duration === '3_MONTHS' ? 3 : 1));
+  }
+
+  const calculatedSale = Math.round(baseSale * sel.deviceMultiplier);
+  const calculatedOrig = Math.round(baseOrig * sel.deviceMultiplier);
 
   sel.finalPrice = calculatedSale;
 
@@ -461,6 +397,14 @@ function addProductToConfiguredCart() {
   });
 
   localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
+
+  // Update header cart count badge
+  const bagBadge = document.getElementById('cartBadgeCount');
+  if (bagBadge) {
+    bagBadge.textContent = state.cart.length;
+    bagBadge.classList.remove('hidden');
+  }
+
   showToast(`✓ Added to cart`);
-  navigate('checkout');
+  navigate('cart');
 }
