@@ -11,8 +11,8 @@ async function renderAdminProductsStudio(container) {
     state.loadedProducts = Array.isArray(products) ? products : [];
     const list = state.loadedProducts;
 
-    const publishedCount = list.filter(p => p.status === 'PUBLISHED' || !p.status || p.status === 'ACTIVE').length;
-    const draftCount = list.filter(p => p.status === 'DRAFT').length;
+    const publishedCount = list.filter(p => p.status === 'PUBLISHED' || !p.status || p.status === 'ACTIVE' || p.status === 'active').length;
+    const draftCount = list.filter(p => p.status === 'DRAFT' || p.status === 'draft').length;
     const outCount = list.filter(p => p.status === 'OUT_OF_STOCK').length;
 
     container.innerHTML = `
@@ -67,7 +67,7 @@ async function renderAdminProductsStudio(container) {
                     </div>
                   </div>
                 </div>
-                <span class="px-2.5 py-1 rounded-full uppercase text-[9px] font-mono font-bold ${p.status === 'PUBLISHED' || !p.status || p.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">
+                <span class="px-2.5 py-1 rounded-full uppercase text-[9px] font-mono font-bold ${p.status === 'PUBLISHED' || !p.status || p.status === 'ACTIVE' || p.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">
                   ${p.status || 'ACTIVE'}
                 </span>
               </div>
@@ -151,12 +151,25 @@ function openProductEditModal(productId = null) {
             </div>
           </div>
 
-          <!-- Image URL & Live Preview -->
+          <!-- Product Image: File Upload & URL Option -->
           <div class="space-y-2">
-            <label class="text-slate-400 text-[10px] block">Product Image URL</label>
-            <div class="flex gap-2">
-              <input type="url" id="edProdImg" required value="${currentImg}" oninput="document.getElementById('edImgPreview').src = this.value" placeholder="https://images.unsplash.com/..." class="flex-1 px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
-              <img id="edImgPreview" src="${currentImg}" class="w-11 h-11 rounded-xl object-cover border border-white/10 shrink-0">
+            <label class="text-slate-400 text-[10px] block font-bold">Product Image (Upload File or Enter URL)</label>
+            
+            <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
+              <!-- Upload from device -->
+              <div class="flex items-center gap-3">
+                <label class="px-4 py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 font-bold font-mono text-[11px] cursor-pointer active:scale-95 transition-all flex items-center gap-1.5 shrink-0">
+                  <span>📁 Upload Image File</span>
+                  <input type="file" accept="image/*" class="hidden" onchange="handleProductImageFileUpload(event)">
+                </label>
+                <span class="text-[10px] text-slate-500 font-mono">PNG, JPG, WEBP</span>
+              </div>
+
+              <!-- Or URL Input with Live Preview -->
+              <div class="flex items-center gap-2">
+                <input type="text" id="edProdImg" required value="${currentImg}" oninput="document.getElementById('edImgPreview').src = this.value" placeholder="Or paste image URL here..." class="flex-1 px-3.5 py-2.5 rounded-xl bg-surface-900 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
+                <img id="edImgPreview" src="${currentImg}" class="w-12 h-12 rounded-xl object-cover border border-white/10 shrink-0 shadow-md">
+              </div>
             </div>
           </div>
 
@@ -171,8 +184,8 @@ function openProductEditModal(productId = null) {
             <div>
               <label class="text-slate-400 text-[10px] block mb-1">Store Status</label>
               <select id="edProdStatus" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
-                <option value="PUBLISHED" ${p.status === 'PUBLISHED' || !p.status ? 'selected' : ''}>PUBLISHED (Active)</option>
-                <option value="DRAFT" ${p.status === 'DRAFT' ? 'selected' : ''}>DRAFT (Hidden)</option>
+                <option value="PUBLISHED" ${p.status === 'PUBLISHED' || !p.status || p.status === 'active' || p.status === 'ACTIVE' ? 'selected' : ''}>PUBLISHED (Active)</option>
+                <option value="DRAFT" ${p.status === 'DRAFT' || p.status === 'draft' ? 'selected' : ''}>DRAFT (Hidden)</option>
                 <option value="OUT_OF_STOCK" ${p.status === 'OUT_OF_STOCK' ? 'selected' : ''}>OUT OF STOCK</option>
               </select>
             </div>
@@ -250,8 +263,8 @@ function openProductEditModal(productId = null) {
 
         <!-- 3. Instructions & Rules Override -->
         <div class="space-y-2 font-mono pt-2 border-t border-white/5">
-          <label class="text-slate-400 text-[10px] uppercase tracking-wider block font-bold">3. Custom Product Delivery Instructions (Optional)</label>
-          <textarea id="edProdInstructions" rows="3" placeholder="Leave blank to use default (No password sharing, 1 device rule, PIN setup...)" class="w-full p-4 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500 font-sans">${p.custom_instructions || ''}</textarea>
+          <label class="text-slate-400 text-[10px] uppercase tracking-wider block font-bold">3. Custom Delivery Instructions & Rules (Optional)</label>
+          <textarea id="edProdInstructions" rows="3" placeholder="Leave blank to use default (No password sharing, 1 device rule, PIN setup...)" class="w-full p-4 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500 font-sans">${p.custom_instructions || p.customer_instructions || ''}</textarea>
         </div>
 
         <!-- Action Submit -->
@@ -268,6 +281,29 @@ function openProductEditModal(productId = null) {
 
     </div>
   `;
+}
+
+function handleProductImageFileUpload(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  if (file.size > 10 * 1024 * 1024) {
+    showToast('File is too large. Please select an image under 10MB.', 'error');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    const base64Data = event.target.result;
+    const imgInput = document.getElementById('edProdImg');
+    const imgPreview = document.getElementById('edImgPreview');
+    
+    if (imgInput) imgInput.value = base64Data;
+    if (imgPreview) imgPreview.src = base64Data;
+    
+    showToast('✓ Image uploaded and preview ready');
+  };
+  reader.readAsDataURL(file);
 }
 
 async function handleSaveProductStudio(e, productId) {
