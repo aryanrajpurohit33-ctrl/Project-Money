@@ -26,7 +26,7 @@ async function renderStoreProductDetails(container, productId) {
     };
 
     container.innerHTML = `
-      <div class="space-y-6 pb-24 max-w-lg mx-auto font-sans animate-fadeIn text-xs px-2" onclick="closeDurationDropdownOutside(event)">
+      <div class="space-y-5 pb-24 max-w-lg mx-auto font-sans animate-fadeIn text-xs px-2" onclick="closeDurationDropdownOutside(event)">
         
         <!-- Back Navigation & Status -->
         <div class="flex items-center justify-between">
@@ -165,17 +165,63 @@ async function renderStoreProductDetails(container, productId) {
           </div>
         </div>
 
-        <!-- Trust & Features -->
-        <div class="grid grid-cols-2 gap-3">
-          <div class="bg-surface-900/40 p-4 rounded-3xl space-y-1">
-            <span class="text-sm">🛡️</span>
-            <strong class="text-white text-xs block">Full Period Warranty</strong>
-            <p class="text-slate-400 text-[10px] leading-relaxed">Instant slot replacement if any access disruption occurs.</p>
+        <!-- Product Features Grid -->
+        <div class="space-y-2 pt-1">
+          <span class="text-slate-400 text-[10px] font-mono uppercase tracking-wider block font-bold">Product Features</span>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-surface-900/50 p-4 rounded-3xl space-y-1">
+              <span class="text-sm">🛡️</span>
+              <strong class="text-white text-xs block">Full Duration Warranty</strong>
+              <p class="text-slate-400 text-[10px] leading-relaxed">Instant slot replacement if any access disruption occurs during your plan.</p>
+            </div>
+            <div class="bg-surface-900/50 p-4 rounded-3xl space-y-1">
+              <span class="text-sm">🔒</span>
+              <strong class="text-white text-xs block">Private PIN Profile</strong>
+              <p class="text-slate-400 text-[10px] leading-relaxed">Dedicated profile with custom 4-digit PIN lock for your personal watchlist.</p>
+            </div>
+            <div class="bg-surface-900/50 p-4 rounded-3xl space-y-1">
+              <span class="text-sm">📺</span>
+              <strong class="text-white text-xs block">4K Ultra HD + HDR</strong>
+              <p class="text-slate-400 text-[10px] leading-relaxed">Enjoy maximum available resolution with Dolby Atmos audio support.</p>
+            </div>
+            <div class="bg-surface-900/50 p-4 rounded-3xl space-y-1">
+              <span class="text-sm">⚡</span>
+              <strong class="text-white text-xs block">Instant Vault Access</strong>
+              <p class="text-slate-400 text-[10px] leading-relaxed">Credentials unlocked in your Purchased Items immediately after verification.</p>
+            </div>
           </div>
-          <div class="bg-surface-900/40 p-4 rounded-3xl space-y-1">
-            <span class="text-sm">🔒</span>
-            <strong class="text-white text-xs block">Private Profile</strong>
-            <p class="text-slate-400 text-[10px] leading-relaxed">Set your own 4-digit PIN for an isolated personal watchlist.</p>
+        </div>
+
+        <!-- Important Usage Instructions & Rules Card -->
+        <div class="bg-surface-900/50 rounded-3xl p-4 sm:p-5 space-y-3 shadow-lg">
+          <div class="flex items-center justify-between border-b border-white/5 pb-2.5">
+            <div class="flex items-center gap-2">
+              <span class="text-amber-400 text-sm">⚠️</span>
+              <span class="text-white font-bold text-xs">Important Usage Instructions & Rules</span>
+            </div>
+            <span class="text-[9px] font-mono text-amber-400/90 uppercase font-bold bg-amber-500/10 px-2 py-0.5 rounded-full">Mandatory</span>
+          </div>
+
+          <div class="space-y-2.5 text-[11px] text-slate-300 font-sans leading-relaxed">
+            <div class="flex items-start gap-2">
+              <span class="text-rose-400 font-bold text-xs leading-none mt-0.5">•</span>
+              <span><strong class="text-white">Do NOT Share Password:</strong> Keep login credentials strictly confidential. Sharing login credentials with others will lead to an immediate ban and warranty cancellation.</span>
+            </div>
+
+            <div class="flex items-start gap-2">
+              <span class="text-rose-400 font-bold text-xs leading-none mt-0.5">•</span>
+              <span><strong class="text-white">1 Device per Purchase:</strong> You can only log in on <strong class="text-emerald-400">1 device at a time</strong> per purchased slot (unless you choose higher device quantity during checkout).</span>
+            </div>
+
+            <div class="flex items-start gap-2">
+              <span class="text-amber-400 font-bold text-xs leading-none mt-0.5">•</span>
+              <span><strong class="text-white">Do NOT Change Account Details:</strong> Never change account email, master password, or billing settings. Modifying these permanently voids your warranty.</span>
+            </div>
+
+            <div class="flex items-start gap-2">
+              <span class="text-emerald-400 font-bold text-xs leading-none mt-0.5">•</span>
+              <span><strong class="text-white">Profile & PIN Lock:</strong> Use only your assigned profile number. You may set your own 4-digit PIN for privacy.</span>
+            </div>
           </div>
         </div>
 
