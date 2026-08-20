@@ -42,7 +42,7 @@ const UserSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true, lowercase: true, trim: true },
   name: { type: String, default: '' },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-  mobile: { type: String, default: '' },
+  mobile: { type: String, default: '', trim: true },
   password_hash: { type: String, required: true },
   status: { type: String, default: 'active' },
   last_login: { type: Date, default: Date.now },
@@ -131,22 +131,6 @@ const TransactionSchema = new mongoose.Schema({
   created_at: { type: Date, default: Date.now }
 });
 
-const OrderSchema = new mongoose.Schema({
-  order_number: { type: String, required: true, unique: true },
-  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  customer_name: String,
-  customer_email: String,
-  items: [{ 
-    product_id: mongoose.Schema.Types.ObjectId, 
-    name: String, 
-    price: Number,
-    delivered_data: { email: String, password: String }
-  }],
-  total_amount: { type: Number, required: true },
-  payment_status: { type: String, default: 'Processing' },
-  created_at: { type: Date, default: Date.now }
-});
-
 const PaymentSettingsSchema = new mongoose.Schema({
   upi_id: { type: String, default: 'merchant@okaxis' },
   upi_name: { type: String, default: 'Nexus Pay' },
@@ -161,7 +145,6 @@ const Product = mongoose.models.Product || mongoose.model('Product', ProductSche
 const InventorySlot = mongoose.models.InventorySlot || mongoose.model('InventorySlot', InventorySlotSchema);
 const Subscription = mongoose.models.Subscription || mongoose.model('Subscription', SubscriptionSchema);
 const Transaction = mongoose.models.Transaction || mongoose.model('Transaction', TransactionSchema);
-const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
 const PaymentSettings = mongoose.models.PaymentSettings || mongoose.model('PaymentSettings', PaymentSettingsSchema);
 
 // --- System Initialization ---
@@ -208,7 +191,7 @@ function authCustomer(req, res, next) {
   }
 }
 
-// --- Authentication Endpoints ---
+// --- Auth Endpoints ---
 app.post(['/api/admin/login', '/api/auth/customer/login', '/api/auth/login'], async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -231,8 +214,8 @@ app.post(['/api/admin/login', '/api/auth/customer/login', '/api/auth/login'], as
       return res.status(400).json({ error: 'Incorrect username or password.' });
     }
 
-    const token = jwt.sign({ id: user._id, role: 'customer', username: user.username, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, isAdmin: false, is_admin: false, user: { id: user._id, username: user.username, name: user.name, email: user.email } });
+    const token = jwt.sign({ id: user._id, role: 'customer', username: user.username, email: user.email, mobile: user.mobile }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, isAdmin: false, is_admin: false, user: { id: user._id, username: user.username, name: user.name, email: user.email, mobile: user.mobile } });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -242,17 +225,27 @@ app.post(['/api/auth/register', '/api/auth/customer/register'], async (req, res)
   try {
     const username = (req.body.username || '').toLowerCase().trim();
     const email = (req.body.email || `${username}@nexus.internal`).toLowerCase().trim();
+    const mobile = (req.body.mobile || '').trim();
     const password = req.body.password || '';
 
+    if (!username || !email || !password) return res.status(400).json({ error: 'Username, Email, and Password are required.' });
     if (username === 'aryan') return res.status(400).json({ error: 'Username is reserved.' });
+    
     const existing = await User.findOne({ $or: [{ username }, { email }] });
-    if (existing) return res.status(400).json({ error: 'Username or email already exists.' });
+    if (existing) return res.status(400).json({ error: 'Username or email already registered.' });
 
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(password, salt);
-    const user = await User.create({ username, name: req.body.name || username, email, password_hash });
-    const token = jwt.sign({ id: user._id, role: 'customer', username: user.username, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-    res.status(201).json({ token, user: { id: user._id, username: user.username, name: user.name, email: user.email } });
+    const user = await User.create({
+      username,
+      name: req.body.name || username,
+      email,
+      mobile: mobile || 'Not Provided',
+      password_hash
+    });
+
+    const token = jwt.sign({ id: user._id, role: 'customer', username: user.username, email: user.email, mobile: user.mobile }, JWT_SECRET, { expiresIn: '7d' });
+    res.status(201).json({ token, user: { id: user._id, username: user.username, name: user.name, email: user.email, mobile: user.mobile } });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -267,7 +260,7 @@ app.get('/api/auth/me', authCustomer, async (req, res) => {
   }
 });
 
-// --- Overview Dashboard Endpoints ---
+// --- Admin Overview Dashboard ---
 app.get(['/api/admin/dashboard', '/api/admin/dashboard/full-overview', '/api/admin/dashboard-stats'], authAdmin, async (req, res) => {
   try {
     const orders = await Transaction.find({ status: 'SUCCESS' }).lean();
@@ -301,7 +294,7 @@ app.get(['/api/admin/dashboard', '/api/admin/dashboard/full-overview', '/api/adm
   }
 });
 
-// --- Product Studio Endpoints ---
+// --- Products Endpoints ---
 app.get(['/api/products', '/api/admin/products'], async (req, res) => {
   try {
     res.json(await Product.find({ status: { $ne: 'archived' } }).sort({ created_at: -1 }).lean());
@@ -313,12 +306,8 @@ app.get(['/api/products', '/api/admin/products'], async (req, res) => {
 app.get('/api/products/:id', async (req, res) => {
   try {
     let p = null;
-    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
-      p = await Product.findById(req.params.id).lean();
-    }
-    if (!p) {
-      p = await Product.findOne({ slug: req.params.id }).lean();
-    }
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) p = await Product.findById(req.params.id).lean();
+    if (!p) p = await Product.findOne({ slug: req.params.id }).lean();
     if (!p) return res.status(404).json({ error: 'Product not found' });
     res.json({ ...p, in_stock: p.unlimited_stock || p.stock_quantity > 0 });
   } catch (e) {
@@ -329,7 +318,7 @@ app.get('/api/products/:id', async (req, res) => {
 app.post('/api/admin/products', authAdmin, async (req, res) => {
   try {
     const { name, original_price, sale_price, description, status, delivery_type, images, subscription_pricing, custom_instructions, category } = req.body;
-    if (!name) return res.status(400).json({ error: 'Product name is required' });
+    if (!name) return res.status(400).json({ error: 'Product name required' });
 
     const orig = Number(original_price) || 999;
     const sale = Number(sale_price) || 499;
@@ -338,9 +327,7 @@ app.post('/api/admin/products', authAdmin, async (req, res) => {
     let baseSlug = (name || 'prod').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     let slug = baseSlug;
     let counter = 1;
-    while (await Product.findOne({ slug })) {
-      slug = `${baseSlug}-${counter++}`;
-    }
+    while (await Product.findOne({ slug })) slug = `${baseSlug}-${counter++}`;
 
     const p = await Product.create({
       name,
@@ -382,11 +369,10 @@ app.delete('/api/admin/products/:id', authAdmin, async (req, res) => {
   }
 });
 
-// --- Subscriptions Suite Endpoints ---
+// --- Subscriptions Suite ---
 app.get(['/api/admin/subscriptions', '/api/admin/subscriptions/advanced'], authAdmin, async (req, res) => {
   try {
-    const subs = await Subscription.find().sort({ start_date: -1 }).lean();
-    res.json(subs);
+    res.json(await Subscription.find().sort({ start_date: -1 }).lean());
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -419,7 +405,7 @@ app.delete('/api/admin/subscriptions/:id', authAdmin, async (req, res) => {
   }
 });
 
-// --- Customers Management Endpoints ---
+// --- Customers Management (Includes Mobile Phone) ---
 app.get(['/api/admin/customers', '/api/admin/customers/list'], authAdmin, async (req, res) => {
   try {
     res.json(await User.find().select('-password_hash').sort({ created_at: -1 }).lean());
@@ -428,7 +414,7 @@ app.get(['/api/admin/customers', '/api/admin/customers/list'], authAdmin, async 
   }
 });
 
-// --- Transactions API (Verify & Reject) ---
+// --- Transactions API ---
 app.get('/api/admin/transactions', authAdmin, async (req, res) => {
   try {
     res.json(await Transaction.find().sort({ created_at: -1 }).lean());
@@ -441,7 +427,6 @@ app.post('/api/admin/transactions/:id/verify', authAdmin, async (req, res) => {
   try {
     const txn = await Transaction.findByIdAndUpdate(req.params.id, { status: 'SUCCESS' }, { new: true });
     
-    // Auto-create active subscription
     const expiry = new Date();
     expiry.setDate(expiry.getDate() + 30);
     await Subscription.create({
@@ -475,7 +460,7 @@ app.post('/api/admin/transactions/:id/reject', authAdmin, async (req, res) => {
   }
 });
 
-// --- Inventory Slots Endpoints ---
+// --- Inventory Slots ---
 app.get('/api/admin/slots', authAdmin, async (req, res) => {
   try {
     const slots = await InventorySlot.find().populate('product_id', 'name').lean();
@@ -503,7 +488,7 @@ app.delete('/api/admin/slots/:id', authAdmin, async (req, res) => {
   }
 });
 
-// --- Payment Settings Endpoints ---
+// --- Payment Settings ---
 app.get(['/api/payment-settings', '/api/admin/payment-settings'], async (req, res) => {
   try {
     let ps = await PaymentSettings.findOne().lean();
@@ -526,7 +511,7 @@ app.post('/api/admin/payment-settings', authAdmin, async (req, res) => {
   }
 });
 
-// --- System Diagnostics / Infrastructure ---
+// --- System Infrastructure ---
 app.get(['/api/admin/system-status', '/api/admin/system-monitor', '/api/admin/system/infrastructure', '/api/admin/diagnostics'], authAdmin, (req, res) => {
   const memUsage = process.memoryUsage();
   const uptimeSec = process.uptime();
@@ -558,7 +543,7 @@ app.get(['/api/admin/system-status', '/api/admin/system-monitor', '/api/admin/sy
   });
 });
 
-// --- Storefront Order & Checkout ---
+// --- Checkout & Orders ---
 app.post(['/api/checkout', '/api/checkout/initiate-order'], async (req, res) => {
   try {
     const { txn_id, customer_name, customer_email, product_name, product_id, amount, payment_method, proof_screenshot } = req.body;
@@ -592,7 +577,7 @@ app.get(['/api/orders', '/api/customer/orders'], async (req, res) => {
   }
 });
 
-// Safe 404 for missing API routes
+// Safe API Catch-All
 app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'API endpoint not found' });
 });
