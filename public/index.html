@@ -236,6 +236,7 @@
       if (open) { 
         side.classList.remove('-translate-x-full'); 
         drop.classList.remove('hidden'); 
+        history.pushState({ drawer: 'customer' }, '');
       }
       else { 
         side.classList.add('-translate-x-full'); 
@@ -249,6 +250,7 @@
       if (open) { 
         if (side) side.classList.remove('-translate-x-full');
         drop.classList.remove('hidden'); 
+        history.pushState({ drawer: 'admin' }, '');
       }
       else { 
         if (side) side.classList.add('-translate-x-full'); 
@@ -256,10 +258,14 @@
       }
     }
 
-    function navigate(view, params = {}) {
+    function navigate(view, params = {}, addToHistory = true) {
       state.currentView = view;
       closeAllDrawers();
       window.scrollTo({ top: 0, behavior: 'instant' });
+
+      if (addToHistory) {
+        history.pushState({ view, params }, '', '#' + view);
+      }
 
       const viewport = document.getElementById('mainViewport');
       if (view === 'admin-center') {
@@ -269,6 +275,30 @@
       }
       renderStorefrontLayout(viewport, view, params);
     }
+
+    // Handle Phone Back Button & Keyboard Backspace seamlessly
+    window.addEventListener('popstate', (e) => {
+      // If modal is open, close it first
+      const modal = document.getElementById('globalModal');
+      if (modal && !modal.classList.contains('hidden')) {
+        modal.classList.add('hidden');
+        return;
+      }
+
+      // If sidebar/drawer is open, close it
+      const drop = document.getElementById('appBackdrop');
+      if (drop && !drop.classList.contains('hidden')) {
+        closeAllDrawers();
+        return;
+      }
+
+      // Otherwise navigate to previous app view
+      if (e.state && e.state.view) {
+        navigate(e.state.view, e.state.params || {}, false);
+      } else {
+        navigate('home', {}, false);
+      }
+    });
 
     function renderStorefrontLayout(viewport, view, params) {
       viewport.innerHTML = `
@@ -357,7 +387,10 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      navigate('home');
+      // Set initial history state
+      history.replaceState({ view: 'home', params: {} }, '', '#home');
+      navigate('home', {}, false);
+
       await prefetchGlobalData();
       if (state.currentView === 'home' || state.currentView === 'products') {
         renderStoreHome(document.getElementById('storeContent'));
