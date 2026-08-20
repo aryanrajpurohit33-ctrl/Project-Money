@@ -19,13 +19,14 @@ async function renderStoreProductDetails(container, productId) {
       baseOrig: origBase,
       devices: 1,
       duration: '1_MONTH',
+      durationLabel: '1 Month (Standard Plan)',
       durationMultiplier: 1,
       deviceMultiplier: 1,
       discountPercent: 0
     };
 
     container.innerHTML = `
-      <div class="space-y-5 pb-20 max-w-xl mx-auto font-sans animate-fadeIn text-xs px-1">
+      <div class="space-y-4 pb-20 max-w-xl mx-auto font-sans animate-fadeIn text-xs px-1">
         
         <!-- Back Navigation & Status -->
         <div class="flex items-center justify-between">
@@ -38,59 +39,105 @@ async function renderStoreProductDetails(container, productId) {
           </span>
         </div>
 
-        <!-- Main Product Card & Buy Box -->
-        <div class="bg-surface-900/70 border border-white/[0.08] rounded-3xl p-5 sm:p-6 space-y-5 backdrop-blur-xl shadow-2xl">
+        <!-- Main Product Showcase Card -->
+        <div class="bg-surface-900/70 border border-white/[0.08] rounded-3xl p-4 sm:p-6 space-y-5 backdrop-blur-xl shadow-2xl">
           
-          <!-- Image & Title Banner -->
-          <div class="relative rounded-2xl overflow-hidden bg-surface-950 border border-white/5 aspect-[16/9] w-full max-h-52">
+          <!-- Large Prominent Product Image -->
+          <div class="relative rounded-2xl overflow-hidden bg-surface-950 border border-white/5 w-full h-64 sm:h-80 shadow-inner">
             <img src="${(p.images && p.images[0]) || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" 
                  class="w-full h-full object-cover">
-            <div class="absolute inset-0 bg-gradient-to-t from-surface-950/90 via-surface-950/20 to-transparent"></div>
+            <div class="absolute inset-0 bg-gradient-to-t from-surface-950 via-transparent to-transparent"></div>
+            
             <div class="absolute bottom-3 left-4 right-4 flex items-end justify-between">
               <div>
-                <span class="text-[9px] font-mono tracking-widest text-emerald-400/90 uppercase font-semibold block">${p.category || 'Subscription'}</span>
-                <h1 class="text-xl sm:text-2xl font-extrabold text-white tracking-tight drop-shadow-sm">${p.name}</h1>
+                <span class="text-[9px] font-mono tracking-widest text-emerald-400 uppercase font-semibold block mb-0.5">${p.category || 'Digital Goods'}</span>
+                <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-md">${p.name}</h1>
               </div>
+              <span class="px-2.5 py-1 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 text-white font-mono text-[9px] font-bold uppercase">
+                ${p.product_type === 'SUBSCRIPTION' ? '🔄 Subscription' : '⚡ Digital'}
+              </span>
             </div>
           </div>
 
-          <!-- Configuration Controls (Dropdowns) -->
+          <!-- Configuration Controls -->
           <div class="space-y-4">
             
-            <!-- 1. Device Selection Dropdown -->
+            <!-- 1. Device Stepper Selector (Quantity Style) -->
             <div class="space-y-1.5">
-              <label for="deviceSelectDropdown" class="text-[10px] font-mono uppercase tracking-wider text-slate-400 block">
-                1. Simultaneous Screen / Devices
-              </label>
-              <div class="relative">
-                <select id="deviceSelectDropdown" onchange="handleDeviceDropdownChange(this.value)" 
-                  class="w-full py-3.5 px-4 rounded-2xl bg-surface-950 border border-white/10 text-white text-xs font-mono outline-none focus:border-emerald-500 appearance-none cursor-pointer">
-                  <option value="1">1 Device (Private Profile)</option>
-                  <option value="2">2 Devices (Duo Pass)</option>
-                  <option value="3">3 Devices (Multi Access)</option>
-                  <option value="4">4 Devices (Family / Full Vault)</option>
-                </select>
-                <div class="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400 text-xs">
-                  ▼
+              <div class="flex justify-between items-center text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                <span>1. Select Devices</span>
+                <span class="text-emerald-400 font-bold" id="deviceSubLabel">Private Profile</span>
+              </div>
+              
+              <div class="flex items-center justify-between p-2 rounded-2xl bg-surface-950 border border-white/10">
+                <button type="button" onclick="adjustDeviceQuantity(-1)" 
+                  class="w-11 h-11 rounded-xl bg-white/5 hover:bg-white/10 active:scale-90 text-white text-lg font-mono font-bold flex items-center justify-center transition-all cursor-pointer">
+                  −
+                </button>
+
+                <div class="text-center font-mono">
+                  <span class="text-base sm:text-lg font-black text-white block" id="deviceDisplayCount">1 Device</span>
+                  <span class="text-[9px] text-slate-500 block" id="deviceTypeDetail">1 Screen Access</span>
                 </div>
+
+                <button type="button" onclick="adjustDeviceQuantity(1)" 
+                  class="w-11 h-11 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-90 text-emerald-400 text-lg font-mono font-bold flex items-center justify-center transition-all cursor-pointer">
+                  +
+                </button>
               </div>
             </div>
 
-            <!-- 2. Duration Plan Dropdown -->
+            <!-- 2. Custom Animated Duration Selector (No Native Browser Popup) -->
             <div class="space-y-1.5">
-              <label for="durationSelectDropdown" class="text-[10px] font-mono uppercase tracking-wider text-slate-400 block">
-                2. Subscription Duration
-              </label>
+              <div class="flex justify-between items-center text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                <span>2. Access Duration</span>
+                <span class="text-emerald-400 font-bold" id="durationSubLabel">Standard Plan</span>
+              </div>
+
               <div class="relative">
-                <select id="durationSelectDropdown" onchange="handleDurationDropdownChange(this.value)" 
-                  class="w-full py-3.5 px-4 rounded-2xl bg-surface-950 border border-white/10 text-white text-xs font-mono outline-none focus:border-emerald-500 appearance-none cursor-pointer">
-                  <option value="1_MONTH">1 Month (Standard Plan)</option>
-                  <option value="3_MONTHS">3 Months (Save 15% OFF)</option>
-                  <option value="6_MONTHS">6 Months (Save 25% OFF)</option>
-                  <option value="1_YEAR">1 Year / 12 Months (Best Value — Save 40% OFF)</option>
-                </select>
-                <div class="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400 text-xs">
-                  ▼
+                <!-- Dropdown Trigger Button -->
+                <button type="button" onclick="toggleDurationMenu()" id="durationTriggerBtn"
+                  class="w-full py-3.5 px-4 rounded-2xl bg-surface-950 border border-white/10 text-white text-xs font-mono flex items-center justify-between hover:border-white/20 transition-all cursor-pointer">
+                  <span id="selectedDurationText" class="font-bold">1 Month (Standard Plan)</span>
+                  <span id="durationArrowIcon" class="text-slate-400 text-[10px] transition-transform duration-200">▼</span>
+                </button>
+
+                <!-- Custom In-App Slide Menu -->
+                <div id="durationDropdownMenu" class="hidden mt-2 space-y-1.5 p-2 rounded-2xl bg-surface-950 border border-white/10 shadow-2xl animate-fadeIn">
+                  
+                  <div onclick="selectDurationCustom('1_MONTH', 1, 0, '1 Month (Standard Plan)', 'Standard Plan')" 
+                    class="p-3 rounded-xl hover:bg-white/5 active:bg-white/10 flex items-center justify-between cursor-pointer transition-colors duration-150">
+                    <span class="text-xs font-mono text-white font-bold">1 Month</span>
+                    <span class="text-[10px] font-mono text-slate-400">Standard Plan</span>
+                  </div>
+
+                  <div onclick="selectDurationCustom('3_MONTHS', 2.55, 15, '3 Months (Save 15% OFF)', '15% OFF Plan')" 
+                    class="p-3 rounded-xl hover:bg-white/5 active:bg-white/10 flex items-center justify-between cursor-pointer transition-colors duration-150 border border-white/5">
+                    <div>
+                      <span class="text-xs font-mono text-white font-bold">3 Months</span>
+                      <span class="ml-2 px-1.5 py-0.5 bg-amber-500/20 text-amber-300 text-[8px] font-mono font-bold rounded">15% OFF</span>
+                    </div>
+                    <span class="text-[10px] font-mono text-slate-400">Quarterly Pass</span>
+                  </div>
+
+                  <div onclick="selectDurationCustom('6_MONTHS', 4.5, 25, '6 Months (Save 25% OFF)', '25% OFF Plan')" 
+                    class="p-3 rounded-xl hover:bg-white/5 active:bg-white/10 flex items-center justify-between cursor-pointer transition-colors duration-150 border border-white/5">
+                    <div>
+                      <span class="text-xs font-mono text-white font-bold">6 Months</span>
+                      <span class="ml-2 px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 text-[8px] font-mono font-bold rounded">25% OFF</span>
+                    </div>
+                    <span class="text-[10px] font-mono text-slate-400">Half-Year Pass</span>
+                  </div>
+
+                  <div onclick="selectDurationCustom('1_YEAR', 7.2, 40, '1 Year / 12 Months (Best Value — Save 40% OFF)', 'Best Value 40% OFF')" 
+                    class="p-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 flex items-center justify-between cursor-pointer transition-colors duration-150 border border-emerald-500/20">
+                    <div>
+                      <span class="text-xs font-mono text-emerald-400 font-bold">1 Year (12 Mo)</span>
+                      <span class="ml-2 px-1.5 py-0.5 bg-emerald-500 text-gray-950 text-[8px] font-mono font-black rounded">BEST VALUE</span>
+                    </div>
+                    <span class="text-[10px] font-mono text-emerald-400 font-bold">40% OFF</span>
+                  </div>
+
                 </div>
               </div>
             </div>
@@ -114,7 +161,7 @@ async function renderStoreProductDetails(container, productId) {
               </div>
             </div>
 
-            <button onclick="addProductToConfiguredCart()" class="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black tracking-wider uppercase shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2 cursor-pointer font-mono">
+            <button onclick="addProductToConfiguredCart()" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black tracking-wider uppercase shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2 cursor-pointer font-mono">
               <span>Checkout Now</span>
               <span>→</span>
             </button>
@@ -200,35 +247,73 @@ function startThreeHourCountdownLoop() {
   productTimerInterval = setInterval(updateTimer, 1000);
 }
 
-function handleDeviceDropdownChange(val) {
+function adjustDeviceQuantity(delta) {
   const sel = window.currentProductSelection;
   if (!sel) return;
 
-  const deviceCount = parseInt(val, 10) || 1;
-  const multipliers = { 1: 1, 2: 1.8, 3: 2.6, 4: 3.4 };
+  let newCount = sel.devices + delta;
+  if (newCount < 1) newCount = 1;
+  if (newCount > 4) newCount = 4;
 
-  sel.devices = deviceCount;
-  sel.deviceMultiplier = multipliers[deviceCount] || 1;
+  sel.devices = newCount;
+
+  const multipliers = { 1: 1, 2: 1.8, 3: 2.6, 4: 3.4 };
+  const subLabels = {
+    1: 'Private Profile',
+    2: 'Duo Pass (2 Screens)',
+    3: 'Multi Access (3 Screens)',
+    4: 'Family Vault (4 Screens)'
+  };
+  const details = {
+    1: '1 Screen Access',
+    2: '2 Simultaneous Screens',
+    3: '3 Simultaneous Screens',
+    4: 'Full Account (4 Screens)'
+  };
+
+  sel.deviceMultiplier = multipliers[newCount] || 1;
+
+  const countEl = document.getElementById('deviceDisplayCount');
+  const subLabelEl = document.getElementById('deviceSubLabel');
+  const detailEl = document.getElementById('deviceTypeDetail');
+
+  if (countEl) countEl.textContent = `${newCount} ${newCount === 1 ? 'Device' : 'Devices'}`;
+  if (subLabelEl) subLabelEl.textContent = subLabels[newCount];
+  if (detailEl) detailEl.textContent = details[newCount];
 
   calculateDynamicPrice();
 }
 
-function handleDurationDropdownChange(val) {
+function toggleDurationMenu() {
+  const menu = document.getElementById('durationDropdownMenu');
+  const arrow = document.getElementById('durationArrowIcon');
+  if (!menu) return;
+
+  if (menu.classList.contains('hidden')) {
+    menu.classList.remove('hidden');
+    if (arrow) arrow.style.transform = 'rotate(180deg)';
+  } else {
+    menu.classList.add('hidden');
+    if (arrow) arrow.style.transform = 'rotate(0deg)';
+  }
+}
+
+function selectDurationCustom(key, multiplier, discount, fullLabel, subLabel) {
   const sel = window.currentProductSelection;
   if (!sel) return;
 
-  const durations = {
-    '1_MONTH': { multiplier: 1, discount: 0 },
-    '3_MONTHS': { multiplier: 2.55, discount: 15 },
-    '6_MONTHS': { multiplier: 4.5, discount: 25 },
-    '1_YEAR': { multiplier: 7.2, discount: 40 }
-  };
+  sel.duration = key;
+  sel.durationLabel = fullLabel;
+  sel.durationMultiplier = multiplier;
+  sel.discountPercent = discount;
 
-  const target = durations[val] || durations['1_MONTH'];
-  sel.duration = val;
-  sel.durationMultiplier = target.multiplier;
-  sel.discountPercent = target.discount;
+  const textEl = document.getElementById('selectedDurationText');
+  const subLabelEl = document.getElementById('durationSubLabel');
 
+  if (textEl) textEl.textContent = fullLabel;
+  if (subLabelEl) subLabelEl.textContent = subLabel;
+
+  toggleDurationMenu();
   calculateDynamicPrice();
 }
 
@@ -264,7 +349,7 @@ function addProductToConfiguredCart() {
     '1_YEAR': '1 Year'
   };
 
-  const finalName = `${sel.name} (${sel.devices} Device - ${durationNameMap[sel.duration] || '1 Month'})`;
+  const finalName = `${sel.name} (${sel.devices} ${sel.devices === 1 ? 'Device' : 'Devices'} - ${durationNameMap[sel.duration] || '1 Month'})`;
   const finalPrice = sel.finalPrice || sel.basePrice;
 
   if (!Array.isArray(state.cart)) state.cart = [];
