@@ -25,7 +25,7 @@ async function renderStoreProductDetails(container, productId) {
     };
 
     container.innerHTML = `
-      <div class="space-y-6 pb-20 max-w-2xl mx-auto font-sans animate-fadeIn text-xs px-1">
+      <div class="space-y-5 pb-20 max-w-xl mx-auto font-sans animate-fadeIn text-xs px-1">
         
         <!-- Back Navigation & Status -->
         <div class="flex items-center justify-between">
@@ -38,100 +38,60 @@ async function renderStoreProductDetails(container, productId) {
           </span>
         </div>
 
-        <!-- Main Product Card -->
-        <div class="bg-surface-900/70 border border-white/[0.08] rounded-3xl p-5 sm:p-7 space-y-6 backdrop-blur-xl shadow-2xl">
+        <!-- Main Product Card & Buy Box -->
+        <div class="bg-surface-900/70 border border-white/[0.08] rounded-3xl p-5 sm:p-6 space-y-5 backdrop-blur-xl shadow-2xl">
           
           <!-- Image & Title Banner -->
-          <div class="space-y-4">
-            <div class="relative rounded-2xl overflow-hidden bg-surface-950 border border-white/5 aspect-[16/9] w-full max-h-56">
-              <img src="${(p.images && p.images[0]) || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" 
-                   class="w-full h-full object-cover">
-              <div class="absolute inset-0 bg-gradient-to-t from-surface-950/90 via-surface-950/20 to-transparent"></div>
-              <div class="absolute bottom-3 left-4 right-4 flex items-end justify-between">
-                <div>
-                  <span class="text-[9px] font-mono tracking-widest text-emerald-400/90 uppercase font-semibold block">${p.category || 'Subscription'}</span>
-                  <h1 class="text-xl sm:text-2xl font-extrabold text-white tracking-tight drop-shadow-sm">${p.name}</h1>
-                </div>
-              </div>
-            </div>
-
-            <!-- Minimal Flash Offer Bar -->
-            <div class="bg-surface-950/80 border border-white/5 rounded-2xl p-3 flex items-center justify-between font-mono">
-              <div class="flex items-center gap-2">
-                <span class="text-xs">⚡</span>
-                <span class="text-[11px] text-slate-300 font-sans font-medium">Limited Flash Deal</span>
-              </div>
-              <div class="flex items-center gap-1 text-slate-400 text-[11px]" id="offerCountdownTimer">
-                <span class="text-emerald-400 font-bold bg-surface-900 px-1.5 py-0.5 rounded border border-white/5" id="cd-hours">02</span>:
-                <span class="text-emerald-400 font-bold bg-surface-900 px-1.5 py-0.5 rounded border border-white/5" id="cd-mins">59</span>:
-                <span class="text-emerald-400 font-bold bg-surface-900 px-1.5 py-0.5 rounded border border-white/5" id="cd-secs">59</span>
+          <div class="relative rounded-2xl overflow-hidden bg-surface-950 border border-white/5 aspect-[16/9] w-full max-h-52">
+            <img src="${(p.images && p.images[0]) || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" 
+                 class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-surface-950/90 via-surface-950/20 to-transparent"></div>
+            <div class="absolute bottom-3 left-4 right-4 flex items-end justify-between">
+              <div>
+                <span class="text-[9px] font-mono tracking-widest text-emerald-400/90 uppercase font-semibold block">${p.category || 'Subscription'}</span>
+                <h1 class="text-xl sm:text-2xl font-extrabold text-white tracking-tight drop-shadow-sm">${p.name}</h1>
               </div>
             </div>
           </div>
 
-          <!-- Configuration Controls -->
-          <div class="space-y-5">
+          <!-- Configuration Controls (Dropdowns) -->
+          <div class="space-y-4">
             
-            <!-- 1. Device Option -->
-            <div class="space-y-2">
-              <div class="flex justify-between items-center text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                <span>1. Simultaneous Screen</span>
-                <span class="text-emerald-400" id="deviceLabel">1 Device (Private)</span>
-              </div>
-              <div class="grid grid-cols-3 gap-2">
-                <button type="button" onclick="selectDeviceOption(1, 1, '1 Device (Private)')" id="devBtn-1" 
-                  class="py-3 px-2 rounded-xl bg-emerald-500/10 border border-emerald-500/60 text-center transition-all">
-                  <span class="text-xs font-mono font-bold text-white block">1 Device</span>
-                  <span class="text-[9px] text-emerald-400/80 block mt-0.5 font-mono">Private</span>
-                </button>
-                <button type="button" onclick="selectDeviceOption(2, 1.8, '2 Devices (Duo)')" id="devBtn-2" 
-                  class="py-3 px-2 rounded-xl bg-surface-950 border border-white/5 text-center hover:border-white/20 transition-all text-slate-400">
-                  <span class="text-xs font-mono font-bold text-white block">2 Devices</span>
-                  <span class="text-[9px] text-slate-500 block mt-0.5 font-mono">Duo Pass</span>
-                </button>
-                <button type="button" onclick="selectDeviceOption(5, 3.8, '5 Devices (Family)')" id="devBtn-5" 
-                  class="py-3 px-2 rounded-xl bg-surface-950 border border-white/5 text-center hover:border-white/20 transition-all text-slate-400">
-                  <span class="text-xs font-mono font-bold text-white block">5 Devices</span>
-                  <span class="text-[9px] text-slate-500 block mt-0.5 font-mono">Full Vault</span>
-                </button>
+            <!-- 1. Device Selection Dropdown -->
+            <div class="space-y-1.5">
+              <label for="deviceSelectDropdown" class="text-[10px] font-mono uppercase tracking-wider text-slate-400 block">
+                1. Simultaneous Screen / Devices
+              </label>
+              <div class="relative">
+                <select id="deviceSelectDropdown" onchange="handleDeviceDropdownChange(this.value)" 
+                  class="w-full py-3.5 px-4 rounded-2xl bg-surface-950 border border-white/10 text-white text-xs font-mono outline-none focus:border-emerald-500 appearance-none cursor-pointer">
+                  <option value="1">1 Device (Private Profile)</option>
+                  <option value="2">2 Devices (Duo Pass)</option>
+                  <option value="3">3 Devices (Multi Access)</option>
+                  <option value="4">4 Devices (Family / Full Vault)</option>
+                </select>
+                <div class="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400 text-xs">
+                  ▼
+                </div>
               </div>
             </div>
 
-            <!-- 2. Duration Plan Option -->
-            <div class="space-y-2">
-              <div class="flex justify-between items-center text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                <span>2. Access Duration</span>
-                <span class="text-emerald-400" id="durationLabel">1 Month</span>
-              </div>
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                
-                <button type="button" onclick="selectDurationOption('1_MONTH', 1, 0, '1 Month')" id="durBtn-1_MONTH" 
-                  class="py-3 px-2 rounded-xl bg-emerald-500/10 border border-emerald-500/60 text-center transition-all">
-                  <span class="text-xs font-mono font-bold text-white block">1 Month</span>
-                  <span class="text-[9px] text-emerald-400/80 font-mono block mt-0.5">Standard</span>
-                </button>
-
-                <button type="button" onclick="selectDurationOption('3_MONTHS', 2.55, 15, '3 Months (Save 15%)')" id="durBtn-3_MONTHS" 
-                  class="py-3 px-2 rounded-xl bg-surface-950 border border-white/5 text-center hover:border-white/20 transition-all relative">
-                  <span class="absolute -top-1.5 right-1.5 px-1 py-0.2 bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[8px] font-mono font-bold rounded">15% OFF</span>
-                  <span class="text-xs font-mono font-bold text-white block">3 Months</span>
-                  <span class="text-[9px] text-slate-500 font-mono block mt-0.5">Quarterly</span>
-                </button>
-
-                <button type="button" onclick="selectDurationOption('6_MONTHS', 4.5, 25, '6 Months (Save 25%)')" id="durBtn-6_MONTHS" 
-                  class="py-3 px-2 rounded-xl bg-surface-950 border border-white/5 text-center hover:border-white/20 transition-all relative">
-                  <span class="absolute -top-1.5 right-1.5 px-1 py-0.2 bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-[8px] font-mono font-bold rounded">25% OFF</span>
-                  <span class="text-xs font-mono font-bold text-white block">6 Months</span>
-                  <span class="text-[9px] text-slate-500 font-mono block mt-0.5">Half-Year</span>
-                </button>
-
-                <button type="button" onclick="selectDurationOption('1_YEAR', 7.2, 40, '1 Year (Save 40%)')" id="durBtn-1_YEAR" 
-                  class="py-3 px-2 rounded-xl bg-surface-950 border border-white/5 text-center hover:border-white/20 transition-all relative">
-                  <span class="absolute -top-1.5 right-1.5 px-1 py-0.2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[8px] font-mono font-bold rounded">40% OFF</span>
-                  <span class="text-xs font-mono font-bold text-white block">1 Year</span>
-                  <span class="text-[9px] text-slate-500 font-mono block mt-0.5">Best Deal</span>
-                </button>
-
+            <!-- 2. Duration Plan Dropdown -->
+            <div class="space-y-1.5">
+              <label for="durationSelectDropdown" class="text-[10px] font-mono uppercase tracking-wider text-slate-400 block">
+                2. Subscription Duration
+              </label>
+              <div class="relative">
+                <select id="durationSelectDropdown" onchange="handleDurationDropdownChange(this.value)" 
+                  class="w-full py-3.5 px-4 rounded-2xl bg-surface-950 border border-white/10 text-white text-xs font-mono outline-none focus:border-emerald-500 appearance-none cursor-pointer">
+                  <option value="1_MONTH">1 Month (Standard Plan)</option>
+                  <option value="3_MONTHS">3 Months (Save 15% OFF)</option>
+                  <option value="6_MONTHS">6 Months (Save 25% OFF)</option>
+                  <option value="1_YEAR">1 Year / 12 Months (Best Value — Save 40% OFF)</option>
+                </select>
+                <div class="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400 text-xs">
+                  ▼
+                </div>
               </div>
             </div>
 
@@ -160,6 +120,22 @@ async function renderStoreProductDetails(container, productId) {
             </button>
           </div>
 
+        </div>
+
+        <!-- Separate Limited Flash Deal Box (Placed Below Buy Box) -->
+        <div class="bg-surface-900/60 border border-white/[0.08] rounded-2xl p-4 flex items-center justify-between font-mono shadow-lg">
+          <div class="flex items-center gap-2.5">
+            <span class="text-sm animate-pulse">🔥</span>
+            <div>
+              <span class="text-xs text-white font-sans font-bold block">Limited Flash Deal</span>
+              <span class="text-[9px] text-slate-400 font-sans">Promotional pricing expires soon</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-1 text-slate-400 text-xs" id="offerCountdownTimer">
+            <span class="text-emerald-400 font-bold bg-surface-950 px-2 py-1 rounded border border-white/5 shadow-inner" id="cd-hours">02</span>:
+            <span class="text-emerald-400 font-bold bg-surface-950 px-2 py-1 rounded border border-white/5 shadow-inner" id="cd-mins">59</span>:
+            <span class="text-emerald-400 font-bold bg-surface-950 px-2 py-1 rounded border border-white/5 shadow-inner" id="cd-secs">59</span>
+          </div>
         </div>
 
         <!-- Trust & Features -->
@@ -224,53 +200,34 @@ function startThreeHourCountdownLoop() {
   productTimerInterval = setInterval(updateTimer, 1000);
 }
 
-function selectDeviceOption(deviceCount, multiplier, labelText) {
+function handleDeviceDropdownChange(val) {
   const sel = window.currentProductSelection;
   if (!sel) return;
+
+  const deviceCount = parseInt(val, 10) || 1;
+  const multipliers = { 1: 1, 2: 1.8, 3: 2.6, 4: 3.4 };
+
   sel.devices = deviceCount;
-  sel.deviceMultiplier = multiplier;
-
-  [1, 2, 5].forEach(d => {
-    const btn = document.getElementById(`devBtn-${d}`);
-    if (btn) {
-      if (d === deviceCount) {
-        btn.className = 'py-3 px-2 rounded-xl bg-emerald-500/10 border border-emerald-500/60 text-center transition-all';
-        btn.querySelector('span:last-child').className = 'text-[9px] text-emerald-400/80 block mt-0.5 font-mono';
-      } else {
-        btn.className = 'py-3 px-2 rounded-xl bg-surface-950 border border-white/5 text-center hover:border-white/20 transition-all text-slate-400';
-        btn.querySelector('span:last-child').className = 'text-[9px] text-slate-500 block mt-0.5 font-mono';
-      }
-    }
-  });
-
-  const dLbl = document.getElementById('deviceLabel');
-  if (dLbl) dLbl.textContent = labelText;
+  sel.deviceMultiplier = multipliers[deviceCount] || 1;
 
   calculateDynamicPrice();
 }
 
-function selectDurationOption(durationKey, multiplier, discountPct, labelText) {
+function handleDurationDropdownChange(val) {
   const sel = window.currentProductSelection;
   if (!sel) return;
-  sel.duration = durationKey;
-  sel.durationMultiplier = multiplier;
-  sel.discountPercent = discountPct;
 
-  ['1_MONTH', '3_MONTHS', '6_MONTHS', '1_YEAR'].forEach(k => {
-    const btn = document.getElementById(`durBtn-${k}`);
-    if (btn) {
-      if (k === durationKey) {
-        btn.className = 'py-3 px-2 rounded-xl bg-emerald-500/10 border border-emerald-500/60 text-center transition-all relative';
-        btn.querySelector('span:last-child').className = 'text-[9px] text-emerald-400/80 font-mono block mt-0.5';
-      } else {
-        btn.className = 'py-3 px-2 rounded-xl bg-surface-950 border border-white/5 text-center hover:border-white/20 transition-all relative';
-        btn.querySelector('span:last-child').className = 'text-[9px] text-slate-500 font-mono block mt-0.5';
-      }
-    }
-  });
+  const durations = {
+    '1_MONTH': { multiplier: 1, discount: 0 },
+    '3_MONTHS': { multiplier: 2.55, discount: 15 },
+    '6_MONTHS': { multiplier: 4.5, discount: 25 },
+    '1_YEAR': { multiplier: 7.2, discount: 40 }
+  };
 
-  const durLbl = document.getElementById('durationLabel');
-  if (durLbl) durLbl.textContent = labelText;
+  const target = durations[val] || durations['1_MONTH'];
+  sel.duration = val;
+  sel.durationMultiplier = target.multiplier;
+  sel.discountPercent = target.discount;
 
   calculateDynamicPrice();
 }
