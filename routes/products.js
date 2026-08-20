@@ -6,7 +6,12 @@ const { authAdmin } = require('../middleware/auth');
 
 router.get(['/products', '/admin/products'], async (req, res) => {
   try {
-    res.json(await Product.find({ status: { $ne: 'archived' } }).sort({ created_at: -1 }).lean());
+    // Fast projected query
+    const products = await Product.find({ status: { $ne: 'archived' } })
+      .select('name slug category original_price sale_price discount_percentage images status is_featured unlimited_stock stock_quantity')
+      .sort({ created_at: -1 })
+      .lean();
+    res.json(products);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
