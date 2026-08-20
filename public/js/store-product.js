@@ -22,11 +22,11 @@ async function renderStoreProductDetails(container, productId) {
       durationLabel: '1 Month (Standard Plan)',
       durationMultiplier: 1,
       deviceMultiplier: 1,
-      discountPercent: 0
+      discountPercent: 50
     };
 
     container.innerHTML = `
-      <div class="space-y-6 pb-24 max-w-lg mx-auto font-sans animate-fadeIn text-xs px-2">
+      <div class="space-y-6 pb-24 max-w-lg mx-auto font-sans animate-fadeIn text-xs px-2" onclick="closeDurationDropdownOutside(event)">
         
         <!-- Back Navigation & Status -->
         <div class="flex items-center justify-between">
@@ -59,29 +59,29 @@ async function renderStoreProductDetails(container, productId) {
         <!-- Configuration Controls -->
         <div class="space-y-4">
           
-          <!-- Access Duration Dropdown -->
-          <div class="space-y-1.5">
+          <!-- Access Duration Dropdown (Floating Overlay) -->
+          <div class="space-y-1.5 relative">
             <div class="flex justify-between items-center text-[10px] font-mono uppercase tracking-wider text-slate-400">
               <span>Access Duration</span>
-              <span class="text-emerald-400 font-bold" id="durationSubLabel">Standard Plan</span>
+              <span class="text-emerald-400 font-bold transition-all duration-300" id="durationSubLabel">STANDARD PLAN</span>
             </div>
 
-            <div class="relative">
+            <div class="relative" onclick="event.stopPropagation()">
               <button type="button" onclick="toggleDurationMenu()" id="durationTriggerBtn"
                 class="w-full py-3.5 px-4 rounded-2xl bg-surface-900 text-white text-xs font-mono flex items-center justify-between hover:bg-surface-800 transition-all cursor-pointer">
-                <span id="selectedDurationText" class="font-bold">1 Month (Standard Plan)</span>
-                <span id="durationArrowIcon" class="text-slate-400 text-[10px] transition-transform duration-200">▼</span>
+                <span id="selectedDurationText" class="font-bold transition-all duration-200">1 Month (Standard Plan)</span>
+                <span id="durationArrowIcon" class="text-slate-400 text-[10px] transition-transform duration-300">▼</span>
               </button>
 
-              <!-- Custom In-App Slide Menu -->
-              <div id="durationDropdownMenu" class="hidden mt-2 space-y-1 p-2 rounded-2xl bg-surface-900 shadow-2xl animate-fadeIn">
-                <div onclick="selectDurationCustom('1_MONTH', 1, 0, '1 Month (Standard Plan)', 'Standard Plan')" 
+              <!-- Floating Smooth Slide Menu -->
+              <div id="durationDropdownMenu" class="hidden absolute top-full left-0 right-0 mt-2 space-y-1 p-2 rounded-2xl bg-surface-900/95 backdrop-blur-xl border border-white/10 shadow-2xl z-30 transform transition-all duration-300 opacity-0 -translate-y-2">
+                <div onclick="selectDurationCustom('1_MONTH', 1, 50, '1 Month (Standard Plan)', 'STANDARD PLAN')" 
                   class="p-3 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-colors">
                   <span class="text-xs font-mono text-white font-bold">1 Month</span>
                   <span class="text-[10px] font-mono text-slate-400">Standard Plan</span>
                 </div>
 
-                <div onclick="selectDurationCustom('3_MONTHS', 2.55, 15, '3 Months (Save 15% OFF)', '15% OFF Plan')" 
+                <div onclick="selectDurationCustom('3_MONTHS', 2.55, 15, '3 Months (Save 15% OFF)', '15% OFF PLAN')" 
                   class="p-3 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-colors">
                   <div class="flex items-center gap-2">
                     <span class="text-xs font-mono text-white font-bold">3 Months</span>
@@ -90,7 +90,7 @@ async function renderStoreProductDetails(container, productId) {
                   <span class="text-[10px] font-mono text-slate-400">Quarterly</span>
                 </div>
 
-                <div onclick="selectDurationCustom('6_MONTHS', 4.5, 25, '6 Months (Save 25% OFF)', '25% OFF Plan')" 
+                <div onclick="selectDurationCustom('6_MONTHS', 4.5, 25, '6 Months (Save 25% OFF)', '25% OFF PLAN')" 
                   class="p-3 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-colors">
                   <div class="flex items-center gap-2">
                     <span class="text-xs font-mono text-white font-bold">6 Months</span>
@@ -99,7 +99,7 @@ async function renderStoreProductDetails(container, productId) {
                   <span class="text-[10px] font-mono text-slate-400">Half-Year</span>
                 </div>
 
-                <div onclick="selectDurationCustom('1_YEAR', 7.2, 40, '1 Year / 12 Months (Best Value — Save 40% OFF)', 'Best Value 40% OFF')" 
+                <div onclick="selectDurationCustom('1_YEAR', 7.2, 40, '1 Year / 12 Months (Best Value — Save 40% OFF)', 'BEST VALUE 40% OFF')" 
                   class="p-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 flex items-center justify-between cursor-pointer transition-colors">
                   <div class="flex items-center gap-2">
                     <span class="text-xs font-mono text-emerald-400 font-bold">1 Year (12 Mo)</span>
@@ -111,30 +111,30 @@ async function renderStoreProductDetails(container, productId) {
             </div>
           </div>
 
-          <!-- Total & Compact Corner Device Stepper -->
-          <div class="pt-2 flex items-center justify-between gap-3">
+          <!-- Total & Compact Device Stepper Row -->
+          <div class="pt-2 flex items-center justify-between gap-2">
             <div class="space-y-1">
               <span class="text-slate-500 text-[10px] uppercase font-mono block">Order Total</span>
-              <div class="flex items-center gap-2">
-                <span class="text-2xl sm:text-3xl font-black text-white font-mono leading-none" id="calculatedSalePrice">₹${basePrice}</span>
-                <span class="text-xs text-slate-500 line-through font-mono leading-none" id="calculatedOrigPrice">₹${origBase}</span>
-                <span class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg leading-none" id="savingsBadge">50% OFF</span>
+              <div class="flex items-center gap-2 min-h-[36px]">
+                <span class="text-2xl sm:text-3xl font-black text-white font-mono leading-none transition-all duration-300 inline-block min-w-[70px]" id="calculatedSalePrice">₹${basePrice}</span>
+                <span class="text-xs text-slate-500 line-through font-mono leading-none transition-all duration-300 inline-block" id="calculatedOrigPrice">₹${origBase}</span>
+                <span class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg leading-none transition-all duration-300 whitespace-nowrap" id="savingsBadge">50% OFF</span>
               </div>
             </div>
 
-            <!-- Compact Stepper -->
+            <!-- Compact Stepper with Fixed Alignment -->
             <div class="flex flex-col items-end gap-1">
               <span class="text-[9px] font-mono uppercase text-slate-400 tracking-wider">Device Quantity</span>
-              <div class="flex items-center gap-2 bg-surface-900 p-1.5 rounded-2xl">
+              <div class="flex items-center gap-2 bg-surface-900 p-1.5 rounded-2xl border border-white/5">
                 <button type="button" onclick="adjustDeviceQuantity(-1)" 
-                  class="w-7 h-7 rounded-xl bg-white/5 hover:bg-white/10 active:scale-90 text-white font-mono font-bold flex items-center justify-center text-sm cursor-pointer">
+                  class="w-7 h-7 rounded-xl bg-white/5 hover:bg-white/10 active:scale-90 text-white font-mono font-bold flex items-center justify-center text-sm cursor-pointer transition-all">
                   −
                 </button>
 
-                <span class="text-xs font-mono font-bold text-emerald-400 min-w-[55px] text-center" id="deviceDisplayCount">1 Device</span>
+                <span class="text-xs font-mono font-bold text-emerald-400 min-w-[65px] text-center transition-all duration-200 inline-block" id="deviceDisplayCount">1 Device</span>
 
                 <button type="button" onclick="adjustDeviceQuantity(1)" 
-                  class="w-7 h-7 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-90 text-emerald-400 font-mono font-bold flex items-center justify-center text-sm cursor-pointer">
+                  class="w-7 h-7 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-90 text-emerald-400 font-mono font-bold flex items-center justify-center text-sm cursor-pointer transition-all">
                   +
                 </button>
               </div>
@@ -142,7 +142,7 @@ async function renderStoreProductDetails(container, productId) {
           </div>
 
           <!-- Checkout Button -->
-          <button onclick="addProductToConfiguredCart()" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black tracking-wider uppercase shadow-xl shadow-emerald-500/25 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2 cursor-pointer font-mono">
+          <button onclick="addProductToConfiguredCart()" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black tracking-wider uppercase shadow-xl shadow-emerald-500/25 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2 cursor-pointer font-mono mt-2">
             <span>Checkout Now</span>
             <span>→</span>
           </button>
@@ -231,7 +231,15 @@ function adjustDeviceQuantity(delta) {
   sel.deviceMultiplier = multipliers[newCount] || 1;
 
   const countEl = document.getElementById('deviceDisplayCount');
-  if (countEl) countEl.textContent = `${newCount} ${newCount === 1 ? 'Device' : 'Devices'}`;
+  if (countEl) {
+    countEl.style.transform = 'scale(0.85)';
+    countEl.style.opacity = '0.5';
+    setTimeout(() => {
+      countEl.textContent = `${newCount} ${newCount === 1 ? 'Device' : 'Devices'}`;
+      countEl.style.transform = 'scale(1)';
+      countEl.style.opacity = '1';
+    }, 100);
+  }
 
   calculateDynamicPrice();
 }
@@ -243,9 +251,31 @@ function toggleDurationMenu() {
 
   if (menu.classList.contains('hidden')) {
     menu.classList.remove('hidden');
+    setTimeout(() => {
+      menu.classList.remove('opacity-0', '-translate-y-2');
+      menu.classList.add('opacity-100', 'translate-y-0');
+    }, 10);
     if (arrow) arrow.style.transform = 'rotate(180deg)';
   } else {
-    menu.classList.add('hidden');
+    menu.classList.remove('opacity-100', 'translate-y-0');
+    menu.classList.add('opacity-0', '-translate-y-2');
+    setTimeout(() => {
+      menu.classList.add('hidden');
+    }, 200);
+    if (arrow) arrow.style.transform = 'rotate(0deg)';
+  }
+}
+
+function closeDurationDropdownOutside(e) {
+  const menu = document.getElementById('durationDropdownMenu');
+  const trigger = document.getElementById('durationTriggerBtn');
+  const arrow = document.getElementById('durationArrowIcon');
+  if (menu && !menu.classList.contains('hidden') && !trigger.contains(e.target)) {
+    menu.classList.remove('opacity-100', 'translate-y-0');
+    menu.classList.add('opacity-0', '-translate-y-2');
+    setTimeout(() => {
+      menu.classList.add('hidden');
+    }, 200);
     if (arrow) arrow.style.transform = 'rotate(0deg)';
   }
 }
@@ -262,8 +292,17 @@ function selectDurationCustom(key, multiplier, discount, fullLabel, subLabel) {
   const textEl = document.getElementById('selectedDurationText');
   const subLabelEl = document.getElementById('durationSubLabel');
 
-  if (textEl) textEl.textContent = fullLabel;
-  if (subLabelEl) subLabelEl.textContent = subLabel;
+  if (textEl) {
+    textEl.style.opacity = '0.5';
+    setTimeout(() => {
+      textEl.textContent = fullLabel;
+      textEl.style.opacity = '1';
+    }, 100);
+  }
+  
+  if (subLabelEl) {
+    subLabelEl.textContent = subLabel;
+  }
 
   toggleDurationMenu();
   calculateDynamicPrice();
@@ -282,8 +321,18 @@ function calculateDynamicPrice() {
   const origEl = document.getElementById('calculatedOrigPrice');
   const badgeEl = document.getElementById('savingsBadge');
 
-  if (saleEl) saleEl.textContent = `₹${calculatedSale}`;
-  if (origEl) origEl.textContent = `₹${calculatedOrig}`;
+  if (saleEl) {
+    saleEl.style.transform = 'scale(0.95)';
+    setTimeout(() => {
+      saleEl.textContent = `₹${calculatedSale}`;
+      saleEl.style.transform = 'scale(1)';
+    }, 100);
+  }
+
+  if (origEl) {
+    origEl.textContent = `₹${calculatedOrig}`;
+  }
+
   if (badgeEl) {
     const diff = calculatedOrig - calculatedSale;
     const pct = Math.round((diff / calculatedOrig) * 100);
