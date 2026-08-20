@@ -1,5 +1,4 @@
 async function renderStoreOrders(container) {
-  // If user is logged out, prompt them to login first
   if (!state.user || !state.token || state.user.isAdmin) {
     container.innerHTML = `
       <div class="max-w-sm mx-auto py-12 px-4 text-center space-y-4 font-sans animate-fadeIn text-xs">
@@ -64,7 +63,7 @@ async function renderStoreOrders(container) {
                 <!-- Card Header -->
                 <div class="flex items-center justify-between border-b border-white/5 pb-3">
                   <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full ${isSuccess ? 'bg-emerald-400 shadow-md shadow-emerald-500/50' : isRejected ? 'bg-rose-500' : 'bg-amber-400 animate-pulse'}"></span>
+                    <span class="w-2 h-2 rounded-full ${isSuccess ? 'bg-emerald-400 shadow-md shadow-emerald-500/50' : isRejected ? 'bg-rose-500 shadow-md shadow-rose-500/50' : 'bg-amber-400 animate-pulse'}"></span>
                     <span class="text-white font-mono font-black text-xs">${txnId}</span>
                   </div>
                   
@@ -91,7 +90,7 @@ async function renderStoreOrders(container) {
                   </div>
                 </div>
 
-                <!-- Status Context Card -->
+                <!-- Dynamic Status Outcome -->
                 ${isSuccess ? `
                   <div class="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-2.5">
                     <div class="flex items-center justify-between">
@@ -108,9 +107,20 @@ async function renderStoreOrders(container) {
                     </div>
                   </div>
                 ` : isRejected ? `
-                  <div class="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 space-y-1">
-                    <span class="font-bold block text-xs">✕ Verification Failed</span>
-                    <p class="text-[11px] text-rose-400/90 leading-relaxed">${order.rejection_reason || 'Payment proof could not be verified by admin.'}</p>
+                  <div class="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/25 space-y-2">
+                    <div class="flex items-center justify-between">
+                      <span class="text-rose-400 font-bold text-xs flex items-center gap-1.5">
+                        <span>✕</span> <span>Verification Rejected</span>
+                      </span>
+                      <span class="text-[9px] font-mono text-rose-400/90 uppercase font-bold">Declined</span>
+                    </div>
+                    
+                    <div class="bg-surface-950 p-3 rounded-xl border border-rose-500/20 font-mono text-[11px] space-y-1 text-rose-300">
+                      <span class="text-[9px] text-slate-500 uppercase block font-bold">Reason Note from Admin</span>
+                      <p class="text-white font-semibold">${order.rejection_reason || 'Payment screenshot could not be confirmed with merchant bank records.'}</p>
+                    </div>
+
+                    <p class="text-[10px] text-slate-400 font-mono">If this was a mistake, please re-order with a clear UTR payment receipt.</p>
                   </div>
                 ` : `
                   <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 flex items-center justify-between">
