@@ -5,35 +5,62 @@ const mongoose = require('mongoose');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
 const Subscription = require('../models/Subscription');
+const Product = require('../models/Product');
 const { authAdmin } = require('../middleware/auth');
 
 router.get(['/admin/dashboard', '/admin/dashboard/full-overview', '/admin/dashboard-stats'], authAdmin, async (req, res) => {
   try {
-    const orders = await Transaction.find({ status: 'SUCCESS' }).lean();
-    const totalRev = orders.reduce((acc, o) => acc + (o.amount || 0), 0);
+    const allTxns = await Transaction.find().sort({ created_at: -1 }).lean();
+    const successfulTxns = allTxns.filter(t => t.status === 'SUCCESS');
+    const pendingTxns = allTxns.filter(t => t.status === 'PROCESSING' || t.status === 'PENDING');
+    const rejectedTxns = allTxns.filter(t => t.status === 'REJECTED');
+
+    const totalRev = successfulTxns.reduce((acc, o) => acc + (Number(o.amount) || 0), 0);
     const customersCount = await User.countDocuments();
     const subsCount = await Subscription.countDocuments({ status: 'ACTIVE' });
-    const pendingOrders = await Transaction.countDocuments({ status: { $in: ['PROCESSING', 'PENDING'] } });
+    const aov = successfulTxns.length > 0 ? Math.round(totalRev / successfulTxns.length) : 0;
+
+    // Top Selling Products Calculation
+    const productStats = {};
+    successfulTxns.forEach(t => {
+      const name = t.product_name || 'Generic Product';
+      if (!productStats[name]) {
+        productStats[name] = { name, sales: 0, revenue: 0 };
+      }
+      productStats[name].sales += 1;
+      productStats[name].revenue += Number(t.amount) || 0;
+    });
+
+    const topProducts = Object.values(productStats).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+
+    // 7-Day Revenue History Array
+    const days = 7;
+    const timeline = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateKey = d.toISOString().split('T')[0];
+      const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
+
+      const dayRevenue = successfulTxns.filter(t => {
+        const tDate = new Date(t.created_at || Date.now()).toISOString().split('T')[0];
+        return tDate === dateKey;
+      }).reduce((acc, cur) => acc + (Number(cur.amount) || 0), 0);
+
+      timeline.push({ date: dateKey, day: dayLabel, revenue: dayRevenue });
+    }
 
     res.json({
       revenue: totalRev,
-      sales: orders.length,
-      pending_orders: pendingOrders,
+      sales: successfulTxns.length,
+      pending_orders: pendingTxns.length,
+      rejected_orders: rejectedTxns.length,
       customers: customersCount,
       active_subscriptions: subsCount,
-      kpis: {
-        revenue: { value: totalRev, change: 0 },
-        orders: { value: orders.length, change: 0 },
-        customers: { value: customersCount, change: 0 },
-        subscriptions: { value: subsCount, change: 0 }
-      },
-      revenue_timeline: [],
-      order_statuses: { completed: orders.length, processing: pendingOrders, pending: pendingOrders },
-      payment_methods: { upi: { amount: totalRev, count: orders.length }, crypto: { amount: 0, count: 0 } },
-      top_products: [],
-      slot_summary: { total: 0, available: 0, assigned: 0 },
-      attention_items: [],
-      live_visitors: 1
+      aov: aov,
+      conversion_rate: allTxns.length > 0 ? Math.round((successfulTxns.length / allTxns.length) * 100) : 100,
+      top_products: topProducts,
+      timeline: timeline
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
