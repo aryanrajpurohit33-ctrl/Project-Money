@@ -398,7 +398,7 @@ function addProductToConfiguredCart() {
 
   localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
 
-  // Update header cart count badge
+  // Update header cart bag badge
   const bagBadge = document.getElementById('cartBadgeCount');
   if (bagBadge) {
     bagBadge.textContent = state.cart.length;
@@ -406,5 +406,7 @@ function addProductToConfiguredCart() {
   }
 
   showToast(`✓ Added to cart`);
+  
+  // Directly open Cart view
   navigate('cart');
 }
