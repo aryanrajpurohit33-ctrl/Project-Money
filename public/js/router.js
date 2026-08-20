@@ -86,19 +86,38 @@ function renderStorefrontLayout(viewport, view, params) {
     <div class="flex flex-1 min-h-screen relative w-full bg-surface-950 animate-fadeIn flex-col">
       <header class="sticky top-0 z-40 bg-surface-950/80 backdrop-blur-xl border-b border-white/5 px-4 py-3">
         <div class="max-w-xl mx-auto flex items-center justify-between gap-3">
-          <button onclick="toggleCustomerDrawer(true)" class="w-10 h-10 rounded-2xl bg-surface-900 border border-white/5 flex items-center justify-center text-slate-300 hover:text-white transition-all cursor-pointer">
+          
+          <!-- Menu Toggle -->
+          <button onclick="toggleCustomerDrawer(true)" class="w-10 h-10 rounded-2xl bg-surface-900/90 border border-white/10 flex items-center justify-center text-slate-300 hover:text-white transition-all cursor-pointer shadow-lg active:scale-95">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
           </button>
-          <div onclick="navigate('home')" class="flex items-center gap-2 cursor-pointer">
-            <div class="w-8 h-8 rounded-xl bg-emerald-500 text-gray-950 flex items-center justify-center font-black font-mono text-sm shadow-md shadow-emerald-500/20">N</div>
-            <span class="font-black text-sm tracking-tight text-white">NEXUS</span>
+
+          <!-- Animated Nexus Cyber Emblem -->
+          <div onclick="navigate('home')" class="flex items-center gap-2.5 cursor-pointer select-none group">
+            
+            <div class="relative w-9 h-9 rounded-2xl border nexus-logo-badge flex items-center justify-center shadow-lg">
+              <!-- Geometric Cyber N SVG -->
+              <svg class="w-5 h-5 text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M5 4.5C5 3.67 5.67 3 6.5 3H8L16 15.5V4.5C16 3.67 16.67 3 17.5 3C18.33 3 19 3.67 19 4.5V19.5C19 20.33 18.33 21 17.5 21H16L8 8.5V19.5C8 20.33 7.33 21 6.5 21C5.67 21 5 20.33 5 19.5V4.5Z"/>
+              </svg>
+            </div>
+
+            <div class="flex flex-col">
+              <span class="font-black text-sm tracking-widest font-mono nexus-brand-text leading-none">NEXUS</span>
+              <span class="text-[8px] font-mono text-emerald-400/90 tracking-widest uppercase font-bold mt-0.5">DIGITAL VAULT</span>
+            </div>
+
           </div>
-          <button onclick="navigate('cart')" class="relative w-10 h-10 rounded-2xl bg-surface-900 border border-white/5 flex items-center justify-center text-slate-300 hover:text-white transition-all cursor-pointer">
+
+          <!-- Cart Trigger -->
+          <button onclick="navigate('cart')" class="relative w-10 h-10 rounded-2xl bg-surface-900/90 border border-white/10 flex items-center justify-center text-slate-300 hover:text-white transition-all cursor-pointer shadow-lg active:scale-95">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
-            <span id="cartBadgeCount" class="hidden absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 text-gray-950 text-[10px] font-mono font-black flex items-center justify-center shadow-lg shadow-emerald-500/30">0</span>
+            <span id="cartBadgeCount" class="hidden absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 text-gray-950 text-[10px] font-mono font-black flex items-center justify-center shadow-lg shadow-emerald-500/40">0</span>
           </button>
+
         </div>
       </header>
+
       <main id="storeContent" class="flex-1 p-3 sm:p-6 max-w-xl w-full mx-auto space-y-6"></main>
     </div>
   `;
