@@ -10,9 +10,9 @@ function renderStoreCart(container) {
         </div>
         <div class="space-y-1">
           <h2 class="text-base font-bold text-white">Your Cart is Empty</h2>
-          <p class="text-slate-400 text-xs">Explore the digital vault and add an item to checkout.</p>
+          <p class="text-slate-400 text-xs font-mono">Explore the digital vault and add an item to checkout.</p>
         </div>
-        <button onclick="navigate('home')" class="px-6 py-3 rounded-xl bg-emerald-500 text-gray-950 font-black font-mono text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+        <button onclick="navigate('home')" class="px-6 py-3 rounded-xl bg-emerald-500 text-gray-950 font-black font-mono text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer">
           Browse Products →
         </button>
       </div>
@@ -21,7 +21,7 @@ function renderStoreCart(container) {
   }
 
   container.innerHTML = `
-    <div class="max-w-md mx-auto py-4 px-2 space-y-5 font-sans text-xs animate-fadeIn pb-24">
+    <div class="max-w-md mx-auto py-2 px-1 space-y-5 font-sans text-xs animate-fadeIn pb-24">
       
       <!-- Cart Header -->
       <div class="flex items-center justify-between">
@@ -31,12 +31,12 @@ function renderStoreCart(container) {
             ${cart.length} ${cart.length === 1 ? 'item' : 'items'}
           </span>
         </div>
-        <button onclick="navigate('home')" class="text-slate-400 hover:text-white p-1 font-mono text-xs">
+        <button onclick="navigate('home')" class="text-slate-400 hover:text-white p-1 font-mono text-xs cursor-pointer">
           ✕
         </button>
       </div>
 
-      <!-- Cart Item List -->
+      <!-- Cart Items List -->
       <div class="space-y-3">
         ${cart.map((item, idx) => `
           <div class="p-3.5 rounded-2xl bg-surface-900/80 border border-white/5 shadow-xl flex items-center justify-between gap-3">
@@ -49,21 +49,21 @@ function renderStoreCart(container) {
             </div>
 
             <!-- Remove Button -->
-            <button onclick="removeCartItemIndex(${idx})" class="w-8 h-8 rounded-xl bg-surface-950 hover:bg-rose-500/15 border border-white/5 hover:border-rose-500/20 text-slate-400 hover:text-rose-400 flex items-center justify-center font-mono font-bold text-xs transition-colors shrink-0">
+            <button onclick="removeCartItemIndex(${idx})" class="w-8 h-8 rounded-xl bg-surface-950 hover:bg-rose-500/15 border border-white/5 hover:border-rose-500/20 text-slate-400 hover:text-rose-400 flex items-center justify-center font-mono font-bold text-xs transition-colors shrink-0 cursor-pointer">
               ✕
             </button>
           </div>
         `).join('')}
       </div>
 
-      <!-- Checkout Footer Bar -->
+      <!-- Subtotal & Checkout Button -->
       <div class="pt-4 border-t border-white/5 space-y-4 font-mono">
         <div class="flex items-center justify-between text-xs px-1">
           <span class="text-slate-400 uppercase tracking-wider font-bold">Subtotal</span>
           <span class="text-xl font-black text-white">₹${subtotal}</span>
         </div>
 
-        <button onclick="handleCartCheckoutClick()" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-gray-950 font-black font-mono uppercase text-xs tracking-wider shadow-xl shadow-emerald-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer">
+        <button onclick="handleCartProceedToCheckout()" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-gray-950 font-black font-mono uppercase text-xs tracking-wider shadow-xl shadow-emerald-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer">
           <span>PROCEED TO CHECKOUT</span>
           <span>→</span>
         </button>
@@ -77,17 +77,24 @@ function removeCartItemIndex(index) {
   if (!Array.isArray(state.cart)) return;
   state.cart.splice(index, 1);
   localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
+  
+  const bagBadge = document.getElementById('cartBadgeCount');
+  if (bagBadge) {
+    const count = state.cart.length;
+    bagBadge.textContent = count;
+    if (count > 0) bagBadge.classList.remove('hidden');
+    else bagBadge.classList.add('hidden');
+  }
+
   renderStoreCart(document.getElementById('mainStoreContent'));
 }
 
-function handleCartCheckoutClick() {
-  // Check if customer is logged in
+function handleCartProceedToCheckout() {
   if (!state.token || !state.user || state.user.isAdmin) {
-    showToast('Please login or create an account to checkout');
+    showToast('Please login or create an account to proceed');
     navigate('login', { returnView: 'checkout' });
     return;
   }
 
-  // If already logged in, proceed to checkout
   navigate('checkout');
 }
