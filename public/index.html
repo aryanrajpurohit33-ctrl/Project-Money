@@ -93,7 +93,7 @@
       </div>
       <nav class="p-4 space-y-1.5 text-xs font-semibold">
         <button onclick="navigate('home')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/10 transition-colors"><span>🏠</span> Home</button>
-        <button onclick="navigate('products')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/10 transition-colors"><span>🛍</span> All Products</button>
+        <button onclick="navigate('cart')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/10 transition-colors"><span>🛒</span> Your Cart</button>
         <button onclick="navigate('orders')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/10 transition-colors"><span>📦</span> Purchased Items</button>
         <button onclick="navigate('account')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-white/5 active:bg-white/10 transition-colors"><span>👤</span> Account</button>
       </nav>
@@ -136,7 +136,7 @@
   <!-- Load Modular Admin Scripts -->
   <script src="/js/dashboard.js"></script>
   <script src="/js/product-studio.js"></script>
-  <script src="/js/account-slots.js"></script>
+  <script src="/js/slots.js"></script>
   <script src="/js/subscriptions.js"></script>
   <script src="/js/transactions.js"></script>
   <script src="/js/customers.js"></script>
@@ -147,7 +147,8 @@
   <script src="/js/store-header.js"></script>
   <script src="/js/store-home.js"></script>
   <script src="/js/store-product.js"></script>
-  <script src="/js/store-cart-checkout.js"></script>
+  <script src="/js/store-cart.js"></script>
+  <script src="/js/store-checkout.js"></script>
   <script src="/js/store-orders.js"></script>
   <script src="/js/store-auth.js"></script>
 
@@ -226,8 +227,6 @@
       const aSide = document.getElementById('adminSidebar');
       if (aSide) aSide.classList.add('-translate-x-full');
       document.getElementById('globalModal').classList.add('hidden');
-      const cartDrw = document.getElementById('cartSlideDrawer');
-      if (cartDrw) cartDrw.classList.add('translate-x-full');
     }
 
     function toggleCustomerDrawer(open) {
@@ -276,23 +275,19 @@
       renderStorefrontLayout(viewport, view, params);
     }
 
-    // Handle Phone Back Button & Keyboard Backspace seamlessly
     window.addEventListener('popstate', (e) => {
-      // If modal is open, close it first
       const modal = document.getElementById('globalModal');
       if (modal && !modal.classList.contains('hidden')) {
         modal.classList.add('hidden');
         return;
       }
 
-      // If sidebar/drawer is open, close it
       const drop = document.getElementById('appBackdrop');
       if (drop && !drop.classList.contains('hidden')) {
         closeAllDrawers();
         return;
       }
 
-      // Otherwise navigate to previous app view
       if (e.state && e.state.view) {
         navigate(e.state.view, e.state.params || {}, false);
       } else {
@@ -313,9 +308,10 @@
 
       if (view === 'home' || view === 'products') renderStoreHome(storeContent);
       else if (view === 'product-details') renderStoreProductDetails(storeContent, params.id);
-      else if (view === 'cart' || view === 'checkout') renderStoreCheckout(storeContent);
+      else if (view === 'cart') renderStoreCart(storeContent);
+      else if (view === 'checkout') renderStoreCheckout(storeContent);
       else if (view === 'orders') renderStoreOrders(storeContent);
-      else if (view === 'account') renderCustomerAuthPrompt(storeContent, 'account');
+      else if (view === 'account' || view === 'login') renderCustomerAuthPrompt(storeContent, params.returnView || 'orders', 'login');
     }
 
     function renderAdminLogin(viewport) {
@@ -370,9 +366,9 @@
       const active = document.getElementById(`adnav-${sec}`);
       if (active) active.classList.add('bg-emerald-500/10', 'text-emerald-400');
 
-      if (sec === 'dashboard') renderAdminOverview(content);
+      if (sec === 'dashboard') renderAdminDashboard(content);
       else if (sec === 'products') renderAdminProductsStudio(content);
-      else if (sec === 'slots') renderAdminAccountSlots(content);
+      else if (sec === 'slots') renderAdminSlots(content);
       else if (sec === 'subscriptions') renderAdminSubscriptions(content);
       else if (sec === 'transactions') renderAdminTransactions(content);
       else if (sec === 'customers') renderAdminCustomers(content);
@@ -381,20 +377,16 @@
     }
 
     function adminSignOut() {
-      state.adminToken = ''; state.adminUsername = '';
-      localStorage.removeItem('nexus_admin_token'); localStorage.removeItem('nexus_admin_user');
+      state.adminToken = '';
+      state.adminUsername = '';
+      localStorage.removeItem('nexus_admin_token');
+      localStorage.removeItem('nexus_admin_user');
       navigate('home');
     }
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      // Set initial history state
-      history.replaceState({ view: 'home', params: {} }, '', '#home');
+    document.addEventListener('DOMContentLoaded', () => {
+      prefetchGlobalData();
       navigate('home', {}, false);
-
-      await prefetchGlobalData();
-      if (state.currentView === 'home' || state.currentView === 'products') {
-        renderStoreHome(document.getElementById('storeContent'));
-      }
     });
   </script>
 </body>
