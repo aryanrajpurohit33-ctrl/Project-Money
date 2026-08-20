@@ -5,13 +5,11 @@ const mongoose = require('mongoose');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
 const Subscription = require('../models/Subscription');
-const Product = require('../models/Product');
 const { authAdmin } = require('../middleware/auth');
 
 router.get(['/admin/dashboard', '/admin/dashboard/full-overview', '/admin/dashboard-stats'], authAdmin, async (req, res) => {
   try {
     const allTxns = await Transaction.find().sort({ created_at: -1 }).lean();
-    
     const successfulTxns = allTxns.filter(t => t.status === 'SUCCESS' || t.status === 'PAID' || t.status === 'DELIVERED');
     const pendingTxns = allTxns.filter(t => t.status === 'PROCESSING' || t.status === 'PENDING' || !t.status);
     const rejectedTxns = allTxns.filter(t => t.status === 'REJECTED');
@@ -22,14 +20,10 @@ router.get(['/admin/dashboard', '/admin/dashboard/full-overview', '/admin/dashbo
     const subsCount = await Subscription.countDocuments({ status: 'ACTIVE' });
     const aov = successfulTxns.length > 0 ? Math.round(totalRev / successfulTxns.length) : 0;
 
-    // Accurate Conversion Rate
     const totalProcessed = successfulTxns.length + rejectedTxns.length + pendingTxns.length;
     const conversionRate = totalProcessed > 0 ? Math.round((successfulTxns.length / totalProcessed) * 100) : 0;
 
-    // Top Selling Products Calculation
     const productStats = {};
-    
-    // Check both verified transactions and total item sales
     successfulTxns.forEach(t => {
       const name = t.product_name || 'Digital Item';
       if (!productStats[name]) {
@@ -41,7 +35,6 @@ router.get(['/admin/dashboard', '/admin/dashboard/full-overview', '/admin/dashbo
 
     const topProducts = Object.values(productStats).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
 
-    // 7-Day Revenue Velocity Array (Calculated on IST/UTC dates)
     const days = 7;
     const timeline = [];
     for (let i = days - 1; i >= 0; i--) {
