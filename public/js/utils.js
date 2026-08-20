@@ -1,9 +1,8 @@
-// In-Memory Fast Cache Store
 window.apiCache = new Map();
 
 function getLoadingSpinnerHTML() {
   return `
-    <div class="flex items-center justify-center py-20 w-full animate-fadeIn">
+    <div class="flex items-center justify-center py-16 w-full animate-fadeIn">
       <div class="custom-loader-container">
         <div class="custom-loader-line"></div>
         <div class="custom-loader-line"></div>
@@ -31,17 +30,17 @@ function showToast(message, type = 'success') {
   }, 2500);
 }
 
-// Optimized Fetch with Instant Cache & Background Refresh
+// Turbo In-Memory Cached Fetcher
 async function fetchJSON(url, options = {}, useCache = true) {
   const isGet = !options.method || options.method === 'GET';
-  const cacheKey = url + (options.headers?.Authorization || '');
+  const cacheKey = url;
 
-  // Return instant memory cache if available for GET requests
+  // Instant response if in memory
   if (isGet && useCache && window.apiCache.has(cacheKey)) {
     const cached = window.apiCache.get(cacheKey);
-    // Background refresh if older than 30 seconds
-    if (Date.now() - cached.timestamp > 30000) {
-      fetch(url, options).then(res => res.json()).then(fresh => {
+    // Background refresh after 20s
+    if (Date.now() - cached.timestamp > 20000) {
+      fetch(url, options).then(r => r.json()).then(fresh => {
         window.apiCache.set(cacheKey, { data: fresh, timestamp: Date.now() });
       }).catch(() => {});
     }
@@ -54,27 +53,36 @@ async function fetchJSON(url, options = {}, useCache = true) {
     throw new Error('Session expired or unauthorized');
   }
 
-  const text = await res.text();
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch (e) {
-    throw new Error('Server response error (Invalid JSON)');
-  }
-
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
 
   if (isGet) {
     window.apiCache.set(cacheKey, { data, timestamp: Date.now() });
   } else {
-    // Invalidate cache on mutations (POST, PUT, DELETE)
+    // Invalidate stale cache on mutations
     window.apiCache.clear();
   }
 
   return data;
 }
 
-// Prefetch critical storefront data on first load
+// Prefetch all admin data in parallel into RAM on login/boot
+async function prefetchAdminData() {
+  if (!state.adminToken) return;
+  const headers = { 'Authorization': `Bearer ${state.adminToken}` };
+  
+  Promise.allSettled([
+    fetchJSON('/api/admin/dashboard', { headers }),
+    fetchJSON('/api/admin/transactions', { headers }),
+    fetchJSON('/api/admin/slots', { headers }),
+    fetchJSON('/api/admin/products', { headers }),
+    fetchJSON('/api/admin/subscriptions', { headers }),
+    fetchJSON('/api/admin/customers', { headers }),
+    fetchJSON('/api/payment-settings', { headers }),
+    fetchJSON('/api/admin/system/infrastructure', { headers })
+  ]).catch(() => {});
+}
+
 async function prefetchGlobalData() {
   try {
     const products = await fetchJSON('/api/products', {}, false);
