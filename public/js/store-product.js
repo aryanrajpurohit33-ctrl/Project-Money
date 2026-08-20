@@ -26,161 +26,156 @@ async function renderStoreProductDetails(container, productId) {
     };
 
     container.innerHTML = `
-      <div class="space-y-4 pb-20 max-w-lg mx-auto font-sans animate-fadeIn text-xs px-1">
+      <div class="space-y-6 pb-24 max-w-lg mx-auto font-sans animate-fadeIn text-xs px-2">
         
         <!-- Back Navigation & Status -->
         <div class="flex items-center justify-between">
           <button onclick="navigate('home')" class="flex items-center gap-1.5 text-slate-400 hover:text-white font-mono text-xs transition-colors py-1">
             <span class="text-sm">←</span> <span>Vault</span>
           </button>
-          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[10px] font-medium">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[10px] font-medium">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
             Instant Delivery
           </span>
         </div>
 
-        <!-- Main Product Card (Borderless Minimalist Layout) -->
-        <div class="bg-surface-900/60 rounded-3xl p-3 sm:p-5 space-y-4 shadow-2xl">
+        <!-- Full-Fit Hero Showcase -->
+        <div class="relative rounded-3xl overflow-hidden bg-surface-950 w-full aspect-[16/10] shadow-2xl">
+          <img src="${(p.images && p.images[0]) || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" 
+               class="w-full h-full object-cover">
+          <div class="absolute inset-0 bg-gradient-to-t from-surface-950/95 via-surface-950/20 to-transparent"></div>
           
-          <!-- Full-Fit Hero Showcase -->
-          <div class="relative rounded-2xl overflow-hidden bg-surface-950 w-full aspect-[16/10]">
-            <img src="${(p.images && p.images[0]) || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" 
-                 class="w-full h-full object-cover">
-            <div class="absolute inset-0 bg-gradient-to-t from-surface-950/95 via-transparent to-transparent"></div>
-            
-            <div class="absolute bottom-3 left-4 right-4 flex items-end justify-between">
-              <div>
-                <span class="text-[9px] font-mono tracking-widest text-emerald-400 uppercase font-semibold block mb-0.5">OTT</span>
-                <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">${p.name}</h1>
+          <div class="absolute bottom-4 left-4 right-4 flex items-end justify-between">
+            <div>
+              <span class="text-[10px] font-mono tracking-widest text-emerald-400 uppercase font-bold block mb-1">OTT</span>
+              <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">${p.name}</h1>
+            </div>
+            <span class="px-2.5 py-1 rounded-xl bg-black/70 backdrop-blur-md text-white font-mono text-[9px] font-bold uppercase">
+              ⚡ OTT
+            </span>
+          </div>
+        </div>
+
+        <!-- Configuration Controls -->
+        <div class="space-y-4">
+          
+          <!-- Access Duration Dropdown -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between items-center text-[10px] font-mono uppercase tracking-wider text-slate-400">
+              <span>Access Duration</span>
+              <span class="text-emerald-400 font-bold" id="durationSubLabel">Standard Plan</span>
+            </div>
+
+            <div class="relative">
+              <button type="button" onclick="toggleDurationMenu()" id="durationTriggerBtn"
+                class="w-full py-3.5 px-4 rounded-2xl bg-surface-900 text-white text-xs font-mono flex items-center justify-between hover:bg-surface-800 transition-all cursor-pointer">
+                <span id="selectedDurationText" class="font-bold">1 Month (Standard Plan)</span>
+                <span id="durationArrowIcon" class="text-slate-400 text-[10px] transition-transform duration-200">▼</span>
+              </button>
+
+              <!-- Custom In-App Slide Menu -->
+              <div id="durationDropdownMenu" class="hidden mt-2 space-y-1 p-2 rounded-2xl bg-surface-900 shadow-2xl animate-fadeIn">
+                <div onclick="selectDurationCustom('1_MONTH', 1, 0, '1 Month (Standard Plan)', 'Standard Plan')" 
+                  class="p-3 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-colors">
+                  <span class="text-xs font-mono text-white font-bold">1 Month</span>
+                  <span class="text-[10px] font-mono text-slate-400">Standard Plan</span>
+                </div>
+
+                <div onclick="selectDurationCustom('3_MONTHS', 2.55, 15, '3 Months (Save 15% OFF)', '15% OFF Plan')" 
+                  class="p-3 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-colors">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-mono text-white font-bold">3 Months</span>
+                    <span class="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 text-[8px] font-mono font-bold rounded">15% OFF</span>
+                  </div>
+                  <span class="text-[10px] font-mono text-slate-400">Quarterly</span>
+                </div>
+
+                <div onclick="selectDurationCustom('6_MONTHS', 4.5, 25, '6 Months (Save 25% OFF)', '25% OFF Plan')" 
+                  class="p-3 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-colors">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-mono text-white font-bold">6 Months</span>
+                    <span class="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 text-[8px] font-mono font-bold rounded">25% OFF</span>
+                  </div>
+                  <span class="text-[10px] font-mono text-slate-400">Half-Year</span>
+                </div>
+
+                <div onclick="selectDurationCustom('1_YEAR', 7.2, 40, '1 Year / 12 Months (Best Value — Save 40% OFF)', 'Best Value 40% OFF')" 
+                  class="p-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 flex items-center justify-between cursor-pointer transition-colors">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-mono text-emerald-400 font-bold">1 Year (12 Mo)</span>
+                    <span class="px-1.5 py-0.5 bg-emerald-500 text-gray-950 text-[8px] font-mono font-black rounded">BEST VALUE</span>
+                  </div>
+                  <span class="text-[10px] font-mono text-emerald-400 font-bold">40% OFF</span>
+                </div>
               </div>
-              <span class="px-2.5 py-1 rounded-xl bg-black/60 backdrop-blur-md text-white font-mono text-[9px] font-bold uppercase">
-                ⚡ OTT
-              </span>
             </div>
           </div>
 
-          <!-- Configuration Controls -->
-          <div class="space-y-3 pt-1">
-            
-            <!-- Access Duration Dropdown -->
-            <div class="space-y-1.5">
-              <div class="flex justify-between items-center text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                <span>Access Duration</span>
-                <span class="text-emerald-400 font-bold" id="durationSubLabel">Standard Plan</span>
+          <!-- Total & Compact Corner Device Stepper -->
+          <div class="pt-2 flex items-center justify-between gap-3">
+            <div class="space-y-1">
+              <span class="text-slate-500 text-[10px] uppercase font-mono block">Order Total</span>
+              <div class="flex items-center gap-2">
+                <span class="text-2xl sm:text-3xl font-black text-white font-mono leading-none" id="calculatedSalePrice">₹${basePrice}</span>
+                <span class="text-xs text-slate-500 line-through font-mono leading-none" id="calculatedOrigPrice">₹${origBase}</span>
+                <span class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg leading-none" id="savingsBadge">50% OFF</span>
               </div>
+            </div>
 
-              <div class="relative">
-                <button type="button" onclick="toggleDurationMenu()" id="durationTriggerBtn"
-                  class="w-full py-3 px-4 rounded-xl bg-surface-950 text-white text-xs font-mono flex items-center justify-between hover:bg-surface-950/80 transition-all cursor-pointer">
-                  <span id="selectedDurationText" class="font-bold">1 Month (Standard Plan)</span>
-                  <span id="durationArrowIcon" class="text-slate-400 text-[10px] transition-transform duration-200">▼</span>
+            <!-- Compact Stepper -->
+            <div class="flex flex-col items-end gap-1">
+              <span class="text-[9px] font-mono uppercase text-slate-400 tracking-wider">Device Quantity</span>
+              <div class="flex items-center gap-2 bg-surface-900 p-1.5 rounded-2xl">
+                <button type="button" onclick="adjustDeviceQuantity(-1)" 
+                  class="w-7 h-7 rounded-xl bg-white/5 hover:bg-white/10 active:scale-90 text-white font-mono font-bold flex items-center justify-center text-sm cursor-pointer">
+                  −
                 </button>
 
-                <!-- Custom In-App Slide Menu -->
-                <div id="durationDropdownMenu" class="hidden mt-2 space-y-1 p-2 rounded-2xl bg-surface-950 shadow-2xl animate-fadeIn">
-                  <div onclick="selectDurationCustom('1_MONTH', 1, 0, '1 Month (Standard Plan)', 'Standard Plan')" 
-                    class="p-2.5 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-colors">
-                    <span class="text-xs font-mono text-white font-bold">1 Month</span>
-                    <span class="text-[10px] font-mono text-slate-400">Standard Plan</span>
-                  </div>
+                <span class="text-xs font-mono font-bold text-emerald-400 min-w-[55px] text-center" id="deviceDisplayCount">1 Device</span>
 
-                  <div onclick="selectDurationCustom('3_MONTHS', 2.55, 15, '3 Months (Save 15% OFF)', '15% OFF Plan')" 
-                    class="p-2.5 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-colors">
-                    <div class="flex items-center gap-2">
-                      <span class="text-xs font-mono text-white font-bold">3 Months</span>
-                      <span class="px-1.5 py-0.2 bg-amber-500/20 text-amber-300 text-[8px] font-mono font-bold rounded">15% OFF</span>
-                    </div>
-                    <span class="text-[10px] font-mono text-slate-400">Quarterly</span>
-                  </div>
-
-                  <div onclick="selectDurationCustom('6_MONTHS', 4.5, 25, '6 Months (Save 25% OFF)', '25% OFF Plan')" 
-                    class="p-2.5 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-colors">
-                    <div class="flex items-center gap-2">
-                      <span class="text-xs font-mono text-white font-bold">6 Months</span>
-                      <span class="px-1.5 py-0.2 bg-indigo-500/20 text-indigo-300 text-[8px] font-mono font-bold rounded">25% OFF</span>
-                    </div>
-                    <span class="text-[10px] font-mono text-slate-400">Half-Year</span>
-                  </div>
-
-                  <div onclick="selectDurationCustom('1_YEAR', 7.2, 40, '1 Year / 12 Months (Best Value — Save 40% OFF)', 'Best Value 40% OFF')" 
-                    class="p-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 flex items-center justify-between cursor-pointer transition-colors">
-                    <div class="flex items-center gap-2">
-                      <span class="text-xs font-mono text-emerald-400 font-bold">1 Year (12 Mo)</span>
-                      <span class="px-1.5 py-0.2 bg-emerald-500 text-gray-950 text-[8px] font-mono font-black rounded">BEST VALUE</span>
-                    </div>
-                    <span class="text-[10px] font-mono text-emerald-400 font-bold">40% OFF</span>
-                  </div>
-                </div>
+                <button type="button" onclick="adjustDeviceQuantity(1)" 
+                  class="w-7 h-7 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-90 text-emerald-400 font-mono font-bold flex items-center justify-center text-sm cursor-pointer">
+                  +
+                </button>
               </div>
             </div>
-
-            <!-- Mini Corner Device Stepper + Price Row -->
-            <div class="pt-2 flex items-end justify-between gap-2">
-              <div>
-                <span class="text-slate-500 text-[10px] uppercase font-mono block">Order Total</span>
-                <div class="flex items-baseline gap-2 mt-0.5">
-                  <span class="text-2xl font-black text-white font-mono" id="calculatedSalePrice">₹${basePrice}</span>
-                  <span class="text-xs text-slate-600 line-through font-mono" id="calculatedOrigPrice">₹${origBase}</span>
-                  <span class="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded" id="savingsBadge">Save 50%</span>
-                </div>
-              </div>
-
-              <!-- Compact Corner Device Stepper -->
-              <div class="flex flex-col items-end gap-1">
-                <span class="text-[9px] font-mono uppercase text-slate-400 tracking-wider">Device Quantity</span>
-                <div class="flex items-center gap-1.5 bg-surface-950 px-2 py-1 rounded-xl">
-                  <button type="button" onclick="adjustDeviceQuantity(-1)" 
-                    class="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 active:scale-90 text-white font-mono font-bold flex items-center justify-center text-xs cursor-pointer">
-                    −
-                  </button>
-
-                  <span class="text-xs font-mono font-bold text-emerald-400 min-w-[50px] text-center" id="deviceDisplayCount">1 Device</span>
-
-                  <button type="button" onclick="adjustDeviceQuantity(1)" 
-                    class="w-6 h-6 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-90 text-emerald-400 font-mono font-bold flex items-center justify-center text-xs cursor-pointer">
-                    +
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Checkout Action Button -->
-            <button onclick="addProductToConfiguredCart()" class="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black tracking-wider uppercase shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2 cursor-pointer font-mono mt-2">
-              <span>Checkout Now</span>
-              <span>→</span>
-            </button>
-
           </div>
+
+          <!-- Checkout Button -->
+          <button onclick="addProductToConfiguredCart()" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black tracking-wider uppercase shadow-xl shadow-emerald-500/25 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2 cursor-pointer font-mono">
+            <span>Checkout Now</span>
+            <span>→</span>
+          </button>
 
         </div>
 
         <!-- Separate Limited Flash Deal Box -->
-        <div class="bg-surface-900/60 rounded-2xl p-3.5 flex items-center justify-between font-mono shadow-lg">
-          <div class="flex items-center gap-2">
-            <span class="text-sm animate-pulse">🔥</span>
+        <div class="bg-surface-900/60 rounded-3xl p-4 flex items-center justify-between font-mono shadow-lg">
+          <div class="flex items-center gap-2.5">
+            <span class="text-base animate-pulse">🔥</span>
             <div>
               <span class="text-xs text-white font-sans font-bold block">Limited Flash Deal</span>
-              <span class="text-[9px] text-slate-400 font-sans">Special discount expires in:</span>
+              <span class="text-[10px] text-slate-400 font-sans">Special discount expires in:</span>
             </div>
           </div>
-          <div class="flex items-center gap-1 text-slate-400 text-xs" id="offerCountdownTimer">
-            <span class="text-emerald-400 font-bold bg-surface-950 px-2 py-1 rounded shadow-inner" id="cd-hours">02</span>:
-            <span class="text-emerald-400 font-bold bg-surface-950 px-2 py-1 rounded shadow-inner" id="cd-mins">59</span>:
-            <span class="text-emerald-400 font-bold bg-surface-950 px-2 py-1 rounded shadow-inner" id="cd-secs">59</span>
+          <div class="flex items-center gap-1.5 text-slate-400 text-xs" id="offerCountdownTimer">
+            <span class="text-emerald-400 font-bold bg-surface-950 px-2.5 py-1 rounded-xl" id="cd-hours">02</span>:
+            <span class="text-emerald-400 font-bold bg-surface-950 px-2.5 py-1 rounded-xl" id="cd-mins">59</span>:
+            <span class="text-emerald-400 font-bold bg-surface-950 px-2.5 py-1 rounded-xl" id="cd-secs">59</span>
           </div>
         </div>
 
         <!-- Trust & Features -->
-        <div class="grid grid-cols-2 gap-2.5">
-          <div class="bg-surface-900/50 p-3.5 rounded-2xl space-y-1">
-            <span class="text-xs">🛡️</span>
-            <strong class="text-white text-[11px] block">Full Period Warranty</strong>
-            <p class="text-slate-500 text-[10px] leading-relaxed">Instant slot replacement if any access disruption occurs.</p>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-surface-900/40 p-4 rounded-3xl space-y-1">
+            <span class="text-sm">🛡️</span>
+            <strong class="text-white text-xs block">Full Period Warranty</strong>
+            <p class="text-slate-400 text-[10px] leading-relaxed">Instant slot replacement if any access disruption occurs.</p>
           </div>
-          <div class="bg-surface-900/50 p-3.5 rounded-2xl space-y-1">
-            <span class="text-xs">🔒</span>
-            <strong class="text-white text-[11px] block">Private Profile</strong>
-            <p class="text-slate-500 text-[10px] leading-relaxed">Set your own 4-digit PIN for an isolated personal watchlist.</p>
+          <div class="bg-surface-900/40 p-4 rounded-3xl space-y-1">
+            <span class="text-sm">🔒</span>
+            <strong class="text-white text-xs block">Private Profile</strong>
+            <p class="text-slate-400 text-[10px] leading-relaxed">Set your own 4-digit PIN for an isolated personal watchlist.</p>
           </div>
         </div>
 
@@ -190,7 +185,7 @@ async function renderStoreProductDetails(container, productId) {
     startThreeHourCountdownLoop();
   } catch (err) {
     container.innerHTML = `
-      <div class="glass p-8 text-center text-rose-400 font-mono text-xs rounded-3xl">
+      <div class="p-8 text-center text-rose-400 font-mono text-xs">
         Error loading product: ${err.message}
       </div>
     `;
@@ -291,7 +286,8 @@ function calculateDynamicPrice() {
   if (origEl) origEl.textContent = `₹${calculatedOrig}`;
   if (badgeEl) {
     const diff = calculatedOrig - calculatedSale;
-    badgeEl.textContent = `Save ₹${diff}`;
+    const pct = Math.round((diff / calculatedOrig) * 100);
+    badgeEl.textContent = `${pct}% OFF`;
   }
 }
 
