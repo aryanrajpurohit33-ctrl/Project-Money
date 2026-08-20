@@ -1,9 +1,28 @@
 async function renderStoreOrders(container) {
+  // If user is logged out, prompt them to login first
+  if (!state.user || !state.token || state.user.isAdmin) {
+    container.innerHTML = `
+      <div class="max-w-sm mx-auto py-12 px-4 text-center space-y-4 font-sans animate-fadeIn text-xs">
+        <div class="w-16 h-16 rounded-3xl bg-surface-900 mx-auto flex items-center justify-center text-2xl border border-white/5 shadow-xl">
+          🔒
+        </div>
+        <div class="space-y-1">
+          <h2 class="text-base font-black text-white">Digital Vault Locked</h2>
+          <p class="text-slate-400 text-xs font-sans">Please login to your account to view your purchased credentials and order status.</p>
+        </div>
+        <button onclick="navigate('login', { returnView: 'orders' })" class="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black font-mono text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer">
+          Login to Access Vault →
+        </button>
+      </div>
+    `;
+    return;
+  }
+
   container.innerHTML = getLoadingSpinnerHTML();
 
   try {
-    const userEmail = state.user?.email || '';
-    const endpoint = userEmail ? `/api/orders?email=${encodeURIComponent(userEmail)}` : '/api/orders';
+    const userEmail = state.user.email || state.user.username || '';
+    const endpoint = `/api/orders?email=${encodeURIComponent(userEmail)}`;
     const orders = await fetchJSON(endpoint);
     const orderList = Array.isArray(orders) ? orders : [];
 
@@ -24,8 +43,8 @@ async function renderStoreOrders(container) {
           ${orderList.length === 0 ? `
             <div class="bg-surface-900/60 rounded-3xl p-12 text-center space-y-3 border border-white/5 shadow-xl">
               <span class="text-3xl block">📦</span>
-              <p class="text-slate-400 font-mono text-xs">No orders recorded in this vault yet.</p>
-              <button onclick="navigate('home')" class="px-5 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black font-mono text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+              <p class="text-slate-400 font-mono text-xs">No orders recorded for ${state.user.username} yet.</p>
+              <button onclick="navigate('home')" class="px-5 py-2.5 rounded-xl bg-emerald-500 text-gray-950 font-black font-mono text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer">
                 Browse Store →
               </button>
             </div>
@@ -83,7 +102,7 @@ async function renderStoreOrders(container) {
                     </div>
 
                     <div class="bg-surface-950 p-3 rounded-xl border border-emerald-500/20 font-mono space-y-1 text-[11px]">
-                      <div class="flex justify-between"><span class="text-slate-400">Account:</span> <span class="text-white font-bold select-all">${order.credentials?.email || order.customer_email || 'prime.user@nexus.internal'}</span></div>
+                      <div class="flex justify-between"><span class="text-slate-400">Account:</span> <span class="text-white font-bold select-all">${order.credentials?.email || order.customer_email || state.user.email}</span></div>
                       <div class="flex justify-between"><span class="text-slate-400">Password:</span> <span class="text-emerald-400 font-bold select-all">${order.credentials?.password || 'NexusPrime#2026'}</span></div>
                       ${order.credentials?.profile_pin ? `<div class="flex justify-between"><span class="text-slate-400">Profile PIN:</span> <span class="text-amber-400 font-bold select-all">${order.credentials.profile_pin}</span></div>` : ''}
                     </div>
@@ -91,7 +110,7 @@ async function renderStoreOrders(container) {
                 ` : isRejected ? `
                   <div class="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 space-y-1">
                     <span class="font-bold block text-xs">✕ Verification Failed</span>
-                    <p class="text-[11px] text-rose-400/90 leading-relaxed">${order.rejection_reason || 'Payment proof could not be verified by admin. Please contact support.'}</p>
+                    <p class="text-[11px] text-rose-400/90 leading-relaxed">${order.rejection_reason || 'Payment proof could not be verified by admin.'}</p>
                   </div>
                 ` : `
                   <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 flex items-center justify-between">
