@@ -1,4 +1,10 @@
-function renderCustomerAuthPrompt(container, returnView = 'account', mode = 'login') {
+function renderCustomerAuthPrompt(container, returnView = 'orders', mode = 'login') {
+  // If already authenticated, redirect straight to orders or profile
+  if (state.token && state.user && !state.user.isAdmin) {
+    renderCustomerAccount(container);
+    return;
+  }
+
   container.innerHTML = `
     <div class="max-w-sm mx-auto py-2 sm:py-6 px-1 space-y-3 font-sans animate-fadeIn text-xs">
       
@@ -18,10 +24,10 @@ function renderCustomerAuthPrompt(container, returnView = 'account', mode = 'log
 
           <!-- Mode Toggle Switch -->
           <div class="flex p-0.5 bg-surface-950 rounded-xl border border-white/5 shrink-0">
-            <button type="button" onclick="switchAuthTab('login')" id="tabLoginBtn" class="px-2.5 py-1 rounded-lg font-mono text-[10px] font-bold transition-all ${mode === 'login' ? 'bg-emerald-500 text-gray-950' : 'text-slate-400'}">
+            <button type="button" onclick="switchAuthTab('login')" id="tabLoginBtn" class="px-2.5 py-1 rounded-lg font-mono text-[10px] font-bold transition-all ${mode === 'login' ? 'bg-emerald-500 text-gray-950 shadow-md shadow-emerald-500/20' : 'text-slate-400'}">
               Login
             </button>
-            <button type="button" onclick="switchAuthTab('register')" id="tabRegisterBtn" class="px-2.5 py-1 rounded-lg font-mono text-[10px] font-bold transition-all ${mode === 'register' ? 'bg-emerald-500 text-gray-950' : 'text-slate-400'}">
+            <button type="button" onclick="switchAuthTab('register')" id="tabRegisterBtn" class="px-2.5 py-1 rounded-lg font-mono text-[10px] font-bold transition-all ${mode === 'register' ? 'bg-emerald-500 text-gray-950 shadow-md shadow-emerald-500/20' : 'text-slate-400'}">
               Register
             </button>
           </div>
@@ -37,7 +43,7 @@ function renderCustomerAuthPrompt(container, returnView = 'account', mode = 'log
 
           <!-- Email (Register Mode Only) -->
           <div class="relative ${mode === 'login' ? 'hidden' : ''}" id="emailFieldGroup">
-            <input type="email" id="authEmail" ${mode === 'register' ? 'required' : ''} placeholder="Email (your@email.com)" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white text-xs outline-none focus:border-emerald-500 font-sans transition-all placeholder:text-slate-600">
+            <input type="email" id="authEmail" placeholder="Email (your@email.com)" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-white/10 text-white text-xs outline-none focus:border-emerald-500 font-sans transition-all placeholder:text-slate-600">
           </div>
 
           <!-- Mobile Phone (Register Mode Only) -->
@@ -89,7 +95,7 @@ function switchAuthTab(mode) {
   const submitBtn = document.getElementById('authSubmitBtn');
 
   if (mode === 'register') {
-    regBtn.className = 'px-2.5 py-1 rounded-lg font-mono text-[10px] font-bold transition-all bg-emerald-500 text-gray-950';
+    regBtn.className = 'px-2.5 py-1 rounded-lg font-mono text-[10px] font-bold transition-all bg-emerald-500 text-gray-950 shadow-md shadow-emerald-500/20';
     logBtn.className = 'px-2.5 py-1 rounded-lg font-mono text-[10px] font-bold transition-all text-slate-400';
     title.textContent = 'Create Account';
     subtitle.textContent = 'Set username & password';
@@ -100,7 +106,7 @@ function switchAuthTab(mode) {
     passGrid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-2';
     submitBtn.innerHTML = '<span>CREATE ACCOUNT</span> <span>→</span>';
   } else {
-    logBtn.className = 'px-2.5 py-1 rounded-lg font-mono text-[10px] font-bold transition-all bg-emerald-500 text-gray-950';
+    logBtn.className = 'px-2.5 py-1 rounded-lg font-mono text-[10px] font-bold transition-all bg-emerald-500 text-gray-950 shadow-md shadow-emerald-500/20';
     regBtn.className = 'px-2.5 py-1 rounded-lg font-mono text-[10px] font-bold transition-all text-slate-400';
     title.textContent = 'Login';
     subtitle.textContent = 'Enter credentials to continue';
@@ -123,11 +129,9 @@ async function handleCustomerAuthSubmit(e, returnView) {
   const mobile = document.getElementById('authMobile') ? document.getElementById('authMobile').value.trim() : '';
   const confirm = document.getElementById('authConfirmPassword') ? document.getElementById('authConfirmPassword').value.trim() : '';
 
-  if (mode === 'register') {
-    if (confirm && password !== confirm) {
-      showToast('Passwords do not match.', 'error');
-      return;
-    }
+  if (mode === 'register' && confirm && password !== confirm) {
+    showToast('Passwords do not match.', 'error');
+    return;
   }
 
   try {
@@ -142,24 +146,96 @@ async function handleCustomerAuthSubmit(e, returnView) {
       body: JSON.stringify(payload)
     });
 
-    if (res.isAdmin) {
+    if (res.isAdmin || res.is_admin) {
       state.adminToken = res.token;
-      state.adminUsername = res.username;
+      state.adminUsername = res.username || 'Aryan';
       localStorage.setItem('nexus_admin_token', res.token);
-      localStorage.setItem('nexus_admin_user', res.username);
+      localStorage.setItem('nexus_admin_user', state.adminUsername);
       showToast('✓ Admin session authenticated');
       navigate('admin-center');
       return;
     }
 
+    // Save Customer Session
     state.token = res.token;
     state.user = res.user;
     localStorage.setItem('nexus_token', res.token);
     localStorage.setItem('nexus_user', JSON.stringify(res.user));
 
     showToast(`✓ Welcome, ${res.user.username}!`);
-    navigate(returnView || 'orders');
+
+    // Determine destination: if on account or login page, redirect to orders vault
+    const destination = (returnView === 'account' || returnView === 'login' || !returnView) ? 'orders' : returnView;
+    navigate(destination);
   } catch (err) {
     showToast(err.message, 'error');
   }
+}
+
+function renderCustomerAccount(container) {
+  if (!state.user || !state.token) {
+    renderCustomerAuthPrompt(container, 'account', 'login');
+    return;
+  }
+
+  const u = state.user;
+  container.innerHTML = `
+    <div class="max-w-md mx-auto py-4 px-2 space-y-4 font-sans animate-fadeIn text-xs">
+      
+      <!-- Account Profile Card -->
+      <div class="bg-surface-900/80 rounded-3xl p-5 border border-white/5 shadow-2xl space-y-4">
+        
+        <div class="flex items-center justify-between border-b border-white/5 pb-3">
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-mono font-black text-base flex items-center justify-center">
+              ${(u.username || 'U')[0].toUpperCase()}
+            </div>
+            <div>
+              <h2 class="text-base font-bold text-white">${u.username}</h2>
+              <span class="text-slate-400 font-mono text-[10px] block">${u.email || 'Verified Customer'}</span>
+            </div>
+          </div>
+
+          <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[9px] font-bold uppercase">
+            Active
+          </span>
+        </div>
+
+        <!-- Details Grid -->
+        <div class="grid grid-cols-2 gap-2 bg-surface-950 p-3 rounded-2xl border border-white/5 font-mono text-[11px]">
+          <div>
+            <span class="text-slate-500 text-[9px] uppercase block">Mobile Phone</span>
+            <span class="text-emerald-400 font-bold block">${u.mobile || 'Not Set'}</span>
+          </div>
+          <div>
+            <span class="text-slate-500 text-[9px] uppercase block">Vault Access</span>
+            <span class="text-white font-bold block">Unlocked</span>
+          </div>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div class="space-y-2 pt-1">
+          <button onclick="navigate('orders')" class="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black font-mono text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer">
+            <span>📦 Open Purchased Vault</span>
+            <span>→</span>
+          </button>
+
+          <button onclick="handleCustomerLogout()" class="w-full py-3 rounded-xl bg-surface-950 hover:bg-rose-500/10 border border-white/5 hover:border-rose-500/20 text-rose-400 font-mono text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+            <span>Sign Out</span>
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+  `;
+}
+
+function handleCustomerLogout() {
+  state.token = null;
+  state.user = null;
+  localStorage.removeItem('nexus_token');
+  localStorage.removeItem('nexus_user');
+  showToast('Logged out successfully');
+  navigate('home');
 }
