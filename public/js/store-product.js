@@ -7,14 +7,18 @@ async function renderStoreProductDetails(container, productId) {
 
   try {
     const p = await fetchJSON(`/api/products/${productId}`);
-    
+
     const basePrice = p.sale_price || 499;
     const origBase = p.original_price || (basePrice * 2);
+
+    const showcaseImages = Array.isArray(p.images) && p.images.length > 0 
+      ? p.images 
+      : [(p.image || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800')];
 
     window.currentProductSelection = {
       productId: p._id,
       name: p.name,
-      image: (p.images && p.images[0]) || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800',
+      image: showcaseImages[0],
       basePrice: basePrice,
       baseOrig: origBase,
       subscriptionPricing: p.subscription_pricing || {},
@@ -31,7 +35,7 @@ async function renderStoreProductDetails(container, productId) {
         
         <!-- Back Navigation & Status -->
         <div class="flex items-center justify-between">
-          <button onclick="navigate('home')" class="flex items-center gap-1.5 text-slate-400 hover:text-white font-mono text-xs transition-colors py-1">
+          <button onclick="navigate('home')" class="flex items-center gap-1.5 text-slate-400 hover:text-white font-mono text-xs transition-colors py-1 cursor-pointer">
             <span class="text-sm">←</span> <span>Vault</span>
           </button>
           <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[10px] font-medium">
@@ -42,10 +46,9 @@ async function renderStoreProductDetails(container, productId) {
 
         <!-- Full-Fit Hero Showcase -->
         <div class="relative rounded-3xl overflow-hidden bg-surface-950 w-full aspect-[16/10] shadow-2xl">
-          <img src="${(p.images && p.images[0]) || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" 
-               class="w-full h-full object-cover">
+          <img src="${showcaseImages[0]}" class="w-full h-full object-cover">
           <div class="absolute inset-0 bg-gradient-to-t from-surface-950/95 via-surface-950/20 to-transparent"></div>
-          
+
           <div class="absolute bottom-4 left-4 right-4 flex items-end justify-between">
             <div>
               <span class="text-[10px] font-mono tracking-widest text-emerald-400 uppercase font-bold block mb-1">${p.category || 'OTT'}</span>
@@ -54,6 +57,26 @@ async function renderStoreProductDetails(container, productId) {
             <span class="px-2.5 py-1 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-mono text-[9px] font-black uppercase flex items-center gap-1">
               ⚡ ${p.category || 'OTT'}
             </span>
+          </div>
+        </div>
+
+        <!-- Google Play Store-Style Showcase Reel -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between px-1 font-mono text-[10px] uppercase font-bold text-slate-400">
+            <span>Showcase Previews</span>
+            <span class="text-emerald-400 tracking-wider">Swipe to explore →</span>
+          </div>
+
+          <div class="flex items-center gap-3 overflow-x-auto py-1 px-1 custom-scroll snap-x snap-mandatory" style="scrollbar-width: none; -ms-overflow-style: none;">
+            ${showcaseImages.map((img, idx) => `
+              <div class="flex-shrink-0 w-36 sm:w-40 aspect-[9/16] rounded-2xl overflow-hidden bg-surface-900 border border-white/10 shadow-xl relative group snap-start">
+                <img src="${img}" alt="Preview ${idx + 1}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                <div class="absolute inset-0 bg-gradient-to-t from-surface-950/80 via-transparent to-transparent pointer-events-none"></div>
+                <span class="absolute bottom-2 left-2.5 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[9px] font-mono text-white/90 font-bold border border-white/10">
+                  #0${idx + 1}
+                </span>
+              </div>
+            `).join('')}
           </div>
         </div>
 
@@ -312,17 +335,8 @@ function selectDurationCustom(key, multiplier, discount, fullLabel, subLabel) {
   const textEl = document.getElementById('selectedDurationText');
   const subLabelEl = document.getElementById('durationSubLabel');
 
-  if (textEl) {
-    textEl.style.opacity = '0.5';
-    setTimeout(() => {
-      textEl.textContent = fullLabel;
-      textEl.style.opacity = '1';
-    }, 100);
-  }
-  
-  if (subLabelEl) {
-    subLabelEl.textContent = subLabel;
-  }
+  if (textEl) textEl.textContent = fullLabel;
+  if (subLabelEl) subLabelEl.textContent = subLabel;
 
   toggleDurationMenu();
   calculateDynamicPrice();
@@ -353,22 +367,11 @@ function calculateDynamicPrice() {
   const origEl = document.getElementById('calculatedOrigPrice');
   const badgeEl = document.getElementById('savingsBadge');
 
-  if (saleEl) {
-    saleEl.style.transform = 'scale(0.95)';
-    setTimeout(() => {
-      saleEl.textContent = `₹${calculatedSale}`;
-      saleEl.style.transform = 'scale(1)';
-    }, 100);
-  }
-
-  if (origEl) {
-    origEl.textContent = `₹${calculatedOrig}`;
-  }
-
+  if (saleEl) saleEl.textContent = `₹${calculatedSale}`;
+  if (origEl) origEl.textContent = `₹${calculatedOrig}`;
   if (badgeEl) {
     const diff = calculatedOrig - calculatedSale;
-    const pct = Math.round((diff / calculatedOrig) * 100);
-    badgeEl.textContent = `${pct}% OFF`;
+    badgeEl.textContent = `${Math.round((diff / calculatedOrig) * 100)}% OFF`;
   }
 }
 
@@ -376,13 +379,7 @@ function addProductToConfiguredCart() {
   const sel = window.currentProductSelection;
   if (!sel) return;
 
-  const durationNameMap = {
-    '1_MONTH': '1 Month',
-    '3_MONTHS': '3 Months',
-    '6_MONTHS': '6 Months',
-    '1_YEAR': '1 Year'
-  };
-
+  const durationNameMap = { '1_MONTH': '1 Month', '3_MONTHS': '3 Months', '6_MONTHS': '6 Months', '1_YEAR': '1 Year' };
   const finalName = `${sel.name} (${sel.devices} ${sel.devices === 1 ? 'Device' : 'Devices'} - ${durationNameMap[sel.duration] || '1 Month'})`;
   const finalPrice = sel.finalPrice || sel.basePrice;
 
@@ -398,7 +395,6 @@ function addProductToConfiguredCart() {
 
   localStorage.setItem('nexus_cart', JSON.stringify(state.cart));
 
-  // Update header cart bag badge
   const bagBadge = document.getElementById('cartBadgeCount');
   if (bagBadge) {
     bagBadge.textContent = state.cart.length;
@@ -406,7 +402,5 @@ function addProductToConfiguredCart() {
   }
 
   showToast(`✓ Added to cart`);
-  
-  // Directly open Cart view
   navigate('cart');
 }
