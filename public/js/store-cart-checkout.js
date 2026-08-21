@@ -1,244 +1,155 @@
-function openCartDrawer() {
-  let drawer = document.getElementById('cartSlideDrawer');
-  if (!drawer) {
-    drawer = document.createElement('div');
-    drawer.id = 'cartSlideDrawer';
-    drawer.className = 'fixed inset-y-0 right-0 z-50 w-full max-w-md bg-surface-900 border-l border-white/10 shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col justify-between';
-    document.body.appendChild(drawer);
-  }
-
-  const drop = document.getElementById('appBackdrop');
-  if (drop) {
-    drop.classList.remove('hidden');
-    drop.onclick = closeCartDrawer;
-  }
-
-  updateCartDrawerContent();
-  setTimeout(() => drawer.classList.remove('translate-x-full'), 10);
-}
-
-function closeCartDrawer() {
-  const drawer = document.getElementById('cartSlideDrawer');
-  if (drawer) drawer.classList.add('translate-x-full');
-  const drop = document.getElementById('appBackdrop');
-  if (drop) drop.classList.add('hidden');
-}
-
-function updateCartDrawerContent() {
-  const drawer = document.getElementById('cartSlideDrawer');
-  if (!drawer) return;
-  const cart = state.cart || [];
-  const totalQty = cart.reduce((acc, i) => acc + (i.qty || 1), 0);
-  const subtotal = cart.reduce((acc, i) => acc + (i.price || 0) * (i.qty || 1), 0);
-
-  drawer.innerHTML = `
-    <div class="p-5 border-b border-white/5 flex items-center justify-between font-sans">
-      <div class="flex items-center gap-2">
-        <h2 class="text-base font-black text-white">Your Cart</h2>
-        <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[10px] font-bold">${totalQty} items</span>
-      </div>
-      <button onclick="closeCartDrawer()" class="text-slate-400 hover:text-white p-1 text-sm font-bold">✕</button>
-    </div>
-
-    <div class="flex-1 overflow-y-auto p-5 space-y-3 custom-scroll">
-      ${cart.length === 0 ? `
-        <div class="text-center py-20 text-slate-500 font-mono text-xs">
-          Your cart is currently empty.<br>
-          <button onclick="closeCartDrawer(); navigate('products');" class="mt-4 px-4 py-2 bg-emerald-500 text-gray-950 font-black rounded-xl text-[10px] uppercase">Shop Catalog</button>
-        </div>
-      ` : cart.map((item, idx) => `
-        <div class="glass rounded-2xl p-3.5 flex items-center justify-between gap-3 border border-white/5">
-          <div class="flex items-center gap-3 min-w-0">
-            <img src="${item.image || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=200'}" class="w-12 h-12 rounded-xl object-cover border border-white/10 shrink-0 bg-black">
-            <div class="min-w-0">
-              <h4 class="text-white font-bold text-xs truncate">${item.name}</h4>
-              <span class="text-[10px] text-emerald-400 font-mono block">₹${item.price} each</span>
-            </div>
-          </div>
-
-          <div class="flex items-center gap-3 shrink-0 font-mono">
-            <div class="flex items-center gap-1.5 bg-surface-950 px-2 py-1 rounded-xl border border-white/10 text-xs">
-              <button onclick="adjustCartQty(${idx}, -1)" class="text-slate-400 hover:text-white px-1">-</button>
-              <span class="text-white font-bold w-4 text-center">${item.qty || 1}</span>
-              <button onclick="adjustCartQty(${idx}, 1)" class="text-slate-400 hover:text-white px-1">+</button>
-            </div>
-            <button onclick="removeCartItemDrawer(${idx})" class="text-rose-400 hover:text-rose-300 font-bold p-1 text-xs" title="Remove">✕</button>
-          </div>
-        </div>
-      `).join('')}
-    </div>
-
-    ${cart.length > 0 ? `
-      <div class="p-5 border-t border-white/5 space-y-4 bg-surface-950 font-sans">
-        <div class="flex justify-between items-center text-xs font-mono">
-          <span class="text-slate-400">Subtotal</span>
-          <span class="text-white font-black text-sm">₹${subtotal}</span>
-        </div>
-        <button onclick="closeCartDrawer(); navigate('checkout');" class="w-full py-3.5 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-          Proceed to Checkout →
-        </button>
-      </div>
-    ` : ''}
-  `;
-}
-
-function adjustCartQty(index, delta) {
-  const cart = state.cart || [];
-  if (!cart[index]) return;
-  cart[index].qty = (cart[index].qty || 1) + delta;
-  if (cart[index].qty <= 0) {
-    cart.splice(index, 1);
-  }
-  localStorage.setItem('nexus_cart', JSON.stringify(cart));
-  const badge = document.getElementById('storeCartBadge');
-  if (badge) badge.textContent = cart.reduce((a,b)=>a+(b.qty||1),0);
-  updateCartDrawerContent();
-}
-
-function removeCartItemDrawer(index) {
-  const cart = state.cart || [];
-  cart.splice(index, 1);
-  localStorage.setItem('nexus_cart', JSON.stringify(cart));
-  const badge = document.getElementById('storeCartBadge');
-  if (badge) badge.textContent = cart.reduce((a,b)=>a+(b.qty||1),0);
-  updateCartDrawerContent();
-  showToast('Item removed from cart');
-}
-
 async function renderStoreCheckout(container) {
-  if (!state.token) return renderCustomerAuthPrompt(container, 'checkout');
-  const cart = state.cart || [];
-  if (!cart.length) { navigate('home'); return; }
-  const subtotal = cart.reduce((acc, i) => acc + (i.price || 0) * (i.qty || 1), 0);
-  const method = state.checkoutMethod || 'UPI';
+  if (!state.cart || state.cart.length === 0) {
+    navigate('cart');
+    return;
+  }
 
-  container.innerHTML = '<div class="text-center py-20 text-slate-400 font-mono text-xs animate-pulse">Loading payment gateway...</div>';
+  const total = state.cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
+  container.innerHTML = getLoadingSpinnerHTML();
 
   try {
-    const paySettings = await fetchJSON('/api/admin/payment-settings').catch(() => ({ upi_id: 'merchant@okaxis', crypto_wallet_address: 'TXYz...' }));
+    const s = await fetchJSON('/api/settings');
+
+    const upiId = s.upi_id || s.merchant_upi || 'merchant@okaxis';
+    const upiName = s.upi_name || 'Nexus Digital Pay';
+    const customQR = s.upi_qr_image || s.qr_code || '';
     
+    // Use custom uploaded QR code if available; otherwise generate dynamic QR with amount
+    const qrSrc = customQR ? customQR : `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiName)}&am=${total}&cu=INR`)}`;
+
     container.innerHTML = `
-      <div class="max-w-xl mx-auto glass rounded-3xl p-6 sm:p-8 space-y-6 font-sans">
-        <div class="flex items-center justify-between">
-          <div>
-            <h2 class="text-xl font-black text-white">Complete Payment</h2>
-            <p class="text-xs text-slate-400 font-mono">Secure Order Verification</p>
-          </div>
-          <button onclick="navigate('home')" class="text-xs text-slate-400 hover:text-white font-mono">← Store</button>
+      <div class="space-y-6 max-w-lg mx-auto font-sans text-xs pb-28 animate-fadeIn px-1">
+        
+        <!-- Header -->
+        <div class="text-center space-y-1">
+          <h1 class="text-2xl font-black text-white tracking-tight">Complete Payment</h1>
+          <p class="text-slate-400 font-mono text-[11px]">Logged in as <span class="text-emerald-400 font-bold">${state.user?.username || state.user?.name || 'Customer'}</span></p>
         </div>
 
-        <div class="p-5 rounded-2xl bg-surface-950 border border-white/10 space-y-4 font-mono">
-          <div class="flex justify-between items-center text-xs">
-            <span class="text-slate-400">Total Amount to Pay:</span>
-            <span class="text-emerald-400 font-black text-lg">₹${subtotal}</span>
+        <!-- Total Payable Card -->
+        <div class="p-5 rounded-3xl bg-surface-900/90 border border-white/10 space-y-4 shadow-xl font-mono">
+          <div class="flex items-center justify-between">
+            <span class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Total Payable</span>
+            <span class="text-2xl sm:text-3xl font-black text-emerald-400">₹${total}</span>
           </div>
 
-          <div class="pt-3 border-t border-white/5 space-y-3">
+          <div class="pt-3 border-t border-white/5 flex items-center justify-between">
+            <div class="space-y-0.5">
+              <span class="text-slate-500 text-[9px] uppercase font-bold block">Merchant UPI ID</span>
+              <span class="text-white font-bold text-xs" id="checkoutUpiText">${upiId}</span>
+            </div>
+            <button type="button" onclick="copyCheckoutUpi('${upiId}')" class="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold transition-all cursor-pointer active:scale-95 flex items-center gap-1.5">
+              <span>📋</span> <span>Copy</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- QR Code Container -->
+        <div class="p-6 rounded-3xl bg-surface-900/90 border border-white/10 flex flex-col items-center space-y-4 shadow-xl">
+          <div class="w-64 h-64 sm:w-72 sm:h-72 rounded-3xl overflow-hidden bg-white p-3 shadow-2xl flex items-center justify-center">
+            <img src="${qrSrc}" alt="UPI QR Code" class="w-full h-full object-contain select-none">
+          </div>
+
+          <div class="text-center space-y-3">
+            <span class="text-slate-400 font-mono text-[10px] uppercase font-bold tracking-wider block">
+              Scan & Pay Using Any UPI App
+            </span>
+
+            <div class="flex items-center justify-center gap-2 flex-wrap">
+              <span class="px-3 py-1.5 rounded-xl bg-surface-950 border border-white/10 text-white font-mono text-[10px] font-bold flex items-center gap-1.5">
+                <span class="text-emerald-400">●</span> Google Pay
+              </span>
+              <span class="px-3 py-1.5 rounded-xl bg-surface-950 border border-white/10 text-white font-mono text-[10px] font-bold flex items-center gap-1.5">
+                <span class="text-purple-400">●</span> PhonePe
+              </span>
+              <span class="px-3 py-1.5 rounded-xl bg-surface-950 border border-white/10 text-white font-mono text-[10px] font-bold flex items-center gap-1.5">
+                <span class="text-sky-400">●</span> Paytm
+              </span>
+              <span class="px-3 py-1.5 rounded-xl bg-surface-950 border border-white/10 text-emerald-400 font-mono text-[10px] font-bold">
+                UPI
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Verification Form -->
+        <form onsubmit="handleCustomerPaymentProofSubmit(event)" class="space-y-4 font-mono">
+          <div class="space-y-1.5">
             <div class="flex items-center justify-between">
-              <span class="text-slate-400 text-xs">Merchant UPI ID:</span>
-              <div class="flex items-center gap-2">
-                <span id="upiIdText" class="text-white font-bold text-xs">${paySettings.upi_id || 'merchant@okaxis'}</span>
-                <button onclick="navigator.clipboard.writeText('${paySettings.upi_id || 'merchant@okaxis'}'); showToast('✓ UPI ID copied');" class="px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded-lg text-[10px] font-bold">Copy</button>
-              </div>
+              <label class="text-slate-300 text-[10px] uppercase font-bold tracking-wider">Payer / Account Name *</label>
+              <span class="text-slate-500 text-[9px]">As shown in your UPI App</span>
             </div>
-
-            <div class="flex justify-center pt-2">
-              <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=${encodeURIComponent(paySettings.upi_id || 'merchant@okaxis')}&pn=NexusDigital&am=${subtotal}&cu=INR" class="w-40 h-40 rounded-2xl border border-white/10 p-2 bg-white">
-            </div>
+            <input type="text" id="payerNameInput" required placeholder="e.g. Aryan" value="${state.user?.name || ''}" class="w-full px-4 py-3.5 rounded-2xl bg-surface-900 border border-white/10 text-white text-xs outline-none focus:border-emerald-500">
           </div>
-        </div>
 
-        <div class="space-y-3 font-sans">
-          <label class="text-slate-400 text-xs block font-bold">Upload Payment Proof Screenshot (Optional)</label>
-          <input type="file" id="checkoutProofFile" accept="image/*" onchange="handleCheckoutProofSelect(this)" class="w-full text-xs text-slate-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-500 file:text-gray-950 hover:file:bg-emerald-400 cursor-pointer bg-surface-950 rounded-xl border border-white/10 p-2">
-          <input type="hidden" id="checkoutProofBase64" value="">
-        </div>
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <label class="text-slate-300 text-[10px] uppercase font-bold tracking-wider">12-Digit UTR / Transaction ID *</label>
+              <span class="text-slate-500 text-[9px]">Mandatory for verification</span>
+            </div>
+            <input type="text" id="transactionIdInput" required maxlength="12" placeholder="e.g. 423456789012" class="w-full px-4 py-3.5 rounded-2xl bg-surface-900 border border-white/10 text-emerald-400 font-bold text-xs outline-none focus:border-emerald-500">
+          </div>
 
-        <button id="confirmOrderBtn" onclick="handleCustomerMultiCheckoutSubmit('${method}')" class="w-full py-4 rounded-2xl bg-emerald-500 text-gray-950 font-black text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all font-sans cursor-pointer">
-          CONFIRM ORDER & COMPLETE
-        </button>
+          <button type="submit" id="confirmOrderBtn" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-gray-950 font-black uppercase text-xs tracking-wider transition-all cursor-pointer shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2">
+            <span>✓ SUBMIT PAYMENT VERIFICATION</span>
+          </button>
+        </form>
+
       </div>
     `;
   } catch (err) {
-    container.innerHTML = `<div class="glass p-8 text-center text-rose-400 text-xs">Error loading payment gateway: ${err.message}</div>`;
+    container.innerHTML = `
+      <div class="p-8 text-center text-rose-400 font-mono text-xs rounded-3xl bg-surface-900/80 border border-white/5">
+        Error loading checkout: ${err.message}
+      </div>
+    `;
   }
 }
 
-function handleCheckoutProofSelect(input) {
-  if (input.files && input.files[0]) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      document.getElementById('checkoutProofBase64').value = e.target.result;
-      showToast('✓ Proof attached successfully');
-    };
-    reader.readAsDataURL(input.files[0]);
-  }
+function copyCheckoutUpi(id) {
+  navigator.clipboard.writeText(id);
+  showToast('✓ UPI ID copied to clipboard');
 }
 
-async function handleCustomerMultiCheckoutSubmit(method) {
-  if (window._isSubmittingCheckout) return;
-  window._isSubmittingCheckout = true;
-
+async function handleCustomerPaymentProofSubmit(e) {
+  e.preventDefault();
   const btn = document.getElementById('confirmOrderBtn');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Processing Order...';
-    btn.classList.add('opacity-50', 'cursor-not-allowed');
-  }
+  btn.disabled = true;
+  btn.innerHTML = 'Verifying & Creating Order...';
+
+  const payerName = document.getElementById('payerNameInput').value.trim();
+  const utr = document.getElementById('transactionIdInput').value.trim();
+
+  const total = state.cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
+
+  const payload = {
+    items: state.cart,
+    total_amount: total,
+    payer_name: payerName,
+    transaction_id: utr,
+    payment_method: 'UPI'
+  };
 
   try {
-    const cart = state.cart || [];
-    if (!cart.length) {
-      window._isSubmittingCheckout = false;
-      return;
-    }
-
-    const itemsPayload = [];
-    cart.forEach(item => {
-      const q = item.qty || 1;
-      for (let i = 0; i < q; i++) {
-        itemsPayload.push({ product_id: item.product_id, duration: '1_MONTH' });
-      }
+    await fetchJSON('/api/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': state.token ? `Bearer ${state.token}` : ''
+      },
+      body: JSON.stringify(payload)
     });
 
-    const proofScreenshot = document.getElementById('checkoutProofBase64')?.value || '';
-
-    // Clear cart immediately to prevent duplicate requests
     state.cart = [];
     localStorage.removeItem('nexus_cart');
-    const badge = document.getElementById('storeCartBadge');
-    if (badge) badge.textContent = '0';
+    const bagBadge = document.getElementById('cartBadgeCount');
+    if (bagBadge) bagBadge.classList.add('hidden');
 
-    await fetchJSON('/api/checkout/initiate-order', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}` },
-      body: JSON.stringify({ items: itemsPayload, payment_method: method, proof_screenshot: proofScreenshot })
-    });
-    
-    showToast('✓ Order placed successfully! View in Purchased Items.');
-    window._isSubmittingCheckout = false;
-    navigate('orders');
+    showToast('✓ Order submitted successfully!');
+    navigate('dashboard');
   } catch (err) {
-    window._isSubmittingCheckout = false;
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = 'CONFIRM ORDER & COMPLETE';
-      btn.classList.remove('opacity-50', 'cursor-not-allowed');
-    }
+    btn.disabled = false;
+    btn.innerHTML = '✓ SUBMIT PAYMENT VERIFICATION';
     showToast(err.message, 'error');
   }
-}
-
-function addToCustomerCart(product_id, name, price, image) {
-  let cart = state.cart || [];
-  const existing = cart.find(i => i.product_id === product_id);
-  if (existing) {
-    existing.qty = (existing.qty || 1) + 1;
-  } else {
-    cart.push({ product_id, name, price, image, qty: 1, duration: '1_MONTH' });
-  }
-  state.cart = cart;
-  localStorage.setItem('nexus_cart', JSON.stringify(cart));
-  const badge = document.getElementById('storeCartBadge');
-  if (badge) badge.textContent = cart.reduce((a,b)=>a+(b.qty||1),0);
-  openCartDrawer();
 }
