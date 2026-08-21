@@ -1,9 +1,11 @@
+window.currentSlotAuthType = 'PASSWORD';
+window.currentEditSlotAuthType = 'PASSWORD';
+
 async function renderAdminAccountSlots(container) {
   renderAdminSlots(container);
 }
 
 async function renderAdminSlots(container) {
-  // In-Memory Fast Cache Check
   const cached = window.apiCache?.get('/api/admin/slots')?.data;
   if (cached) {
     paintSlotsHTML(container, cached.slots || []);
@@ -17,7 +19,7 @@ async function renderAdminSlots(container) {
       fetchJSON('/api/products').catch(() => [])
     ]);
 
-    window.availableProductList = products;
+    window.availableProductList = Array.isArray(products) ? products : (products.products || []);
     const slots = Array.isArray(data.slots) ? data.slots : (Array.isArray(data) ? data : []);
     window.currentLoadedSlots = slots;
     paintSlotsHTML(container, slots);
@@ -93,6 +95,7 @@ function paintSlotsHTML(container, slots) {
         ` : slots.map(s => {
           const isAvail = s.status === 'AVAILABLE';
           const isAssigned = s.status === 'ASSIGNED';
+          const isOtp = s.auth_type === 'OTP' || s.password === 'LOGIN_VIA_OTP';
           const prodName = s.product_name || 'Master Account';
 
           return `
@@ -107,24 +110,29 @@ function paintSlotsHTML(container, slots) {
                   </div>
                 </div>
 
-                <span class="px-2.5 py-0.5 rounded-full font-mono text-[9px] uppercase font-bold ${isAvail ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : isAssigned ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}">
-                  ${s.status}
-                </span>
+                <div class="flex items-center gap-1.5">
+                  <span class="px-2 py-0.5 rounded-md font-mono text-[9px] font-bold ${isOtp ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}">
+                    ${isOtp ? '📲 OTP' : '🔑 PASS'}
+                  </span>
+                  <span class="px-2.5 py-0.5 rounded-full font-mono text-[9px] uppercase font-bold ${isAvail ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : isAssigned ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}">
+                    ${s.status}
+                  </span>
+                </div>
               </div>
 
               <!-- Credential Grid -->
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-surface-950 p-3 rounded-2xl border border-white/5 font-mono text-[11px]">
                 <div>
-                  <span class="text-slate-500 text-[9px] uppercase block">Login Email</span>
+                  <span class="text-slate-500 text-[9px] uppercase block">${isOtp ? 'Login Account / Phone' : 'Login Email'}</span>
                   <span class="text-white font-bold truncate block select-all">${s.email}</span>
                 </div>
                 <div>
                   <span class="text-slate-500 text-[9px] uppercase block">Password</span>
-                  <span class="text-emerald-400 font-bold truncate block select-all">${s.password || '••••••••'}</span>
+                  <span class="${isOtp ? 'text-sky-400' : 'text-emerald-400'} font-bold truncate block select-all">${isOtp ? 'Login via OTP' : (s.password || '••••••••')}</span>
                 </div>
                 <div>
                   <span class="text-slate-500 text-[9px] uppercase block">Profile / PIN</span>
-                  <span class="text-amber-400 font-bold block select-all">P${s.profile_number || 1} • ${s.pin || 'None'}</span>
+                  <span class="text-amber-400 font-bold block select-all">P${s.profile_number || 1} • ${s.pin || s.profile_pin || 'None'}</span>
                 </div>
                 <div>
                   <span class="text-slate-500 text-[9px] uppercase block">Assigned To</span>
@@ -134,7 +142,7 @@ function paintSlotsHTML(container, slots) {
 
               <!-- Action Bar with Edit & Delete -->
               <div class="flex items-center justify-between pt-1">
-                <span class="text-[10px] text-slate-500 font-mono">Max Capacity: ${s.max_active_users || 1} Device(s)</span>
+                <span class="text-[10px] text-slate-500 font-mono">Capacity: ${s.max_active_users || 1} Screen</span>
                 
                 <div class="flex items-center gap-2">
                   <button onclick="openEditSlotModal('${s._id}')" class="px-3 py-1.5 rounded-xl bg-surface-900 hover:bg-surface-800 border border-white/10 text-slate-200 font-mono text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1">
@@ -155,9 +163,177 @@ function paintSlotsHTML(container, slots) {
   `;
 }
 
+function openCreateSlotModal() {
+  window.currentSlotAuthType = 'PASSWORD';
+  const modal = document.getElementById('globalModal');
+  const content = document.getElementById('globalModalContent');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+
+  const products = window.availableProductList || [];
+
+  content.innerHTML = `
+    <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white p-2 cursor-pointer">✕</button>
+    
+    <div class="space-y-4 font-sans text-xs">
+      <div class="border-b border-white/10 pb-3">
+        <span class="px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-mono text-[10px] font-bold uppercase">Vault Inventory</span>
+        <h2 class="text-xl font-black text-white mt-1">Add Account Slot</h2>
+      </div>
+
+      <form onsubmit="handleCreateSlotSubmit(event)" class="space-y-3.5 font-mono">
+        
+        <!-- Target Product -->
+        <div>
+          <label class="text-slate-400 text-[10px] block mb-1">Target Product</label>
+          <select id="slotProductSelect" required class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
+            ${products.map(p => `<option value="${p._id || p.name}">${p.name}</option>`).join('')}
+          </select>
+        </div>
+
+        <!-- Auth Method Selector -->
+        <div class="p-3 rounded-2xl bg-surface-950 border border-white/5 space-y-2">
+          <label class="text-slate-400 text-[10px] block font-bold uppercase tracking-wider">Authentication Method</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" id="createAuthPassBtn" onclick="switchCreateSlotAuthMethod('PASSWORD')" class="py-2.5 px-3 rounded-xl bg-emerald-500/20 border border-emerald-500 text-emerald-400 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+              <span>🔑</span> <span>Password Login</span>
+            </button>
+            <button type="button" id="createAuthOtpBtn" onclick="switchCreateSlotAuthMethod('OTP')" class="py-2.5 px-3 rounded-xl bg-surface-900 border border-white/5 text-slate-400 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+              <span>📲</span> <span>Login via OTP</span>
+            </button>
+          </div>
+          <input type="hidden" id="slotAuthType" value="PASSWORD">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-slate-400 text-[10px] block mb-1">Slot Label</label>
+            <input type="text" id="slotLabel" value="Slot 1" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="text-slate-400 text-[10px] block mb-1">Profile # / Screen</label>
+            <input type="number" id="slotProfileNum" value="1" min="1" max="10" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="text-slate-400 text-[10px] block mb-1" id="slotAccountIdentifierLabel">Account Master Email</label>
+          <input type="text" id="slotEmail" required placeholder="netflix.slot1@gmail.com" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500 font-mono">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3" id="createSlotCredsRow">
+          <div id="createSlotPassCol">
+            <label class="text-slate-400 text-[10px] block mb-1">Password</label>
+            <input type="text" id="slotPassword" placeholder="Account Password" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-emerald-400 text-xs outline-none focus:border-emerald-500">
+          </div>
+          <div id="createSlotPinCol">
+            <label class="text-slate-400 text-[10px] block mb-1">Profile PIN (Optional)</label>
+            <input type="text" id="slotPin" placeholder="e.g. 5669" maxlength="6" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-amber-400 text-xs outline-none focus:border-emerald-500">
+          </div>
+        </div>
+
+        <!-- Telegram Contact Input for OTP Option -->
+        <div id="createSlotTelegramRow" class="hidden space-y-1">
+          <label class="text-sky-400 text-[10px] block font-bold">Admin Telegram Handle (for user OTP dispatch button)</label>
+          <input type="text" id="slotTelegram" placeholder="@AryanAdmin or https://t.me/aryan" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-sky-500/40 text-sky-300 text-xs outline-none focus:border-sky-400">
+          <span class="text-[9px] text-slate-500 block">Customer will see a direct button on their order page linking to this Telegram to request login OTP.</span>
+        </div>
+
+        <div class="flex items-center gap-3 pt-2">
+          <button type="submit" id="saveSlotBtn" class="flex-1 py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black uppercase text-xs tracking-wider transition-all cursor-pointer shadow-lg shadow-emerald-500/20">
+            Save Slot to Vault
+          </button>
+          <button type="button" onclick="document.getElementById('globalModal').classList.add('hidden')" class="px-5 py-3.5 rounded-2xl bg-surface-950 text-slate-400 hover:text-white text-xs cursor-pointer">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
+function switchCreateSlotAuthMethod(type) {
+  window.currentSlotAuthType = type;
+  document.getElementById('slotAuthType').value = type;
+
+  const btnPass = document.getElementById('createAuthPassBtn');
+  const btnOtp = document.getElementById('createAuthOtpBtn');
+  const passCol = document.getElementById('createSlotPassCol');
+  const tgRow = document.getElementById('createSlotTelegramRow');
+  const idLabel = document.getElementById('slotAccountIdentifierLabel');
+  const idInput = document.getElementById('slotEmail');
+
+  if (type === 'OTP') {
+    btnOtp.className = 'py-2.5 px-3 rounded-xl bg-sky-500/20 border border-sky-500 text-sky-400 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer';
+    btnPass.className = 'py-2.5 px-3 rounded-xl bg-surface-900 border border-white/5 text-slate-400 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer';
+    
+    passCol.classList.add('hidden');
+    tgRow.classList.remove('hidden');
+    idLabel.textContent = 'Account Email / Registered Mobile Number';
+    idInput.placeholder = 'e.g. 9876543210 or user@gmail.com';
+    document.getElementById('slotPassword').value = '';
+  } else {
+    btnPass.className = 'py-2.5 px-3 rounded-xl bg-emerald-500/20 border border-emerald-500 text-emerald-400 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer';
+    btnOtp.className = 'py-2.5 px-3 rounded-xl bg-surface-900 border border-white/5 text-slate-400 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer';
+    
+    passCol.classList.remove('hidden');
+    tgRow.classList.add('hidden');
+    idLabel.textContent = 'Account Master Email';
+    idInput.placeholder = 'netflix.slot1@gmail.com';
+  }
+}
+
+async function handleCreateSlotSubmit(e) {
+  e.preventDefault();
+  const btn = document.getElementById('saveSlotBtn');
+  btn.disabled = true;
+  btn.innerHTML = 'Saving...';
+
+  const prodSelect = document.getElementById('slotProductSelect');
+  const prodId = prodSelect.value;
+  const prodName = prodSelect.options[prodSelect.selectedIndex].text;
+  const authType = window.currentSlotAuthType || 'PASSWORD';
+
+  const payload = {
+    product_id: prodId,
+    product_name: prodName,
+    account_label: document.getElementById('slotLabel').value.trim() || 'Slot 1',
+    profile_number: Number(document.getElementById('slotProfileNum').value) || 1,
+    email: document.getElementById('slotEmail').value.trim(),
+    password: authType === 'OTP' ? 'LOGIN_VIA_OTP' : (document.getElementById('slotPassword')?.value.trim() || ''),
+    pin: document.getElementById('slotPin')?.value.trim() || '',
+    profile_pin: document.getElementById('slotPin')?.value.trim() || '',
+    auth_type: authType,
+    telegram_contact: document.getElementById('slotTelegram')?.value.trim() || '',
+    status: 'AVAILABLE'
+  };
+
+  try {
+    await fetchJSON('/api/admin/slots', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${state.adminToken}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    window.apiCache?.clear();
+    showToast('✓ Slot stocked successfully');
+    document.getElementById('globalModal').classList.add('hidden');
+    renderAdminSlots(document.getElementById('adminMainContent'));
+  } catch (err) {
+    btn.disabled = false;
+    btn.innerHTML = 'Save Slot to Vault';
+    showToast(err.message, 'error');
+  }
+}
+
 function openEditSlotModal(slotId) {
   const slot = (window.currentLoadedSlots || []).find(s => s._id === slotId);
   if (!slot) return;
+
+  window.currentEditSlotAuthType = slot.auth_type || (slot.password === 'LOGIN_VIA_OTP' ? 'OTP' : 'PASSWORD');
 
   const modal = document.getElementById('globalModal');
   const content = document.getElementById('globalModalContent');
@@ -165,7 +341,7 @@ function openEditSlotModal(slotId) {
   modal.classList.add('flex');
 
   content.innerHTML = `
-    <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white p-2">✕</button>
+    <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white p-2 cursor-pointer">✕</button>
     
     <div class="space-y-4 font-sans text-xs">
       <div class="border-b border-white/10 pb-3">
@@ -174,16 +350,35 @@ function openEditSlotModal(slotId) {
         <p class="text-[11px] text-slate-400 font-mono">Changes sync automatically to all assigned customer vaults.</p>
       </div>
 
-      <form onsubmit="handleEditSlotSubmit(event, '${slot._id}')" class="space-y-3 font-mono">
+      <form onsubmit="handleEditSlotSubmit(event, '${slot._id}')" class="space-y-3.5 font-mono">
         
-        <div>
-          <label class="text-slate-400 text-[10px] block mb-1">Login Email</label>
-          <input type="email" id="editSlotEmail" value="${slot.email || ''}" required class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
+        <!-- Auth Method Selector -->
+        <div class="p-3 rounded-2xl bg-surface-950 border border-white/5 space-y-2">
+          <label class="text-slate-400 text-[10px] block font-bold uppercase tracking-wider">Authentication Method</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" id="editAuthPassBtn" onclick="switchEditSlotAuthMethod('PASSWORD')" class="py-2.5 px-3 rounded-xl ${window.currentEditSlotAuthType === 'PASSWORD' ? 'bg-emerald-500/20 border border-emerald-500 text-emerald-400' : 'bg-surface-900 border border-white/5 text-slate-400'} font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+              <span>🔑</span> <span>Password Login</span>
+            </button>
+            <button type="button" id="editAuthOtpBtn" onclick="switchEditSlotAuthMethod('OTP')" class="py-2.5 px-3 rounded-xl ${window.currentEditSlotAuthType === 'OTP' ? 'bg-sky-500/20 border border-sky-500 text-sky-400' : 'bg-surface-900 border border-white/5 text-slate-400'} font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+              <span>📲</span> <span>Login via OTP</span>
+            </button>
+          </div>
+          <input type="hidden" id="editSlotAuthType" value="${window.currentEditSlotAuthType}">
         </div>
 
         <div>
+          <label class="text-slate-400 text-[10px] block mb-1" id="editSlotAccountIdentifierLabel">Login Email / Mobile</label>
+          <input type="text" id="editSlotEmail" value="${slot.email || ''}" required class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500 font-mono">
+        </div>
+
+        <div id="editSlotPassRow" class="${window.currentEditSlotAuthType === 'OTP' ? 'hidden' : ''}">
           <label class="text-slate-400 text-[10px] block mb-1">Password</label>
-          <input type="text" id="editSlotPassword" value="${slot.password || ''}" required class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
+          <input type="text" id="editSlotPassword" value="${slot.password === 'LOGIN_VIA_OTP' ? '' : (slot.password || '')}" placeholder="Account Password" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-emerald-400 text-xs outline-none focus:border-emerald-500">
+        </div>
+
+        <div id="editSlotTelegramRow" class="${window.currentEditSlotAuthType === 'OTP' ? '' : 'hidden'} space-y-1">
+          <label class="text-sky-400 text-[10px] block font-bold">Admin Telegram Handle</label>
+          <input type="text" id="editSlotTelegram" value="${slot.telegram_contact || ''}" placeholder="@AryanAdmin" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-sky-500/40 text-sky-300 text-xs outline-none focus:border-sky-400 font-mono">
         </div>
 
         <div class="grid grid-cols-2 gap-2">
@@ -193,7 +388,7 @@ function openEditSlotModal(slotId) {
           </div>
           <div>
             <label class="text-slate-400 text-[10px] block mb-1">Profile PIN</label>
-            <input type="text" id="editSlotPin" value="${slot.pin || ''}" placeholder="None" maxlength="6" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
+            <input type="text" id="editSlotPin" value="${slot.pin || slot.profile_pin || ''}" placeholder="None" maxlength="6" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500 font-mono">
           </div>
         </div>
 
@@ -217,7 +412,7 @@ function openEditSlotModal(slotId) {
           <button type="submit" class="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black uppercase text-xs tracking-wider transition-all cursor-pointer shadow-lg shadow-emerald-500/20">
             Save & Sync to Customers
           </button>
-          <button type="button" onclick="document.getElementById('globalModal').classList.add('hidden')" class="px-4 py-3 rounded-xl bg-white/5 text-slate-300 font-bold">
+          <button type="button" onclick="document.getElementById('globalModal').classList.add('hidden')" class="px-4 py-3 rounded-xl bg-white/5 text-slate-300 font-bold cursor-pointer">
             Cancel
           </button>
         </div>
@@ -227,14 +422,40 @@ function openEditSlotModal(slotId) {
   `;
 }
 
+function switchEditSlotAuthMethod(type) {
+  window.currentEditSlotAuthType = type;
+  document.getElementById('editSlotAuthType').value = type;
+
+  const btnPass = document.getElementById('editAuthPassBtn');
+  const btnOtp = document.getElementById('editAuthOtpBtn');
+  const passRow = document.getElementById('editSlotPassRow');
+  const tgRow = document.getElementById('editSlotTelegramRow');
+
+  if (type === 'OTP') {
+    btnOtp.className = 'py-2.5 px-3 rounded-xl bg-sky-500/20 border border-sky-500 text-sky-400 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer';
+    btnPass.className = 'py-2.5 px-3 rounded-xl bg-surface-900 border border-white/5 text-slate-400 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer';
+    passRow.classList.add('hidden');
+    tgRow.classList.remove('hidden');
+  } else {
+    btnPass.className = 'py-2.5 px-3 rounded-xl bg-emerald-500/20 border border-emerald-500 text-emerald-400 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer';
+    btnOtp.className = 'py-2.5 px-3 rounded-xl bg-surface-900 border border-white/5 text-slate-400 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer';
+    passRow.classList.remove('hidden');
+    tgRow.classList.add('hidden');
+  }
+}
+
 async function handleEditSlotSubmit(e, slotId) {
   e.preventDefault();
+  const authType = window.currentEditSlotAuthType || 'PASSWORD';
 
   const payload = {
     email: document.getElementById('editSlotEmail').value.trim(),
-    password: document.getElementById('editSlotPassword').value.trim(),
+    password: authType === 'OTP' ? 'LOGIN_VIA_OTP' : document.getElementById('editSlotPassword').value.trim(),
+    auth_type: authType,
+    telegram_contact: document.getElementById('editSlotTelegram')?.value.trim() || '',
     profile_number: Number(document.getElementById('editSlotProfileNum').value) || 1,
     pin: document.getElementById('editSlotPin').value.trim(),
+    profile_pin: document.getElementById('editSlotPin').value.trim(),
     account_label: document.getElementById('editSlotLabel').value.trim(),
     status: document.getElementById('editSlotStatus').value
   };
@@ -249,107 +470,8 @@ async function handleEditSlotSubmit(e, slotId) {
       body: JSON.stringify(payload)
     });
 
+    window.apiCache?.clear();
     showToast('✓ Slot updated & synced with customer vault');
-    document.getElementById('globalModal').classList.add('hidden');
-    renderAdminSlots(document.getElementById('adminMainContent'));
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
-
-function openCreateSlotModal() {
-  const modal = document.getElementById('globalModal');
-  const content = document.getElementById('globalModalContent');
-  modal.classList.remove('hidden');
-  modal.classList.add('flex');
-
-  const products = window.availableProductList || [];
-
-  content.innerHTML = `
-    <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white p-2">✕</button>
-    
-    <div class="space-y-5 font-sans text-xs">
-      <div class="border-b border-white/10 pb-3">
-        <span class="px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-mono text-[10px] font-bold uppercase">Vault Inventory</span>
-        <h2 class="text-lg font-black text-white mt-1">Add Account Slot</h2>
-      </div>
-
-      <form onsubmit="handleCreateSlotSubmit(event)" class="space-y-3.5 font-mono">
-        <div>
-          <label class="text-slate-400 text-[10px] block mb-1">Target Product</label>
-          <select id="slotProductSelect" required class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
-            ${products.map(p => `<option value="${p._id}">${p.name}</option>`).join('')}
-          </select>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="text-slate-400 text-[10px] block mb-1">Slot Label</label>
-            <input type="text" id="slotLabel" value="Slot 1" placeholder="e.g. Slot 1" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
-          </div>
-          <div>
-            <label class="text-slate-400 text-[10px] block mb-1">Profile # / Screen</label>
-            <input type="number" id="slotProfileNum" value="1" min="1" max="10" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
-          </div>
-        </div>
-
-        <div>
-          <label class="text-slate-400 text-[10px] block mb-1">Account Master Email</label>
-          <input type="email" id="slotEmail" required placeholder="netflix.slot1@gmail.com" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="text-slate-400 text-[10px] block mb-1">Password</label>
-            <input type="text" id="slotPassword" required placeholder="Account Password" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
-          </div>
-          <div>
-            <label class="text-slate-400 text-[10px] block mb-1">Profile PIN (Optional)</label>
-            <input type="text" id="slotPin" placeholder="e.g. 5669" maxlength="6" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
-          </div>
-        </div>
-
-        <div class="flex gap-2 pt-2">
-          <button type="submit" class="flex-1 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black uppercase text-xs tracking-wider transition-all cursor-pointer shadow-lg shadow-emerald-500/20">
-            Save Slot to Vault
-          </button>
-          <button type="button" onclick="document.getElementById('globalModal').classList.add('hidden')" class="px-4 py-3.5 rounded-xl bg-white/5 text-slate-300 font-bold">
-            Cancel
-          </button>
-        </div>
-      </form>
-    </div>
-  `;
-}
-
-async function handleCreateSlotSubmit(e) {
-  e.preventDefault();
-  const prodSelect = document.getElementById('slotProductSelect');
-  const prodId = prodSelect.value;
-  const prodName = prodSelect.options[prodSelect.selectedIndex].text;
-
-  const payload = {
-    product_id: prodId,
-    product_name: prodName,
-    account_label: document.getElementById('slotLabel').value.trim() || 'Slot 1',
-    profile_number: Number(document.getElementById('slotProfileNum').value) || 1,
-    email: document.getElementById('slotEmail').value.trim(),
-    password: document.getElementById('slotPassword').value.trim(),
-    pin: document.getElementById('slotPin').value.trim(),
-    status: 'AVAILABLE'
-  };
-
-  try {
-    await fetchJSON('/api/admin/slots', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${state.adminToken}`
-      },
-      body: JSON.stringify(payload)
-    });
-
-    showToast('✓ Slot stocked successfully');
     document.getElementById('globalModal').classList.add('hidden');
     renderAdminSlots(document.getElementById('adminMainContent'));
   } catch (err) {
@@ -364,6 +486,7 @@ async function deleteAccountSlot(id) {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${state.adminToken}` }
     });
+    window.apiCache?.clear();
     showToast('✓ Slot deleted');
     renderAdminSlots(document.getElementById('adminMainContent'));
   } catch (err) {
