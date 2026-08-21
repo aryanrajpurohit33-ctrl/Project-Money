@@ -117,10 +117,17 @@ function paintCustomerOrdersHTML(container, orders) {
 
           const creds = order.credentials;
           const isExpiredOrRevoked = !creds || remainingDays <= 0 || order.sub_status === 'EXPIRED' || order.sub_status === 'REVOKED';
+          const isOtpAuth = creds?.auth_type === 'OTP' || creds?.password === 'LOGIN_VIA_OTP' || !creds?.password;
+
+          // Build pre-formatted telegram message for OTP request
+          const tgTarget = creds?.telegram_contact ? (creds.telegram_contact.startsWith('http') ? creds.telegram_contact : `https://t.me/${creds.telegram_contact.replace('@', '')}`) : 'https://t.me/your_telegram_bot';
+          const tgMsg = encodeURIComponent(`Hi Admin, I need OTP to login.\n\nTXN ID: ${order.txn_id}\nAccount: ${creds?.email || ''}\nProfile: Profile ${creds?.profile_number || 1}`);
+          const tgFullUrl = `${tgTarget}?text=${tgMsg}`;
 
           return `
             <div class="bg-surface-900/80 rounded-3xl p-4 sm:p-5 border border-white/5 shadow-2xl space-y-3.5 relative overflow-hidden backdrop-blur-xl">
               
+              <!-- Status Header -->
               <div class="flex items-center justify-between border-b border-white/5 pb-3">
                 <div class="flex items-center gap-2">
                   <span class="w-2.5 h-2.5 rounded-full ${isSuccess ? (isExpiredOrRevoked ? 'bg-amber-400' : 'bg-emerald-400') : isRejected ? 'bg-rose-500' : 'bg-amber-400 animate-pulse'}"></span>
@@ -132,6 +139,7 @@ function paintCustomerOrdersHTML(container, orders) {
                 </span>
               </div>
 
+              <!-- Rejection Notice Banner -->
               ${isRejected ? `
                 <div class="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 space-y-2 text-rose-200">
                   <div class="flex items-center justify-between text-rose-400 font-mono text-[10px] font-bold uppercase">
@@ -142,15 +150,16 @@ function paintCustomerOrdersHTML(container, orders) {
                     <span class="text-slate-400 font-mono text-[9px] uppercase block mb-1">Reason Note From Admin</span>
                     <strong class="text-white font-mono text-xs block">${order.rejection_reason || 'Incomplete or unverified payment proof'}</strong>
                   </div>
-                  <p class="text-[10px] text-slate-400 font-sans">If this was an error, please re-order with a valid screenshot displaying the UTR reference number.</p>
                 </div>
               ` : ''}
 
+              <!-- Product Info -->
               <div class="space-y-1">
                 <span class="text-slate-500 text-[10px] font-mono uppercase tracking-wider block font-bold">Product</span>
                 <h2 class="text-sm sm:text-base font-black text-white leading-tight">${order.product_name || 'Digital Subscription'}</h2>
               </div>
 
+              <!-- Price & Date Meta -->
               <div class="grid grid-cols-2 gap-2 bg-surface-950 p-3 rounded-2xl border border-white/5 font-mono text-[11px]">
                 <div>
                   <span class="text-slate-500 text-[9px] uppercase block">Amount Paid</span>
@@ -162,6 +171,7 @@ function paintCustomerOrdersHTML(container, orders) {
                 </div>
               </div>
 
+              <!-- Credentials Box -->
               ${isSuccess ? (
                 isExpiredOrRevoked ? `
                   <div class="p-4 rounded-2xl bg-surface-950 border border-amber-500/25 space-y-3 font-mono">
@@ -172,10 +182,6 @@ function paintCustomerOrdersHTML(container, orders) {
                       <span class="text-[9px] text-slate-500 uppercase">Slot Released</span>
                     </div>
 
-                    <p class="text-[11px] text-slate-400 font-sans leading-relaxed">
-                      Your subscription duration has ended and this account slot was released back to the inventory pool. Re-order now to instantly activate a fresh slot.
-                    </p>
-
                     <button onclick="redirectToRenewProduct('${(order.product_name || '').replace(/'/g, "\\'")}')" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:opacity-95 text-gray-950 font-black uppercase text-xs tracking-wider transition-all cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-[0.98] flex items-center justify-center gap-2 font-mono">
                       <span>⚡ RENEWAL PLAN / RE-ORDER</span>
                     </button>
@@ -184,20 +190,34 @@ function paintCustomerOrdersHTML(container, orders) {
                   <div class="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-3 font-mono text-xs">
                     <div class="flex items-center justify-between">
                       <div class="flex items-center gap-2 text-emerald-400 font-bold">
-                        <span>🔓</span> <span>Credentials Unlocked</span>
+                        <span>🔓</span> <span>${isOtpAuth ? 'Login via OTP' : 'Credentials Unlocked'}</span>
                       </div>
-                      <span class="text-[9px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full uppercase">Verified</span>
+                      <span class="text-[9px] font-bold ${isOtpAuth ? 'text-sky-400 bg-sky-500/20' : 'text-emerald-400 bg-emerald-500/20'} px-2 py-0.5 rounded-full uppercase">
+                        ${isOtpAuth ? 'OTP Access' : 'Verified'}
+                      </span>
                     </div>
 
-                    <div class="p-3 bg-surface-950/90 rounded-xl border border-emerald-500/20 space-y-1.5 text-[11px]">
+                    <div class="p-3 bg-surface-950/90 rounded-xl border border-emerald-500/20 space-y-2 text-[11px]">
                       <div class="flex items-center justify-between">
                         <span class="text-slate-400">Account:</span>
                         <strong class="text-white select-all">${creds.email}</strong>
                       </div>
-                      <div class="flex items-center justify-between">
-                        <span class="text-slate-400">Password:</span>
-                        <strong class="text-emerald-400 select-all">${creds.password}</strong>
-                      </div>
+
+                      ${!isOtpAuth ? `
+                        <div class="flex items-center justify-between">
+                          <span class="text-slate-400">Password:</span>
+                          <strong class="text-emerald-400 select-all">${creds.password}</strong>
+                        </div>
+                      ` : `
+                        <!-- OTP Request Button directly to Telegram -->
+                        <div class="pt-1">
+                          <a href="${tgFullUrl}" target="_blank" class="w-full py-2.5 px-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-gray-950 font-black uppercase text-[11px] tracking-wider transition-all flex items-center justify-center gap-2 shadow-md shadow-sky-500/20 no-underline cursor-pointer active:scale-95">
+                            <span>📲</span> <span>Get Login OTP via Telegram</span>
+                          </a>
+                          <span class="text-[9px] text-slate-500 block text-center mt-1">Enter email in app & click above to receive code</span>
+                        </div>
+                      `}
+
                       ${creds.profile_pin || creds.profile_number ? `
                         <div class="flex items-center justify-between border-t border-white/5 pt-1 mt-1">
                           <span class="text-slate-400">Profile / PIN:</span>
@@ -206,6 +226,7 @@ function paintCustomerOrdersHTML(container, orders) {
                       ` : ''}
                     </div>
 
+                    <!-- Progress Validity Bar -->
                     <div class="pt-1 space-y-1.5">
                       <div class="flex items-center justify-between text-[10px]">
                         <span class="text-slate-400 flex items-center gap-1.5">
