@@ -1,4 +1,8 @@
+window.selectedProofBase64 = '';
+
 async function renderStoreCheckout(container) {
+  window.selectedProofBase64 = '';
+
   if (!state.cart || state.cart.length === 0) {
     navigate('cart');
     return;
@@ -97,7 +101,7 @@ async function renderStoreCheckout(container) {
           </div>
           
           <div class="p-4 rounded-2xl bg-surface-900 border border-white/10 space-y-3">
-            <input type="file" id="proofFileInput" accept="image/*" required onchange="handleProofFileSelection(event)" class="w-full px-3 py-2 rounded-xl bg-surface-950 border border-white/10 text-slate-400 text-xs outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-500 file:text-gray-950 cursor-pointer">
+            <input type="file" id="proofFileInput" accept="image/*" onchange="handleProofFileSelection(event)" class="w-full px-3 py-2 rounded-xl bg-surface-950 border border-white/10 text-slate-400 text-xs outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-500 file:text-gray-950 cursor-pointer">
 
             <div id="proofPreviewBox" class="hidden items-center gap-3 pt-1">
               <div class="relative w-16 h-16 rounded-xl overflow-hidden bg-black/40 border border-emerald-500/40 shrink-0">
@@ -126,6 +130,7 @@ function handleProofFileSelection(e) {
 
   const reader = new FileReader();
   reader.onload = (event) => {
+    window.selectedProofBase64 = event.target.result;
     const previewBox = document.getElementById('proofPreviewBox');
     const previewImg = document.getElementById('proofPreviewImg');
     if (previewBox && previewImg) {
@@ -142,22 +147,24 @@ function copyCheckoutUpi(id) {
   showToast('✓ UPI ID copied to clipboard');
 }
 
-function readFileAsBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = error => reject(error);
-    reader.readAsDataURL(file);
-  });
-}
-
 async function handleCustomerPaymentProofSubmit(e) {
   e.preventDefault();
 
   const fileInput = document.getElementById('proofFileInput');
   const file = fileInput?.files?.[0];
 
-  if (!file) {
+  let base64Data = window.selectedProofBase64;
+
+  if (!base64Data && file) {
+    base64Data = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+  }
+
+  if (!base64Data) {
     showToast('Please select a payment screenshot proof', 'error');
     return;
   }
@@ -166,22 +173,21 @@ async function handleCustomerPaymentProofSubmit(e) {
   btn.disabled = true;
   btn.innerHTML = 'Submitting Proof...';
 
+  const payerName = document.getElementById('payerNameInput').value.trim();
+  const total = state.cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
+
+  const payload = {
+    items: state.cart,
+    total_amount: total,
+    payer_name: payerName,
+    payment_proof: base64Data,
+    payment_proof_image: base64Data,
+    proof_image: base64Data,
+    transaction_id: 'PROOF-' + Date.now(),
+    payment_method: 'UPI'
+  };
+
   try {
-    const base64Image = await readFileAsBase64(file);
-    const payerName = document.getElementById('payerNameInput').value.trim();
-    const total = state.cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
-
-    const payload = {
-      items: state.cart,
-      total_amount: total,
-      payer_name: payerName,
-      payment_proof: base64Image,
-      payment_proof_image: base64Image,
-      proof_image: base64Image,
-      transaction_id: 'PROOF-' + Math.floor(100000 + Math.random() * 900000),
-      payment_method: 'UPI'
-    };
-
     await fetchJSON('/api/orders', {
       method: 'POST',
       headers: {
