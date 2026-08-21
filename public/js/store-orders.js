@@ -119,10 +119,19 @@ function paintCustomerOrdersHTML(container, orders) {
           const isExpiredOrRevoked = !creds || remainingDays <= 0 || order.sub_status === 'EXPIRED' || order.sub_status === 'REVOKED';
           const isOtpAuth = creds?.auth_type === 'OTP' || creds?.password === 'LOGIN_VIA_OTP' || !creds?.password;
 
-          // Build pre-formatted telegram message for OTP request
-          const tgTarget = creds?.telegram_contact ? (creds.telegram_contact.startsWith('http') ? creds.telegram_contact : `https://t.me/${creds.telegram_contact.replace('@', '')}`) : 'https://t.me/your_telegram_bot';
-          const tgMsg = encodeURIComponent(`Hi Admin, I need OTP to login.\n\nTXN ID: ${order.txn_id}\nAccount: ${creds?.email || ''}\nProfile: Profile ${creds?.profile_number || 1}`);
-          const tgFullUrl = `${tgTarget}?text=${tgMsg}`;
+          // Clean Telegram target username / URL
+          let rawContact = (creds?.telegram_contact || '').trim();
+          if (!rawContact || rawContact === 'your_telegram_bot') {
+            rawContact = 'aryanrajpurohit33'; // Default fallback handle
+          }
+
+          let tgUrl = '';
+          if (rawContact.startsWith('http://') || rawContact.startsWith('https://')) {
+            tgUrl = rawContact.split('?')[0];
+          } else {
+            const cleanUser = rawContact.replace('@', '').trim();
+            tgUrl = `https://t.me/${cleanUser}`;
+          }
 
           return `
             <div class="bg-surface-900/80 rounded-3xl p-4 sm:p-5 border border-white/5 shadow-2xl space-y-3.5 relative overflow-hidden backdrop-blur-xl">
@@ -209,12 +218,12 @@ function paintCustomerOrdersHTML(container, orders) {
                           <strong class="text-emerald-400 select-all">${creds.password}</strong>
                         </div>
                       ` : `
-                        <!-- OTP Request Button directly to Telegram -->
+                        <!-- Direct Personal Telegram Chat Button -->
                         <div class="pt-1">
-                          <a href="${tgFullUrl}" target="_blank" class="w-full py-2.5 px-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-gray-950 font-black uppercase text-[11px] tracking-wider transition-all flex items-center justify-center gap-2 shadow-md shadow-sky-500/20 no-underline cursor-pointer active:scale-95">
-                            <span>📲</span> <span>Get Login OTP via Telegram</span>
+                          <a href="${tgUrl}" target="_blank" rel="noopener noreferrer" class="w-full py-2.5 px-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-gray-950 font-black uppercase text-[11px] tracking-wider transition-all flex items-center justify-center gap-2 shadow-md shadow-sky-500/20 no-underline cursor-pointer active:scale-95">
+                            <span>📲</span> <span>Contact Admin on Telegram for OTP</span>
                           </a>
-                          <span class="text-[9px] text-slate-500 block text-center mt-1">Enter email in app & click above to receive code</span>
+                          <span class="text-[9px] text-slate-500 block text-center mt-1">Enter your account identifier in app & message above for login code</span>
                         </div>
                       `}
 
