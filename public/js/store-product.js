@@ -174,25 +174,14 @@ async function renderStoreProductDetails(container, productId) {
           </div>
         </div>
 
-        <!-- Showcase Previews (Excludes Main Cover & Has Full Edge Bleed) -->
+        <!-- Clean Showcase Slider (No Labels, Numbers, or Header Text) -->
         ${showcasePreviews.length > 0 ? `
-          <div class="space-y-2 pt-1">
-            <div class="flex items-center justify-between px-1 font-mono text-[10px] uppercase font-bold text-slate-400">
-              <span>Showcase Previews</span>
-              <span class="text-emerald-400 tracking-wider">Swipe to explore →</span>
-            </div>
-
-            <div class="-mx-2 px-3 flex items-center gap-3 overflow-x-auto py-2 custom-scroll" style="scrollbar-width: none; -webkit-overflow-scrolling: touch;">
-              ${showcasePreviews.map((img, idx) => `
-                <div class="flex-shrink-0 w-40 sm:w-44 aspect-[9/16] rounded-3xl overflow-hidden bg-surface-900 border border-white/10 shadow-2xl relative group">
-                  <img src="${img}" alt="Showcase Preview ${idx + 1}" class="w-full h-full object-cover">
-                  <div class="absolute inset-0 bg-gradient-to-t from-surface-950/80 via-transparent to-transparent pointer-events-none"></div>
-                  <span class="absolute bottom-2.5 left-3 px-2 py-0.5 rounded-lg bg-black/70 backdrop-blur-md text-[9px] font-mono text-white/90 font-bold border border-white/10">
-                    #0${idx + 1}
-                  </span>
-                </div>
-              `).join('')}
-            </div>
+          <div class="-mx-2 px-3 flex items-center gap-3 overflow-x-auto py-1 custom-scroll" style="scrollbar-width: none; -webkit-overflow-scrolling: touch;">
+            ${showcasePreviews.map(img => `
+              <div class="flex-shrink-0 w-44 sm:w-48 aspect-[9/16] rounded-3xl overflow-hidden bg-surface-900 border border-white/10 shadow-2xl">
+                <img src="${img}" alt="Product Preview" class="w-full h-full object-cover select-none">
+              </div>
+            `).join('')}
           </div>
         ` : ''}
 
