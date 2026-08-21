@@ -30,16 +30,14 @@ async function renderStoreOrders(container) {
 function calculateRemainingDays(order) {
   const createdAt = new Date(order.created_at || order.createdAt || Date.now()).getTime();
 
-  // If backend provided an explicit expiry date
   if (order.expires_at || order.expiry_date) {
     const expiry = new Date(order.expires_at || order.expiry_date).getTime();
     const diff = Math.ceil((expiry - Date.now()) / (1000 * 60 * 60 * 24));
     return Math.max(0, diff);
   }
 
-  // Parse duration from product name or duration string (e.g. 1 Month, 3 Months, 1 Year)
   const name = (order.product_name || order.duration || '').toLowerCase();
-  let days = 30; // default 1 month
+  let days = 30;
 
   if (name.includes('1 year') || name.includes('12 month') || name.includes('1_year')) {
     days = 365;
@@ -54,6 +52,14 @@ function calculateRemainingDays(order) {
   const expiryTimestamp = createdAt + (days * 24 * 60 * 60 * 1000);
   const diffDays = Math.ceil((expiryTimestamp - Date.now()) / (1000 * 60 * 60 * 24));
   return Math.max(0, diffDays);
+}
+
+function getTotalPlanDays(order) {
+  const name = (order.product_name || order.duration || '').toLowerCase();
+  if (name.includes('1 year') || name.includes('12 month') || name.includes('1_year')) return 365;
+  if (name.includes('6 month') || name.includes('6_month')) return 180;
+  if (name.includes('3 month') || name.includes('3_month')) return 90;
+  return 30;
 }
 
 function paintCustomerOrdersHTML(container, orders) {
@@ -97,6 +103,9 @@ function paintCustomerOrdersHTML(container, orders) {
           const dateStr = new Date(order.created_at || Date.now()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
           const remainingDays = calculateRemainingDays(order);
+          const totalDays = getTotalPlanDays(order);
+          const percentLeft = Math.max(5, Math.min(100, Math.round((remainingDays / totalDays) * 100)));
+
           const creds = order.credentials;
           const isExpiredOrRevoked = !creds || remainingDays <= 0 || order.sub_status === 'EXPIRED' || order.sub_status === 'REVOKED';
 
@@ -148,7 +157,7 @@ function paintCustomerOrdersHTML(container, orders) {
                 </div>
               </div>
 
-              <!-- Conditional Credentials or Renewal Action -->
+              <!-- Conditional Credentials / Clean Validity Footer -->
               ${isSuccess ? (
                 isExpiredOrRevoked ? `
                   <!-- Expired / Revoked Slot State -->
@@ -169,20 +178,13 @@ function paintCustomerOrdersHTML(container, orders) {
                     </button>
                   </div>
                 ` : `
-                  <!-- Active Unlocked Credentials Box with Days Left -->
-                  <div class="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 space-y-2.5 font-mono text-xs">
+                  <!-- Clean Credentials Box -->
+                  <div class="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-3 font-mono text-xs">
                     <div class="flex items-center justify-between">
                       <div class="flex items-center gap-2 text-emerald-400 font-bold">
                         <span>🔓</span> <span>Credentials Unlocked</span>
                       </div>
-                      
-                      <!-- Days Remaining Pill Badge -->
-                      <div class="flex items-center gap-1.5">
-                        <span class="text-[10px] font-bold ${remainingDays <= 5 ? 'text-rose-400 bg-rose-500/10 border-rose-500/20' : 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30'} px-2.5 py-0.5 rounded-full uppercase border flex items-center gap-1">
-                          <span>⏳</span> ${remainingDays} ${remainingDays === 1 ? 'Day' : 'Days'} Left
-                        </span>
-                        <span class="text-[9px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full uppercase">Verified</span>
-                      </div>
+                      <span class="text-[9px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full uppercase">Verified</span>
                     </div>
 
                     <div class="p-3 bg-surface-950/90 rounded-xl border border-emerald-500/20 space-y-1.5 text-[11px]">
@@ -201,6 +203,25 @@ function paintCustomerOrdersHTML(container, orders) {
                         </div>
                       ` : ''}
                     </div>
+
+                    <!-- Clean Validity Progress Footer -->
+                    <div class="pt-1 space-y-1.5">
+                      <div class="flex items-center justify-between text-[10px]">
+                        <span class="text-slate-400 flex items-center gap-1.5">
+                          <span class="w-1.5 h-1.5 rounded-full ${remainingDays <= 5 ? 'bg-rose-400 animate-ping' : 'bg-emerald-400 animate-pulse'}"></span>
+                          Subscription Validity
+                        </span>
+                        <strong class="${remainingDays <= 5 ? 'text-rose-400' : 'text-emerald-400'} font-bold">
+                          ${remainingDays} ${remainingDays === 1 ? 'day' : 'days'} remaining
+                        </strong>
+                      </div>
+                      
+                      <!-- Subtle Progress Bar -->
+                      <div class="w-full h-1.5 bg-surface-950 rounded-full overflow-hidden border border-white/5">
+                        <div class="h-full rounded-full transition-all duration-500 ${remainingDays <= 5 ? 'bg-gradient-to-r from-amber-500 to-rose-500' : 'bg-gradient-to-r from-teal-400 to-emerald-400'}" style="width: ${percentLeft}%"></div>
+                      </div>
+                    </div>
+
                   </div>
                 `
               ) : isPending ? `
