@@ -3,18 +3,60 @@ const router = express.Router();
 const Transaction = require('../models/Transaction');
 const Subscription = require('../models/Subscription');
 const InventorySlot = require('../models/InventorySlot');
+const User = require('../models/User');
 
+// 1. Unified Checkout Submission Endpoints
+router.post(['/orders/checkout', '/checkout', '/orders', '/transactions/submit'], async (req, res) => {
+  try {
+    const { items, customer_name, customer_email, total_amount, amount, proof_screenshot, payment_method } = req.body;
+
+    if (!proof_screenshot) {
+      return res.status(400).json({ error: 'Please upload a payment screenshot proof' });
+    }
+
+    const payAmount = Number(total_amount ?? amount ?? 0);
+    const itemList = Array.isArray(items) ? items : [];
+    const productName = itemList.length > 0 
+      ? itemList.map(i => i.name).join(', ')
+      : (req.body.product_name || 'Digital Goods Subscription');
+
+    const generatedTxnId = 'TXN-' + Math.floor(100000 + Math.random() * 900000);
+
+    // Save transaction to DB
+    const txn = await Transaction.create({
+      txn_id: generatedTxnId,
+      customer_name: customer_name || 'Anonymous Customer',
+      customer_email: (customer_email || '').toLowerCase().trim(),
+      product_name: productName,
+      amount: payAmount,
+      payment_method: payment_method || 'UPI',
+      proof_screenshot: proof_screenshot || '',
+      status: 'PROCESSING',
+      rejection_reason: ''
+    });
+
+    res.status(201).json({
+      success: true,
+      txn_id: txn.txn_id,
+      order: txn
+    });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// 2. Customer Vault Purchased Items Query
 router.get('/orders', async (req, res) => {
   try {
     const { email } = req.query;
     if (!email) return res.json([]);
 
-    const txns = await Transaction.find({ customer_email: email.toLowerCase().trim() })
+    const cleanEmail = email.toLowerCase().trim();
+    const txns = await Transaction.find({ customer_email: cleanEmail })
       .sort({ created_at: -1 })
       .lean();
 
     const enrichedOrders = await Promise.all(txns.map(async (t) => {
-      // Find associated subscription
       const sub = await Subscription.findOne({ 
         $or: [{ order_id: t._id }, { customer_email: t.customer_email, product_name: t.product_name }]
       }).populate('assigned_slot_id').lean();
@@ -22,7 +64,6 @@ router.get('/orders', async (req, res) => {
       let creds = null;
       if (sub) {
         if (sub.assigned_slot_id) {
-          // Pull directly from latest slot state
           creds = {
             email: sub.assigned_slot_id.email,
             password: sub.assigned_slot_id.password,
