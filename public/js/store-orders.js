@@ -119,19 +119,10 @@ function paintCustomerOrdersHTML(container, orders) {
           const isExpiredOrRevoked = !creds || remainingDays <= 0 || order.sub_status === 'EXPIRED' || order.sub_status === 'REVOKED';
           const isOtpAuth = creds?.auth_type === 'OTP' || creds?.password === 'LOGIN_VIA_OTP' || !creds?.password;
 
-          // Clean Telegram target username / URL
-          let rawContact = (creds?.telegram_contact || '').trim();
-          if (!rawContact || rawContact === 'your_telegram_bot') {
-            rawContact = 'aryanrajpurohit33'; // Default fallback handle
-          }
-
-          let tgUrl = '';
-          if (rawContact.startsWith('http://') || rawContact.startsWith('https://')) {
-            tgUrl = rawContact.split('?')[0];
-          } else {
-            const cleanUser = rawContact.replace('@', '').trim();
-            tgUrl = `https://t.me/${cleanUser}`;
-          }
+          // WhatsApp Direct Message Setup
+          const waNumber = '917696161236';
+          const waMessage = encodeURIComponent(`Hi Admin, I need OTP to login.\n\nTXN ID: ${order.txn_id}\nAccount: ${creds?.email || ''}\nProfile: Profile ${creds?.profile_number || 1}`);
+          const waUrl = `https://wa.me/${waNumber}?text=${waMessage}`;
 
           return `
             <div class="bg-surface-900/80 rounded-3xl p-4 sm:p-5 border border-white/5 shadow-2xl space-y-3.5 relative overflow-hidden backdrop-blur-xl">
@@ -201,7 +192,7 @@ function paintCustomerOrdersHTML(container, orders) {
                       <div class="flex items-center gap-2 text-emerald-400 font-bold">
                         <span>🔓</span> <span>${isOtpAuth ? 'Login via OTP' : 'Credentials Unlocked'}</span>
                       </div>
-                      <span class="text-[9px] font-bold ${isOtpAuth ? 'text-sky-400 bg-sky-500/20' : 'text-emerald-400 bg-emerald-500/20'} px-2 py-0.5 rounded-full uppercase">
+                      <span class="text-[9px] font-bold ${isOtpAuth ? 'text-emerald-400 bg-emerald-500/20' : 'text-emerald-400 bg-emerald-500/20'} px-2 py-0.5 rounded-full uppercase">
                         ${isOtpAuth ? 'OTP Access' : 'Verified'}
                       </span>
                     </div>
@@ -218,12 +209,12 @@ function paintCustomerOrdersHTML(container, orders) {
                           <strong class="text-emerald-400 select-all">${creds.password}</strong>
                         </div>
                       ` : `
-                        <!-- Direct Personal Telegram Chat Button -->
+                        <!-- Direct WhatsApp OTP Request Button -->
                         <div class="pt-1">
-                          <a href="${tgUrl}" target="_blank" rel="noopener noreferrer" class="w-full py-2.5 px-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-gray-950 font-black uppercase text-[11px] tracking-wider transition-all flex items-center justify-center gap-2 shadow-md shadow-sky-500/20 no-underline cursor-pointer active:scale-95">
-                            <span>📲</span> <span>Contact Admin on Telegram for OTP</span>
+                          <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="w-full py-2.5 px-3 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-gray-950 font-black uppercase text-[11px] tracking-wider transition-all flex items-center justify-center gap-2 shadow-md shadow-[#25D366]/25 no-underline cursor-pointer active:scale-95">
+                            <span class="text-sm">💬</span> <span>Get Login OTP via WhatsApp</span>
                           </a>
-                          <span class="text-[9px] text-slate-500 block text-center mt-1">Enter your account identifier in app & message above for login code</span>
+                          <span class="text-[9px] text-slate-500 block text-center mt-1">Enter your account details in app & click above to receive code</span>
                         </div>
                       `}
 
