@@ -1,7 +1,6 @@
 window.currentProofData = '';
 
 async function renderStoreCheckout(container) {
-  // Ensure body scroll is unlocked when entering checkout
   document.body.style.overflow = '';
   window.currentProofData = '';
 
@@ -122,62 +121,62 @@ async function renderStoreCheckout(container) {
         </button>
       </div>
 
-      <!-- Instructions Safety Modal Overlay -->
-      <div id="instructionModalOverlay" onclick="closeInstructionsModal()" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-3 opacity-0 pointer-events-none transition-all duration-300">
+      <!-- Centered Instructions Safety Modal Overlay -->
+      <div id="instructionModalOverlay" onclick="closeInstructionsModal()" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
         
-        <div id="instructionModalContent" onclick="event.stopPropagation()" class="w-full max-w-md bg-surface-900 border border-white/10 rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl transform scale-95 translate-y-8 transition-all duration-300 font-sans max-h-[90vh] overflow-y-auto">
+        <div id="instructionModalContent" onclick="event.stopPropagation()" class="w-full max-w-sm sm:max-w-md bg-surface-900 border border-white/10 rounded-3xl p-5 space-y-3.5 shadow-2xl transform scale-95 transition-all duration-300 font-sans my-auto">
           
           <!-- Modal Header -->
-          <div class="flex items-center justify-between border-b border-white/5 pb-3">
+          <div class="flex items-center justify-between border-b border-white/5 pb-2.5">
             <div class="flex items-center gap-2">
-              <span class="text-amber-400 text-lg">⚠️</span>
-              <h3 class="text-white font-black text-sm uppercase tracking-wide font-mono">Usage Policy & Rules</h3>
+              <span class="text-amber-400 text-base">⚠️</span>
+              <h3 class="text-white font-black text-xs sm:text-sm uppercase tracking-wide font-mono">Usage Policy & Rules</h3>
             </div>
             <button type="button" onclick="closeInstructionsModal()" class="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-xs cursor-pointer">✕</button>
           </div>
 
-          <!-- Rules List -->
-          <div class="space-y-2.5 text-xs">
-            <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/80 border border-white/5">
-              <span class="text-rose-400 text-sm font-bold shrink-0">🚫</span>
+          <!-- Compact Rules List -->
+          <div class="space-y-2 text-xs">
+            <div class="flex items-start gap-2.5 p-2.5 rounded-xl bg-surface-950/80 border border-white/5">
+              <span class="text-rose-400 text-xs font-bold shrink-0 mt-0.5">🚫</span>
               <div class="space-y-0.5">
                 <strong class="text-white block text-[11px]">Do Not Share Credentials</strong>
-                <p class="text-slate-400 text-[10px] leading-relaxed">Never share the account email or password with anyone outside your plan.</p>
+                <p class="text-slate-400 text-[10px] leading-tight">Never share the account email or password with anyone outside your plan.</p>
               </div>
             </div>
 
-            <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/80 border border-white/5">
-              <span class="text-rose-400 text-sm font-bold shrink-0">🔒</span>
+            <div class="flex items-start gap-2.5 p-2.5 rounded-xl bg-surface-950/80 border border-white/5">
+              <span class="text-rose-400 text-xs font-bold shrink-0 mt-0.5">🔒</span>
               <div class="space-y-0.5">
                 <strong class="text-white block text-[11px]">Do Not Modify Account / Password</strong>
-                <p class="text-slate-400 text-[10px] leading-relaxed">Do not attempt to change email, password, payment details, or profile settings.</p>
+                <p class="text-slate-400 text-[10px] leading-tight">Do not change email, password, payment details, or profile names.</p>
               </div>
             </div>
 
-            <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/80 border border-white/5">
-              <span class="text-emerald-400 text-sm font-bold shrink-0">👤</span>
+            <div class="flex items-start gap-2.5 p-2.5 rounded-xl bg-surface-950/80 border border-white/5">
+              <span class="text-emerald-400 text-xs font-bold shrink-0 mt-0.5">👤</span>
               <div class="space-y-0.5">
                 <strong class="text-white block text-[11px]">Use Only Assigned Profile</strong>
-                <p class="text-slate-400 text-[10px] leading-relaxed">Stream strictly within your assigned profile number and enter your assigned PIN.</p>
+                <p class="text-slate-400 text-[10px] leading-tight">Stream strictly within your designated profile number and enter your PIN.</p>
               </div>
             </div>
           </div>
 
           <!-- Mandatory Acknowledgment Checkbox -->
-          <label class="flex items-start gap-3 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 cursor-pointer select-none">
+          <label class="flex items-start gap-2.5 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 cursor-pointer select-none">
             <input type="checkbox" id="policyAgreementCheckbox" onchange="toggleAgreeButtonState()" class="mt-0.5 w-4 h-4 rounded border-rose-500/40 text-emerald-500 focus:ring-0 cursor-pointer accent-emerald-500 shrink-0">
-            <span class="text-[11px] text-rose-200 leading-snug font-mono">
-              I understand that violating any of these rules will result in immediate <strong class="text-rose-400 underline">subscription revocation without any refund</strong>.
+            <span class="text-[10px] text-rose-200 leading-snug font-mono">
+              Violating these rules results in immediate <strong class="text-rose-400 underline">revocation without refund</strong>.
             </span>
           </label>
 
           <!-- Action Buttons -->
-          <div class="space-y-2 pt-1 font-mono">
-            <button id="agreeAndOrderBtn" disabled onclick="confirmAgreementAndSubmit()" class="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:hover:bg-emerald-500 disabled:cursor-not-allowed text-gray-950 font-black uppercase text-xs tracking-wider transition-all cursor-pointer shadow-xl shadow-emerald-500/20 active:scale-[0.98] flex items-center justify-center gap-2">
+          <div class="space-y-1.5 pt-1 font-mono">
+            <button id="agreeAndOrderBtn" disabled onclick="confirmAgreementAndSubmit()" class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:hover:bg-emerald-500 disabled:cursor-not-allowed text-gray-950 font-black uppercase text-xs tracking-wider transition-all cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-[0.98] flex items-center justify-center gap-2">
               <span>✓ I AGREE & PLACE ORDER</span>
             </button>
-            <button type="button" onclick="closeInstructionsModal()" class="w-full py-2 text-center text-slate-500 hover:text-slate-300 text-[10px] uppercase font-bold cursor-pointer">
-              Go Back
+            <button type="button" onclick="closeInstructionsModal()" class="w-full py-1.5 text-center text-slate-500 hover:text-slate-300 text-[10px] uppercase font-bold cursor-pointer">
+              Cancel
             </button>
           </div>
 
@@ -208,12 +207,13 @@ function openInstructionsModal() {
   if (checkbox) checkbox.checked = false;
   toggleAgreeButtonState();
 
-  // Lock body scroll
+  // Fully freeze body and touch scroll
   document.body.style.overflow = 'hidden';
+  document.documentElement.style.overflow = 'hidden';
 
   overlay.classList.remove('opacity-0', 'pointer-events-none');
-  modal.classList.remove('scale-95', 'translate-y-8');
-  modal.classList.add('scale-100', 'translate-y-0');
+  modal.classList.remove('scale-95');
+  modal.classList.add('scale-100');
 }
 
 function closeInstructionsModal() {
@@ -221,11 +221,12 @@ function closeInstructionsModal() {
   const modal = document.getElementById('instructionModalContent');
   if (!overlay || !modal) return;
 
-  // Restore body scroll
+  // Restore scroll
   document.body.style.overflow = '';
+  document.documentElement.style.overflow = '';
 
-  modal.classList.remove('scale-100', 'translate-y-0');
-  modal.classList.add('scale-95', 'translate-y-8');
+  modal.classList.remove('scale-100');
+  modal.classList.add('scale-95');
   overlay.classList.add('opacity-0', 'pointer-events-none');
 }
 
