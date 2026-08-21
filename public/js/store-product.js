@@ -1,9 +1,7 @@
 let productTimerInterval = null;
-window.currentProductSlideIndex = 0;
 
 async function renderStoreProductDetails(container, productId) {
   if (productTimerInterval) clearInterval(productTimerInterval);
-  window.currentProductSlideIndex = 0;
 
   // 1. Instant Cache Lookup (0ms load)
   const cachedList = state.cachedProducts || window.apiCache?.get('/api/products')?.data || [];
@@ -34,15 +32,10 @@ function paintProductDetailPage(container, p) {
   const basePrice = p.sale_price || 499;
   const origBase = p.original_price || (basePrice * 2);
 
-  const images = Array.isArray(p.images) && p.images.length > 0
-    ? p.images
-    : [(p.image || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800')];
-
   window.currentProductSelection = {
     productId: p._id,
     name: p.name,
-    image: images[0],
-    images: images,
+    image: (p.images && p.images[0]) || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800',
     basePrice: basePrice,
     baseOrig: origBase,
     subscriptionPricing: p.subscription_pricing || {},
@@ -68,44 +61,18 @@ function paintProductDetailPage(container, p) {
         </span>
       </div>
 
-      <!-- Multi-Image Showcase Slideshow -->
-      <div class="relative rounded-3xl overflow-hidden bg-surface-950 w-full aspect-[16/10] shadow-2xl border border-white/5 select-none">
+      <!-- Hero Image -->
+      <div class="relative rounded-3xl overflow-hidden bg-surface-950 w-full aspect-[16/10] shadow-2xl">
+        <img src="${(p.images && p.images[0]) || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800'}" 
+             class="w-full h-full object-cover">
+        <div class="absolute inset-0 bg-gradient-to-t from-surface-950/95 via-surface-950/20 to-transparent"></div>
         
-        <!-- Slides Track -->
-        <div id="productSlidesTrack" class="flex transition-transform duration-300 ease-out h-full w-full">
-          ${images.map((img, idx) => `
-            <div class="w-full h-full flex-shrink-0 relative flex items-center justify-center p-2">
-              <img src="${img}" alt="${p.name} Slide ${idx + 1}" class="w-full h-full object-contain rounded-2xl pointer-events-none">
-            </div>
-          `).join('')}
-        </div>
-
-        <div class="absolute inset-0 bg-gradient-to-t from-surface-950/95 via-transparent to-transparent pointer-events-none"></div>
-
-        <!-- Left/Right Slide Arrows (if multiple images) -->
-        ${images.length > 1 ? `
-          <button type="button" onclick="moveProductSlide(-1, ${images.length})" class="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10 text-white flex items-center justify-center transition-all cursor-pointer z-20 active:scale-90 shadow-lg text-sm font-bold">
-            ‹
-          </button>
-          <button type="button" onclick="moveProductSlide(1, ${images.length})" class="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10 text-white flex items-center justify-center transition-all cursor-pointer z-20 active:scale-90 shadow-lg text-sm font-bold">
-            ›
-          </button>
-
-          <!-- Dot Indicators -->
-          <div class="absolute bottom-14 left-0 right-0 flex items-center justify-center gap-1.5 z-20">
-            ${images.map((_, idx) => `
-              <button type="button" onclick="goToProductSlide(${idx}, ${images.length})" id="slideDot-${idx}" class="h-1.5 rounded-full transition-all duration-300 ${idx === 0 ? 'w-5 bg-emerald-400' : 'w-1.5 bg-white/40'}"></button>
-            `).join('')}
-          </div>
-        ` : ''}
-
-        <!-- Product Title Banner Overlay -->
-        <div class="absolute bottom-3 left-4 right-4 flex items-end justify-between z-10">
+        <div class="absolute bottom-4 left-4 right-4 flex items-end justify-between">
           <div>
-            <span class="text-[10px] font-mono tracking-widest text-emerald-400 uppercase font-bold block mb-0.5">${p.category || 'OTT'}</span>
-            <h1 class="text-lg sm:text-xl font-black text-white tracking-tight leading-tight">${p.name}</h1>
+            <span class="text-[10px] font-mono tracking-widest text-emerald-400 uppercase font-bold block mb-1">${p.category || 'OTT'}</span>
+            <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">${p.name}</h1>
           </div>
-          <span class="px-2.5 py-1 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-mono text-[9px] font-black uppercase flex items-center gap-1 shrink-0">
+          <span class="px-2.5 py-1 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-mono text-[9px] font-black uppercase flex items-center gap-1">
             ⚡ ${p.category || 'OTT'}
           </span>
         </div>
@@ -123,7 +90,7 @@ function paintProductDetailPage(container, p) {
 
           <div class="relative" onclick="event.stopPropagation()">
             <button type="button" onclick="toggleDurationMenu()" id="durationTriggerBtn"
-              class="w-full py-3.5 px-4 rounded-2xl bg-surface-900 text-white text-xs font-mono flex items-center justify-between hover:bg-surface-800 transition-all cursor-pointer border border-white/5">
+              class="w-full py-3.5 px-4 rounded-2xl bg-surface-900 text-white text-xs font-mono flex items-center justify-between hover:bg-surface-800 transition-all cursor-pointer">
               <span id="selectedDurationText" class="font-bold">1 Month (Standard Plan)</span>
               <span id="durationArrowIcon" class="text-slate-400 text-[10px] transition-transform duration-300">▼</span>
             </button>
@@ -202,7 +169,7 @@ function paintProductDetailPage(container, p) {
       </div>
 
       <!-- Flash Deal -->
-      <div class="bg-surface-900/60 rounded-3xl p-4 flex items-center justify-between font-mono shadow-lg border border-white/5">
+      <div class="bg-surface-900/60 rounded-3xl p-4 flex items-center justify-between font-mono shadow-lg">
         <div class="flex items-center gap-2.5">
           <span class="text-base animate-pulse">🔥</span>
           <div>
@@ -217,8 +184,8 @@ function paintProductDetailPage(container, p) {
         </div>
       </div>
 
-      <!-- Mandatory Rules -->
-      <div class="bg-surface-900/50 rounded-3xl p-4 sm:p-5 space-y-3 shadow-lg border border-white/5">
+      <!-- Rules -->
+      <div class="bg-surface-900/50 rounded-3xl p-4 sm:p-5 space-y-3 shadow-lg">
         <div class="flex items-center justify-between border-b border-white/5 pb-2.5">
           <div class="flex items-center gap-2">
             <span class="text-amber-400 text-sm">⚠️</span>
@@ -247,34 +214,6 @@ function paintProductDetailPage(container, p) {
   `;
 
   startThreeHourCountdownLoop();
-}
-
-function moveProductSlide(direction, total) {
-  if (total <= 1) return;
-  window.currentProductSlideIndex = (window.currentProductSlideIndex + direction + total) % total;
-  updateSlideshowView(total);
-}
-
-function goToProductSlide(index, total) {
-  window.currentProductSlideIndex = index;
-  updateSlideshowView(total);
-}
-
-function updateSlideshowView(total) {
-  const track = document.getElementById('productSlidesTrack');
-  if (track) {
-    track.style.transform = `translateX(-${window.currentProductSlideIndex * 100}%)`;
-  }
-  for (let i = 0; i < total; i++) {
-    const dot = document.getElementById(`slideDot-${i}`);
-    if (dot) {
-      if (i === window.currentProductSlideIndex) {
-        dot.className = 'h-1.5 w-5 rounded-full bg-emerald-400 transition-all duration-300';
-      } else {
-        dot.className = 'h-1.5 w-1.5 rounded-full bg-white/40 transition-all duration-300';
-      }
-    }
-  }
 }
 
 function startThreeHourCountdownLoop() {
