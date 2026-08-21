@@ -50,24 +50,20 @@ async function renderStoreProductDetails(container, productId) {
           </span>
         </div>
 
-        <!-- Full-Fit Hero Showcase Banner -->
-        <div class="relative rounded-3xl overflow-hidden bg-surface-950 w-full aspect-[16/10] shadow-2xl">
+        <!-- Seamless Full-Bleed Hero Image (No Side Padding, Flush to Borders) -->
+        <div class="-mx-2 relative overflow-hidden bg-surface-950 w-[calc(100%+1rem)] aspect-[16/10] shadow-2xl">
           <img src="${mainHeroImage}" class="w-full h-full object-cover">
-          <div class="absolute inset-0 bg-gradient-to-t from-surface-950/95 via-surface-950/20 to-transparent"></div>
+          <div class="absolute inset-0 bg-gradient-to-t from-[#0b0f17] via-[#0b0f17]/30 to-transparent"></div>
 
-          <div class="absolute bottom-4 left-4 right-4 flex items-end justify-between">
-            <div>
-              <span class="text-[10px] font-mono tracking-widest text-emerald-400 uppercase font-bold block mb-1">${p.category || 'OTT'}</span>
-              <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">${p.name}</h1>
-            </div>
-            <span class="px-2.5 py-1 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-mono text-[9px] font-black uppercase flex items-center gap-1">
-              ⚡ ${p.category || 'OTT'}
-            </span>
+          <!-- Bottom Title Overlay (Without Lighting Emoji Pill) -->
+          <div class="absolute bottom-4 left-5 right-5">
+            <span class="text-[10px] font-mono tracking-widest text-emerald-400 uppercase font-bold block mb-1">${p.category || 'OTT'}</span>
+            <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight leading-tight">${p.name}</h1>
           </div>
         </div>
 
         <!-- Configuration Controls -->
-        <div class="space-y-4">
+        <div class="space-y-4 pt-1">
           
           <!-- Access Duration Dropdown (Floating Overlay) -->
           <div class="space-y-1.5 relative">
@@ -174,7 +170,7 @@ async function renderStoreProductDetails(container, productId) {
           </div>
         </div>
 
-        <!-- Clean Showcase Slider (No Labels, Numbers, or Header Text) -->
+        <!-- Clean Showcase Slider -->
         ${showcasePreviews.length > 0 ? `
           <div class="-mx-2 px-3 flex items-center gap-3 overflow-x-auto py-1 custom-scroll" style="scrollbar-width: none; -webkit-overflow-scrolling: touch;">
             ${showcasePreviews.map(img => `
