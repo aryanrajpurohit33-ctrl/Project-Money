@@ -29,7 +29,7 @@ async function renderStoreCheckout(container) {
   const qrSrc = customQR || `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiName)}&am=${total}&cu=INR`)}`;
 
   container.innerHTML = `
-    <div class="space-y-6 max-w-lg mx-auto font-sans text-xs pb-28 animate-fadeIn px-1">
+    <div class="space-y-6 max-w-lg mx-auto font-sans text-xs pb-28 animate-fadeIn px-1 relative">
       
       <!-- Header -->
       <div class="text-center space-y-1">
@@ -115,13 +115,117 @@ async function renderStoreCheckout(container) {
           </div>
         </div>
 
-        <button type="button" id="confirmOrderBtn" onclick="submitCompressedProofOrder()" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-gray-950 font-black uppercase text-xs tracking-wider transition-all cursor-pointer shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2">
+        <button type="button" onclick="openInstructionsModal()" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-gray-950 font-black uppercase text-xs tracking-wider transition-all cursor-pointer shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2 font-mono">
           <span>✓ SUBMIT PAYMENT PROOF</span>
         </button>
       </div>
 
+      <!-- Smooth Instructions Safety Modal Overlay -->
+      <div id="instructionModalOverlay" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-3 opacity-0 pointer-events-none transition-all duration-300">
+        <div id="instructionModalContent" class="w-full max-w-md bg-surface-900 border border-white/10 rounded-3xl p-6 space-y-5 shadow-2xl transform scale-95 translate-y-6 transition-all duration-300 font-sans">
+          
+          <!-- Modal Header -->
+          <div class="flex items-center justify-between border-b border-white/5 pb-3">
+            <div class="flex items-center gap-2">
+              <span class="text-amber-400 text-lg">⚠️</span>
+              <h3 class="text-white font-black text-sm uppercase tracking-wide font-mono">Usage Policy & Rules</h3>
+            </div>
+            <button onclick="closeInstructionsModal()" class="text-slate-400 hover:text-white p-1 text-sm cursor-pointer">✕</button>
+          </div>
+
+          <!-- Rules List -->
+          <div class="space-y-3 text-xs">
+            <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/80 border border-white/5">
+              <span class="text-rose-400 text-sm font-bold shrink-0">🚫</span>
+              <div class="space-y-0.5">
+                <strong class="text-white block text-[11px]">Do Not Share Credentials</strong>
+                <p class="text-slate-400 text-[10px] leading-relaxed">Never share the account email or password with anyone outside your plan.</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/80 border border-white/5">
+              <span class="text-rose-400 text-sm font-bold shrink-0">🔒</span>
+              <div class="space-y-0.5">
+                <strong class="text-white block text-[11px]">Do Not Modify Account / Password</strong>
+                <p class="text-slate-400 text-[10px] leading-relaxed">Do not attempt to change email, password, payment details, or profile settings.</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/80 border border-white/5">
+              <span class="text-emerald-400 text-sm font-bold shrink-0">👤</span>
+              <div class="space-y-0.5">
+                <strong class="text-white block text-[11px]">Use Only Assigned Profile</strong>
+                <p class="text-slate-400 text-[10px] leading-relaxed">Stream strictly within your assigned profile number and enter your assigned PIN.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mandatory Acknowledgment Checkbox -->
+          <label class="flex items-start gap-3 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 cursor-pointer select-none">
+            <input type="checkbox" id="policyAgreementCheckbox" onchange="toggleAgreeButtonState()" class="mt-0.5 w-4 h-4 rounded border-rose-500/40 text-emerald-500 focus:ring-0 cursor-pointer accent-emerald-500">
+            <span class="text-[11px] text-rose-200 leading-snug font-mono">
+              I understand that violating any of these rules will result in immediate <strong class="text-rose-400 underline">subscription revocation without any refund</strong>.
+            </span>
+          </label>
+
+          <!-- Action Buttons -->
+          <div class="space-y-2 pt-1 font-mono">
+            <button id="agreeAndOrderBtn" disabled onclick="confirmAgreementAndSubmit()" class="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:hover:bg-emerald-500 disabled:cursor-not-allowed text-gray-950 font-black uppercase text-xs tracking-wider transition-all cursor-pointer shadow-xl shadow-emerald-500/20 active:scale-[0.98] flex items-center justify-center gap-2">
+              <span>✓ I AGREE & PLACE ORDER</span>
+            </button>
+            <button type="button" onclick="closeInstructionsModal()" class="w-full py-2 text-center text-slate-500 hover:text-slate-300 text-[10px] uppercase font-bold cursor-pointer">
+              Go Back
+            </button>
+          </div>
+
+        </div>
+      </div>
+
     </div>
   `;
+}
+
+function openInstructionsModal() {
+  const payerName = document.getElementById('payerNameInput')?.value.trim();
+  if (!payerName) {
+    showToast('Please enter your Payer Account Name', 'error');
+    return;
+  }
+
+  if (!window.currentProofData) {
+    showToast('Please attach your payment screenshot proof', 'error');
+    return;
+  }
+
+  const overlay = document.getElementById('instructionModalOverlay');
+  const modal = document.getElementById('instructionModalContent');
+  if (!overlay || !modal) return;
+
+  const checkbox = document.getElementById('policyAgreementCheckbox');
+  if (checkbox) checkbox.checked = false;
+  toggleAgreeButtonState();
+
+  overlay.classList.remove('opacity-0', 'pointer-events-none');
+  modal.classList.remove('scale-95', 'translate-y-6');
+  modal.classList.add('scale-100', 'translate-y-0');
+}
+
+function closeInstructionsModal() {
+  const overlay = document.getElementById('instructionModalOverlay');
+  const modal = document.getElementById('instructionModalContent');
+  if (!overlay || !modal) return;
+
+  modal.classList.remove('scale-100', 'translate-y-0');
+  modal.classList.add('scale-95', 'translate-y-6');
+  overlay.classList.add('opacity-0', 'pointer-events-none');
+}
+
+function toggleAgreeButtonState() {
+  const checkbox = document.getElementById('policyAgreementCheckbox');
+  const btn = document.getElementById('agreeAndOrderBtn');
+  if (checkbox && btn) {
+    btn.disabled = !checkbox.checked;
+  }
 }
 
 function compressAndPreviewProof(input) {
@@ -132,7 +236,6 @@ function compressAndPreviewProof(input) {
   reader.onload = (e) => {
     const img = new Image();
     img.onload = () => {
-      // Scale down image client-side to max 900px width/height and 70% JPEG quality (~100KB)
       const maxDim = 900;
       let width = img.width;
       let height = img.height;
@@ -173,21 +276,20 @@ function copyCheckoutUpi(id) {
   showToast('✓ UPI ID copied to clipboard');
 }
 
-async function submitCompressedProofOrder() {
+async function confirmAgreementAndSubmit() {
   const proof = window.currentProofData;
   if (!proof) {
     showToast('Please select a payment screenshot proof', 'error');
     return;
   }
 
-  const btn = document.getElementById('confirmOrderBtn');
+  const btn = document.getElementById('agreeAndOrderBtn');
   btn.disabled = true;
   btn.innerHTML = 'Submitting Proof...';
 
   const payerName = document.getElementById('payerNameInput')?.value.trim() || state.user?.name || 'Customer';
   const total = state.cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
 
-  // Exact payload structure matching routes/store.js
   const payload = {
     items: state.cart,
     total_amount: total,
@@ -213,11 +315,17 @@ async function submitCompressedProofOrder() {
     const bagBadge = document.getElementById('cartBadgeCount');
     if (bagBadge) bagBadge.classList.add('hidden');
 
-    showToast('✓ Payment proof submitted! Awaiting admin approval.');
-    navigate('dashboard');
+    closeInstructionsModal();
+    showToast('✓ Payment proof submitted! Redirecting to vault...');
+    
+    // Redirect directly to the purchased items / digital vault page
+    setTimeout(() => {
+      navigate('orders');
+    }, 400);
+
   } catch (err) {
     btn.disabled = false;
-    btn.innerHTML = '✓ SUBMIT PAYMENT PROOF';
+    btn.innerHTML = '✓ I AGREE & PLACE ORDER';
     showToast(err.message, 'error');
   }
 }
