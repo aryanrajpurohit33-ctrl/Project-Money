@@ -3,7 +3,6 @@ let productTimerInterval = null;
 async function renderStoreProductDetails(container, productId) {
   if (productTimerInterval) clearInterval(productTimerInterval);
 
-  // Check preloaded/cached product first for instant 0ms paint
   const cached = (state.cachedProducts || []).find(p => p._id === productId) || 
                  window.apiCache?.get(`/api/products/${productId}`);
 
@@ -28,8 +27,8 @@ async function renderStoreProductDetails(container, productId) {
 }
 
 function paintStoreProductHTML(container, p) {
-  const basePrice = p.sale_price || 499;
-  const origBase = p.original_price || (basePrice * 2);
+  const basePrice = p.sale_price || 149;
+  const origBase = p.original_price || (basePrice * 4);
 
   const allImages = Array.isArray(p.images) && p.images.length > 0 
     ? p.images 
@@ -50,7 +49,7 @@ function paintStoreProductHTML(container, p) {
     durationLabel: '1 Month (Standard Plan)',
     durationMultiplier: 1,
     deviceMultiplier: 1,
-    discountPercent: 50
+    discountPercent: Math.round(((origBase - basePrice) / origBase) * 100)
   };
 
   container.innerHTML = `
@@ -99,37 +98,35 @@ function paintStoreProductHTML(container, p) {
             </button>
 
             <div id="durationDropdownMenu" class="hidden absolute top-full left-0 right-0 mt-2 space-y-1 p-2 rounded-2xl bg-surface-900/95 backdrop-blur-xl border border-white/10 shadow-2xl z-30 transform transition-all duration-300 opacity-0 -translate-y-2">
-              <div onclick="selectDurationCustom('1_MONTH', 1, 50, '1 Month (Standard Plan)', 'STANDARD PLAN')" 
+              <div onclick="selectDurationCustom('1_MONTH', 1, '1 Month (Standard Plan)', 'STANDARD PLAN')" 
                 class="p-3 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-colors">
                 <span class="text-xs font-mono text-white font-bold">1 Month</span>
                 <span class="text-[10px] font-mono text-slate-400">Standard Plan</span>
               </div>
 
-              <div onclick="selectDurationCustom('3_MONTHS', 2.55, 15, '3 Months (Save 15% OFF)', '15% OFF PLAN')" 
+              <div onclick="selectDurationCustom('3_MONTHS', 3, '3 Months Plan', 'QUARTERLY PLAN')" 
                 class="p-3 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-colors">
                 <div class="flex items-center gap-2">
                   <span class="text-xs font-mono text-white font-bold">3 Months</span>
-                  <span class="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 text-[8px] font-mono font-bold rounded">15% OFF</span>
                 </div>
                 <span class="text-[10px] font-mono text-slate-400">Quarterly</span>
               </div>
 
-              <div onclick="selectDurationCustom('6_MONTHS', 4.5, 25, '6 Months (Save 25% OFF)', '25% OFF PLAN')" 
+              <div onclick="selectDurationCustom('6_MONTHS', 6, '6 Months Plan', 'HALF-YEAR PLAN')" 
                 class="p-3 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-colors">
                 <div class="flex items-center gap-2">
                   <span class="text-xs font-mono text-white font-bold">6 Months</span>
-                  <span class="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 text-[8px] font-mono font-bold rounded">25% OFF</span>
                 </div>
                 <span class="text-[10px] font-mono text-slate-400">Half-Year</span>
               </div>
 
-              <div onclick="selectDurationCustom('1_YEAR', 7.2, 40, '1 Year / 12 Months (Best Value — Save 40% OFF)', 'BEST VALUE 40% OFF')" 
+              <div onclick="selectDurationCustom('1_YEAR', 12, '1 Year / 12 Months', 'ANNUAL PLAN')" 
                 class="p-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 flex items-center justify-between cursor-pointer transition-colors">
                 <div class="flex items-center gap-2">
                   <span class="text-xs font-mono text-emerald-400 font-bold">1 Year (12 Mo)</span>
-                  <span class="px-1.5 py-0.5 bg-emerald-500 text-gray-950 text-[8px] font-mono font-black rounded">BEST VALUE</span>
+                  <span class="px-1.5 py-0.5 bg-emerald-500 text-gray-950 text-[8px] font-mono font-black rounded">POPULAR</span>
                 </div>
-                <span class="text-[10px] font-mono text-emerald-400 font-bold">40% OFF</span>
+                <span class="text-[10px] font-mono text-emerald-400 font-bold">Annual</span>
               </div>
             </div>
           </div>
@@ -142,7 +139,7 @@ function paintStoreProductHTML(container, p) {
             <div class="flex items-center gap-2 min-h-[36px]">
               <span class="text-2xl sm:text-3xl font-black text-white font-mono leading-none transition-all duration-300 inline-block min-w-[70px]" id="calculatedSalePrice">₹${basePrice}</span>
               <span class="text-xs text-slate-500 line-through font-mono leading-none transition-all duration-300 inline-block" id="calculatedOrigPrice">₹${origBase}</span>
-              <span class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg leading-none transition-all duration-300 whitespace-nowrap" id="savingsBadge">50% OFF</span>
+              <span class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg leading-none transition-all duration-300 whitespace-nowrap" id="savingsBadge">${Math.round(((origBase - basePrice) / origBase) * 100)}% OFF</span>
             </div>
           </div>
 
@@ -283,12 +280,9 @@ function adjustDeviceQuantity(delta) {
 
   let newCount = sel.devices + delta;
   if (newCount < 1) newCount = 1;
-  if (newCount > 4) newCount = 4;
+  if (newCount > 10) newCount = 10;
 
   sel.devices = newCount;
-
-  const multipliers = { 1: 1, 2: 1.8, 3: 2.6, 4: 3.4 };
-  sel.deviceMultiplier = multipliers[newCount] || 1;
 
   const countEl = document.getElementById('deviceDisplayCount');
   if (countEl) {
@@ -340,14 +334,13 @@ function closeDurationDropdownOutside(e) {
   }
 }
 
-function selectDurationCustom(key, multiplier, discount, fullLabel, subLabel) {
+function selectDurationCustom(key, multiplier, fullLabel, subLabel) {
   const sel = window.currentProductSelection;
   if (!sel) return;
 
   sel.duration = key;
   sel.durationLabel = fullLabel;
   sel.durationMultiplier = multiplier;
-  sel.discountPercent = discount;
 
   const textEl = document.getElementById('selectedDurationText');
   const subLabelEl = document.getElementById('durationSubLabel');
@@ -364,19 +357,20 @@ function calculateDynamicPrice() {
   if (!sel) return;
 
   const tiers = sel.subscriptionPricing || {};
-  let baseSale = sel.basePrice;
-  let baseOrig = sel.baseOrig;
+  let planUnitPrice = sel.basePrice;
+  let planOrigPrice = sel.baseOrig;
 
   if (tiers[sel.duration]) {
-    baseSale = tiers[sel.duration].sale;
-    baseOrig = tiers[sel.duration].orig;
+    planUnitPrice = tiers[sel.duration].sale;
+    planOrigPrice = tiers[sel.duration].orig;
   } else {
-    baseSale = Math.round(sel.basePrice * sel.durationMultiplier);
-    baseOrig = Math.round(sel.baseOrig * (sel.duration === '1_YEAR' ? 12 : sel.duration === '6_MONTHS' ? 6 : sel.duration === '3_MONTHS' ? 3 : 1));
+    planUnitPrice = Math.round(sel.basePrice * sel.durationMultiplier);
+    planOrigPrice = Math.round(sel.baseOrig * sel.durationMultiplier);
   }
 
-  const calculatedSale = Math.round(baseSale * sel.deviceMultiplier);
-  const calculatedOrig = Math.round(baseOrig * sel.deviceMultiplier);
+  // Exact linear calculation: Unit Plan Price * Number of Devices
+  const calculatedSale = planUnitPrice * sel.devices;
+  const calculatedOrig = planOrigPrice * sel.devices;
 
   sel.finalPrice = calculatedSale;
 
@@ -386,7 +380,7 @@ function calculateDynamicPrice() {
 
   if (saleEl) saleEl.textContent = `₹${calculatedSale}`;
   if (origEl) origEl.textContent = `₹${calculatedOrig}`;
-  if (badgeEl) {
+  if (badgeEl && calculatedOrig > calculatedSale) {
     const diff = calculatedOrig - calculatedSale;
     badgeEl.textContent = `${Math.round((diff / calculatedOrig) * 100)}% OFF`;
   }
