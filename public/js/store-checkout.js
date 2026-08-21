@@ -1,8 +1,4 @@
-window.currentCheckoutProofImage = '';
-
 async function renderStoreCheckout(container) {
-  window.currentCheckoutProofImage = '';
-
   if (!state.cart || state.cart.length === 0) {
     navigate('cart');
     return;
@@ -83,7 +79,7 @@ async function renderStoreCheckout(container) {
         </div>
       </div>
 
-      <!-- Payment Verification Form (Proof Upload Option) -->
+      <!-- Payment Verification Form -->
       <form onsubmit="handleCustomerPaymentProofSubmit(event)" class="space-y-4 font-mono">
         <div class="space-y-1.5">
           <div class="flex items-center justify-between">
@@ -130,7 +126,6 @@ function handleProofFileSelection(e) {
 
   const reader = new FileReader();
   reader.onload = (event) => {
-    window.currentCheckoutProofImage = event.target.result;
     const previewBox = document.getElementById('proofPreviewBox');
     const previewImg = document.getElementById('proofPreviewImg');
     if (previewBox && previewImg) {
@@ -147,11 +142,23 @@ function copyCheckoutUpi(id) {
   showToast('✓ UPI ID copied to clipboard');
 }
 
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+    reader.readAsDataURL(file);
+  });
+}
+
 async function handleCustomerPaymentProofSubmit(e) {
   e.preventDefault();
 
-  if (!window.currentCheckoutProofImage) {
-    showToast('Please upload a payment screenshot proof', 'error');
+  const fileInput = document.getElementById('proofFileInput');
+  const file = fileInput?.files?.[0];
+
+  if (!file) {
+    showToast('Please select a payment screenshot proof', 'error');
     return;
   }
 
@@ -159,21 +166,22 @@ async function handleCustomerPaymentProofSubmit(e) {
   btn.disabled = true;
   btn.innerHTML = 'Submitting Proof...';
 
-  const payerName = document.getElementById('payerNameInput').value.trim();
-  const total = state.cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
-
-  const payload = {
-    items: state.cart,
-    total_amount: total,
-    payer_name: payerName,
-    payment_proof: window.currentCheckoutProofImage,
-    payment_proof_image: window.currentCheckoutProofImage,
-    proof_image: window.currentCheckoutProofImage,
-    transaction_id: 'PROOF-' + Math.floor(100000 + Math.random() * 900000),
-    payment_method: 'UPI'
-  };
-
   try {
+    const base64Image = await readFileAsBase64(file);
+    const payerName = document.getElementById('payerNameInput').value.trim();
+    const total = state.cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
+
+    const payload = {
+      items: state.cart,
+      total_amount: total,
+      payer_name: payerName,
+      payment_proof: base64Image,
+      payment_proof_image: base64Image,
+      proof_image: base64Image,
+      transaction_id: 'PROOF-' + Math.floor(100000 + Math.random() * 900000),
+      payment_method: 'UPI'
+    };
+
     await fetchJSON('/api/orders', {
       method: 'POST',
       headers: {
@@ -188,7 +196,7 @@ async function handleCustomerPaymentProofSubmit(e) {
     const bagBadge = document.getElementById('cartBadgeCount');
     if (bagBadge) bagBadge.classList.add('hidden');
 
-    showToast('✓ Order proof submitted! Admin will verify shortly.');
+    showToast('✓ Order submitted! Awaiting admin verification.');
     navigate('dashboard');
   } catch (err) {
     btn.disabled = false;
