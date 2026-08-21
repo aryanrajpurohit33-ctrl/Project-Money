@@ -183,7 +183,7 @@ async function renderStoreProductDetails(container, productId) {
           </div>
         ` : ''}
 
-        <!-- Why Buy From Us Trust Section (Replaced Instructions) -->
+        <!-- Why Buy From Us Trust Section (With 24/7 Support, Safe Accounts, 100% Replacement) -->
         <div class="bg-surface-900/70 rounded-3xl p-5 border border-white/5 space-y-4 shadow-xl">
           
           <div class="flex items-center justify-between border-b border-white/5 pb-3">
@@ -196,38 +196,38 @@ async function renderStoreProductDetails(container, productId) {
             </span>
           </div>
 
-          <div class="space-y-3 font-sans text-[11px]">
+          <div class="space-y-2.5 font-sans text-[11px]">
             
-            <!-- Point 1 -->
+            <!-- Point 1: 24/7 Support -->
+            <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/60 border border-white/5">
+              <div class="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 text-sm font-mono">
+                🎧
+              </div>
+              <div class="space-y-0.5">
+                <strong class="text-white font-bold block text-xs">24/7 Support</strong>
+                <p class="text-slate-400 leading-relaxed">Round-the-clock priority customer assistance on Telegram for instant resolution.</p>
+              </div>
+            </div>
+
+            <!-- Point 2: Safe Accounts -->
             <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/60 border border-white/5">
               <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 text-sm font-mono">
+                🔒
+              </div>
+              <div class="space-y-0.5">
+                <strong class="text-white font-bold block text-xs">Safe Accounts</strong>
+                <p class="text-slate-400 leading-relaxed">Legitimately procured, private, and secure subscriptions with zero ban risk.</p>
+              </div>
+            </div>
+
+            <!-- Point 3: 100% Replacement -->
+            <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/60 border border-white/5">
+              <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0 text-sm font-mono">
                 ⚡
               </div>
               <div class="space-y-0.5">
-                <strong class="text-white font-bold block text-xs">Instant Digital Delivery</strong>
-                <p class="text-slate-400 leading-relaxed">Direct unlock in your Purchased Items Vault right after order verification.</p>
-              </div>
-            </div>
-
-            <!-- Point 2 -->
-            <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/60 border border-white/5">
-              <div class="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0 text-sm font-mono">
-                🔐
-              </div>
-              <div class="space-y-0.5">
-                <strong class="text-white font-bold block text-xs">Private & Dedicated Profiles</strong>
-                <p class="text-slate-400 leading-relaxed">Assigned single-user profile PIN protection with 4K UHD streaming quality.</p>
-              </div>
-            </div>
-
-            <!-- Point 3 -->
-            <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/60 border border-white/5">
-              <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0 text-sm font-mono">
-                🤝
-              </div>
-              <div class="space-y-0.5">
-                <strong class="text-white font-bold block text-xs">Full Replacement Warranty</strong>
-                <p class="text-slate-400 leading-relaxed">Complete subscription duration coverage with dedicated 24/7 Telegram support.</p>
+                <strong class="text-white font-bold block text-xs">100% Replacement</strong>
+                <p class="text-slate-400 leading-relaxed">Hassle-free instant replacement guarantee for the complete duration of your plan.</p>
               </div>
             </div>
 
