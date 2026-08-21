@@ -1,44 +1,51 @@
 const express = require('express');
 const router = express.Router();
 const Transaction = require('../models/Transaction');
+const Subscription = require('../models/Subscription');
+const InventorySlot = require('../models/InventorySlot');
 
-router.post(['/checkout', '/checkout/initiate-order'], async (req, res) => {
+router.get('/orders', async (req, res) => {
   try {
-    const { txn_id, customer_name, customer_email, product_name, product_id, amount, payment_method, proof_screenshot, user_id } = req.body;
-    const finalTxnId = txn_id || 'TXN-' + Math.floor(100000 + Math.random() * 900000);
-
-    const txn = await Transaction.create({
-      txn_id: finalTxnId,
-      customer_name: customer_name || 'Customer',
-      customer_email: customer_email || '',
-      user_id: user_id || null,
-      product_name: product_name || 'Digital Item',
-      product_id: product_id || '',
-      amount: Number(amount) || 499,
-      payment_method: payment_method || 'UPI',
-      proof_screenshot: proof_screenshot || '',
-      status: 'PROCESSING'
-    });
-
-    res.status(201).json({ success: true, txn_id: finalTxnId, txn });
-  } catch (e) {
-    res.status(400).json({ error: e.message });
-  }
-});
-
-router.get(['/orders', '/customer/orders'], async (req, res) => {
-  try {
-    const email = (req.query.email || '').trim();
+    const { email } = req.query;
     if (!email) return res.json([]);
 
-    const orders = await Transaction.find({
-      $or: [
-        { customer_email: email },
-        { customer_name: email }
-      ]
-    }).sort({ created_at: -1 }).lean();
+    const txns = await Transaction.find({ customer_email: email.toLowerCase().trim() })
+      .sort({ created_at: -1 })
+      .lean();
 
-    res.json(orders);
+    const enrichedOrders = await Promise.all(txns.map(async (t) => {
+      // Find associated subscription
+      const sub = await Subscription.findOne({ 
+        $or: [{ order_id: t._id }, { customer_email: t.customer_email, product_name: t.product_name }]
+      }).populate('assigned_slot_id').lean();
+
+      let creds = null;
+      if (sub) {
+        if (sub.assigned_slot_id) {
+          // Pull directly from latest slot state
+          creds = {
+            email: sub.assigned_slot_id.email,
+            password: sub.assigned_slot_id.password,
+            profile_pin: sub.assigned_slot_id.pin,
+            profile_number: sub.assigned_slot_id.profile_number
+          };
+        } else if (sub.credentials) {
+          creds = {
+            email: sub.credentials.account_email,
+            password: sub.credentials.account_password,
+            profile_pin: sub.credentials.pin,
+            profile_number: sub.credentials.profile_number
+          };
+        }
+      }
+
+      return {
+        ...t,
+        credentials: creds
+      };
+    }));
+
+    res.json(enrichedOrders);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
