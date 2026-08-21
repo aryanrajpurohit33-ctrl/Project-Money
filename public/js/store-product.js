@@ -50,12 +50,14 @@ async function renderStoreProductDetails(container, productId) {
           </span>
         </div>
 
-        <!-- Borderless Edge-to-Edge Hero Image -->
-        <div class="-mx-2 relative overflow-hidden bg-surface-950 aspect-[16/10] shadow-2xl">
+        <!-- 100% Seamless Deep-Fade Hero Image -->
+        <div class="-mx-2 relative overflow-hidden bg-transparent aspect-[16/10] select-none">
           <img src="${mainHeroImage}" class="w-full h-full object-cover">
-          <div class="absolute inset-0 bg-gradient-to-t from-surface-950/95 via-surface-950/20 to-transparent"></div>
+          
+          <!-- Enhanced Multi-Stop Gradient (Blends 100% Seamlessly Into App Background) -->
+          <div class="absolute inset-0 bg-gradient-to-t from-[#07090e] via-[#07090e]/75 to-transparent pointer-events-none" style="background: linear-gradient(to top, rgba(7, 9, 14, 1) 0%, rgba(7, 9, 14, 0.9) 18%, rgba(7, 9, 14, 0.4) 45%, rgba(7, 9, 14, 0) 80%);"></div>
 
-          <div class="absolute bottom-4 left-4 right-4 flex items-end justify-between">
+          <div class="absolute bottom-2 left-4 right-4 flex items-end justify-between z-10">
             <div>
               <span class="text-[10px] font-mono tracking-widest text-emerald-400 uppercase font-bold block mb-1">${p.category || 'OTT'}</span>
               <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">${p.name}</h1>
@@ -64,7 +66,7 @@ async function renderStoreProductDetails(container, productId) {
         </div>
 
         <!-- Configuration Controls -->
-        <div class="space-y-4">
+        <div class="space-y-4 pt-1">
           
           <!-- Access Duration Dropdown (Floating Overlay) -->
           <div class="space-y-1.5 relative">
@@ -171,7 +173,7 @@ async function renderStoreProductDetails(container, productId) {
           </div>
         </div>
 
-        <!-- Clean Showcase Slider (No Clipping Line / No Cut-off) -->
+        <!-- Clean Showcase Slider -->
         ${showcasePreviews.length > 0 ? `
           <div class="-mx-2 px-2 flex items-center gap-3 overflow-x-auto py-1" style="scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch;">
             ${showcasePreviews.map(img => `
