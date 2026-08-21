@@ -4,26 +4,35 @@ async function renderStoreOrders(container) {
     return;
   }
 
-  container.innerHTML = getLoadingSpinnerHTML();
+  const cacheKey = `/api/orders?email=${encodeURIComponent(state.user.email)}`;
+  const cached = window.apiCache?.get(cacheKey);
+
+  if (cached && Array.isArray(cached)) {
+    paintCustomerOrdersHTML(container, cached);
+  } else {
+    container.innerHTML = getLoadingSpinnerHTML();
+  }
 
   try {
-    const orders = await fetchJSON(`/api/orders?email=${encodeURIComponent(state.user.email)}`, {
+    const orders = await fetchJSON(cacheKey, {
       headers: { 'Authorization': `Bearer ${state.token}` }
-    }, false);
+    }, true);
 
     paintCustomerOrdersHTML(container, orders || []);
   } catch (err) {
-    container.innerHTML = `
-      <div class="space-y-4 max-w-xl mx-auto font-sans text-xs pb-24 animate-fadeIn px-1">
-        <div class="p-8 text-center bg-surface-900/80 rounded-3xl border border-white/5 space-y-2">
-          <span class="text-2xl block">📦</span>
-          <p class="text-rose-400 font-mono">Error loading purchased items: ${err.message}</p>
-          <button onclick="renderStoreOrders(document.getElementById('storeContent'))" class="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-white font-mono text-xs cursor-pointer">
-            Retry ↻
-          </button>
+    if (!cached) {
+      container.innerHTML = `
+        <div class="space-y-4 max-w-xl mx-auto font-sans text-xs pb-24 animate-fadeIn px-1">
+          <div class="p-8 text-center bg-surface-900/80 rounded-3xl border border-white/5 space-y-2">
+            <span class="text-2xl block">📦</span>
+            <p class="text-rose-400 font-mono">Error loading purchased items: ${err.message}</p>
+            <button onclick="renderStoreOrders(document.getElementById('storeContent'))" class="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-white font-mono text-xs cursor-pointer">
+              Retry ↻
+            </button>
+          </div>
         </div>
-      </div>
-    `;
+      `;
+    }
   }
 }
 
@@ -112,7 +121,6 @@ function paintCustomerOrdersHTML(container, orders) {
           return `
             <div class="bg-surface-900/80 rounded-3xl p-4 sm:p-5 border border-white/5 shadow-2xl space-y-3.5 relative overflow-hidden backdrop-blur-xl">
               
-              <!-- Status Header Badge -->
               <div class="flex items-center justify-between border-b border-white/5 pb-3">
                 <div class="flex items-center gap-2">
                   <span class="w-2.5 h-2.5 rounded-full ${isSuccess ? (isExpiredOrRevoked ? 'bg-amber-400' : 'bg-emerald-400') : isRejected ? 'bg-rose-500' : 'bg-amber-400 animate-pulse'}"></span>
@@ -124,7 +132,6 @@ function paintCustomerOrdersHTML(container, orders) {
                 </span>
               </div>
 
-              <!-- Rejection Notice Banner -->
               ${isRejected ? `
                 <div class="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 space-y-2 text-rose-200">
                   <div class="flex items-center justify-between text-rose-400 font-mono text-[10px] font-bold uppercase">
@@ -139,13 +146,11 @@ function paintCustomerOrdersHTML(container, orders) {
                 </div>
               ` : ''}
 
-              <!-- Product Info -->
               <div class="space-y-1">
                 <span class="text-slate-500 text-[10px] font-mono uppercase tracking-wider block font-bold">Product</span>
                 <h2 class="text-sm sm:text-base font-black text-white leading-tight">${order.product_name || 'Digital Subscription'}</h2>
               </div>
 
-              <!-- Price & Date Meta -->
               <div class="grid grid-cols-2 gap-2 bg-surface-950 p-3 rounded-2xl border border-white/5 font-mono text-[11px]">
                 <div>
                   <span class="text-slate-500 text-[9px] uppercase block">Amount Paid</span>
@@ -157,10 +162,8 @@ function paintCustomerOrdersHTML(container, orders) {
                 </div>
               </div>
 
-              <!-- Conditional Credentials / Clean Validity Footer -->
               ${isSuccess ? (
                 isExpiredOrRevoked ? `
-                  <!-- Expired / Revoked Slot State -->
                   <div class="p-4 rounded-2xl bg-surface-950 border border-amber-500/25 space-y-3 font-mono">
                     <div class="flex items-center justify-between">
                       <div class="flex items-center gap-2 text-amber-400 font-bold text-xs">
@@ -178,7 +181,6 @@ function paintCustomerOrdersHTML(container, orders) {
                     </button>
                   </div>
                 ` : `
-                  <!-- Clean Credentials Box -->
                   <div class="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-3 font-mono text-xs">
                     <div class="flex items-center justify-between">
                       <div class="flex items-center gap-2 text-emerald-400 font-bold">
@@ -204,7 +206,6 @@ function paintCustomerOrdersHTML(container, orders) {
                       ` : ''}
                     </div>
 
-                    <!-- Clean Validity Progress Footer -->
                     <div class="pt-1 space-y-1.5">
                       <div class="flex items-center justify-between text-[10px]">
                         <span class="text-slate-400 flex items-center gap-1.5">
@@ -216,7 +217,6 @@ function paintCustomerOrdersHTML(container, orders) {
                         </strong>
                       </div>
                       
-                      <!-- Subtle Progress Bar -->
                       <div class="w-full h-1.5 bg-surface-950 rounded-full overflow-hidden border border-white/5">
                         <div class="h-full rounded-full transition-all duration-500 ${remainingDays <= 5 ? 'bg-gradient-to-r from-amber-500 to-rose-500' : 'bg-gradient-to-r from-teal-400 to-emerald-400'}" style="width: ${percentLeft}%"></div>
                       </div>

@@ -3,249 +3,253 @@ let productTimerInterval = null;
 async function renderStoreProductDetails(container, productId) {
   if (productTimerInterval) clearInterval(productTimerInterval);
 
-  container.innerHTML = getLoadingSpinnerHTML();
+  // Check preloaded/cached product first for instant 0ms paint
+  const cached = (state.cachedProducts || []).find(p => p._id === productId) || 
+                 window.apiCache?.get(`/api/products/${productId}`);
+
+  if (cached) {
+    paintStoreProductHTML(container, cached);
+  } else {
+    container.innerHTML = getLoadingSpinnerHTML();
+  }
 
   try {
     const p = await fetchJSON(`/api/products/${productId}`);
+    paintStoreProductHTML(container, p);
+  } catch (err) {
+    if (!cached) {
+      container.innerHTML = `
+        <div class="p-8 text-center text-rose-400 font-mono text-xs">
+          Error loading product: ${err.message}
+        </div>
+      `;
+    }
+  }
+}
 
-    const basePrice = p.sale_price || 499;
-    const origBase = p.original_price || (basePrice * 2);
+function paintStoreProductHTML(container, p) {
+  const basePrice = p.sale_price || 499;
+  const origBase = p.original_price || (basePrice * 2);
 
-    const allImages = Array.isArray(p.images) && p.images.length > 0 
-      ? p.images 
-      : [(p.image || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800')];
+  const allImages = Array.isArray(p.images) && p.images.length > 0 
+    ? p.images 
+    : [(p.image || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800')];
 
-    // Main hero image is image #0
-    const mainHeroImage = allImages[0];
+  const mainHeroImage = allImages[0];
+  const showcasePreviews = allImages.length > 1 ? allImages.slice(1) : [];
 
-    // Showcase previews are all subsequent images (#1, #2, ...)
-    const showcasePreviews = allImages.length > 1 ? allImages.slice(1) : [];
+  window.currentProductSelection = {
+    productId: p._id,
+    name: p.name,
+    image: mainHeroImage,
+    basePrice: basePrice,
+    baseOrig: origBase,
+    subscriptionPricing: p.subscription_pricing || {},
+    devices: 1,
+    duration: '1_MONTH',
+    durationLabel: '1 Month (Standard Plan)',
+    durationMultiplier: 1,
+    deviceMultiplier: 1,
+    discountPercent: 50
+  };
 
-    window.currentProductSelection = {
-      productId: p._id,
-      name: p.name,
-      image: mainHeroImage,
-      basePrice: basePrice,
-      baseOrig: origBase,
-      subscriptionPricing: p.subscription_pricing || {},
-      devices: 1,
-      duration: '1_MONTH',
-      durationLabel: '1 Month (Standard Plan)',
-      durationMultiplier: 1,
-      deviceMultiplier: 1,
-      discountPercent: 50
-    };
+  container.innerHTML = `
+    <div class="space-y-5 pb-24 max-w-lg mx-auto font-sans animate-fadeIn text-xs px-2" onclick="closeDurationDropdownOutside(event)">
+      
+      <!-- Back Navigation & Status -->
+      <div class="flex items-center justify-between">
+        <button onclick="navigate('home')" class="flex items-center gap-1.5 text-slate-400 hover:text-white font-mono text-xs transition-colors py-1 cursor-pointer">
+          <span class="text-sm">←</span> <span>Vault</span>
+        </button>
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[10px] font-medium">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          Instant Delivery
+        </span>
+      </div>
 
-    container.innerHTML = `
-      <div class="space-y-5 pb-24 max-w-lg mx-auto font-sans animate-fadeIn text-xs px-2" onclick="closeDurationDropdownOutside(event)">
+      <!-- Seamless Deep-Fade Hero Image -->
+      <div class="-mx-2 relative overflow-hidden bg-transparent aspect-[16/10] select-none">
+        <img src="${mainHeroImage}" class="w-full h-full object-cover">
         
-        <!-- Back Navigation & Status -->
-        <div class="flex items-center justify-between">
-          <button onclick="navigate('home')" class="flex items-center gap-1.5 text-slate-400 hover:text-white font-mono text-xs transition-colors py-1 cursor-pointer">
-            <span class="text-sm">←</span> <span>Vault</span>
-          </button>
-          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[10px] font-medium">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            Instant Delivery
+        <div class="absolute inset-0 bg-gradient-to-t from-[#07090e] via-[#07090e]/75 to-transparent pointer-events-none" style="background: linear-gradient(to top, rgba(7, 9, 14, 1) 0%, rgba(7, 9, 14, 0.9) 18%, rgba(7, 9, 14, 0.4) 45%, rgba(7, 9, 14, 0) 80%);"></div>
+
+        <div class="absolute bottom-2 left-4 right-4 flex items-end justify-between z-10">
+          <div>
+            <span class="text-[10px] font-mono tracking-widest text-emerald-400 uppercase font-bold block mb-1">${p.category || 'OTT'}</span>
+            <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">${p.name}</h1>
+          </div>
+        </div>
+      </div>
+
+      <!-- Configuration Controls -->
+      <div class="space-y-4 pt-1">
+        
+        <!-- Access Duration Dropdown -->
+        <div class="space-y-1.5 relative">
+          <div class="flex justify-between items-center text-[10px] font-mono uppercase tracking-wider text-slate-400">
+            <span>Access Duration</span>
+            <span class="text-emerald-400 font-bold transition-all duration-300" id="durationSubLabel">STANDARD PLAN</span>
+          </div>
+
+          <div class="relative" onclick="event.stopPropagation()">
+            <button type="button" onclick="toggleDurationMenu()" id="durationTriggerBtn"
+              class="w-full py-3.5 px-4 rounded-2xl bg-surface-900 text-white text-xs font-mono flex items-center justify-between hover:bg-surface-800 transition-all cursor-pointer">
+              <span id="selectedDurationText" class="font-bold transition-all duration-200">1 Month (Standard Plan)</span>
+              <span id="durationArrowIcon" class="text-slate-400 text-[10px] transition-transform duration-300">▼</span>
+            </button>
+
+            <div id="durationDropdownMenu" class="hidden absolute top-full left-0 right-0 mt-2 space-y-1 p-2 rounded-2xl bg-surface-900/95 backdrop-blur-xl border border-white/10 shadow-2xl z-30 transform transition-all duration-300 opacity-0 -translate-y-2">
+              <div onclick="selectDurationCustom('1_MONTH', 1, 50, '1 Month (Standard Plan)', 'STANDARD PLAN')" 
+                class="p-3 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-colors">
+                <span class="text-xs font-mono text-white font-bold">1 Month</span>
+                <span class="text-[10px] font-mono text-slate-400">Standard Plan</span>
+              </div>
+
+              <div onclick="selectDurationCustom('3_MONTHS', 2.55, 15, '3 Months (Save 15% OFF)', '15% OFF PLAN')" 
+                class="p-3 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-colors">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-mono text-white font-bold">3 Months</span>
+                  <span class="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 text-[8px] font-mono font-bold rounded">15% OFF</span>
+                </div>
+                <span class="text-[10px] font-mono text-slate-400">Quarterly</span>
+              </div>
+
+              <div onclick="selectDurationCustom('6_MONTHS', 4.5, 25, '6 Months (Save 25% OFF)', '25% OFF PLAN')" 
+                class="p-3 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-colors">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-mono text-white font-bold">6 Months</span>
+                  <span class="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 text-[8px] font-mono font-bold rounded">25% OFF</span>
+                </div>
+                <span class="text-[10px] font-mono text-slate-400">Half-Year</span>
+              </div>
+
+              <div onclick="selectDurationCustom('1_YEAR', 7.2, 40, '1 Year / 12 Months (Best Value — Save 40% OFF)', 'BEST VALUE 40% OFF')" 
+                class="p-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 flex items-center justify-between cursor-pointer transition-colors">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-mono text-emerald-400 font-bold">1 Year (12 Mo)</span>
+                  <span class="px-1.5 py-0.5 bg-emerald-500 text-gray-950 text-[8px] font-mono font-black rounded">BEST VALUE</span>
+                </div>
+                <span class="text-[10px] font-mono text-emerald-400 font-bold">40% OFF</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Total & Stepper -->
+        <div class="pt-2 flex items-center justify-between gap-2">
+          <div class="space-y-1">
+            <span class="text-slate-500 text-[10px] uppercase font-mono block">Order Total</span>
+            <div class="flex items-center gap-2 min-h-[36px]">
+              <span class="text-2xl sm:text-3xl font-black text-white font-mono leading-none transition-all duration-300 inline-block min-w-[70px]" id="calculatedSalePrice">₹${basePrice}</span>
+              <span class="text-xs text-slate-500 line-through font-mono leading-none transition-all duration-300 inline-block" id="calculatedOrigPrice">₹${origBase}</span>
+              <span class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg leading-none transition-all duration-300 whitespace-nowrap" id="savingsBadge">50% OFF</span>
+            </div>
+          </div>
+
+          <!-- Stepper -->
+          <div class="flex flex-col items-end gap-1">
+            <span class="text-[9px] font-mono uppercase text-slate-400 tracking-wider">Device Quantity</span>
+            <div class="flex items-center gap-2 bg-surface-900 p-1.5 rounded-2xl border border-white/5">
+              <button type="button" onclick="adjustDeviceQuantity(-1)" 
+                class="w-7 h-7 rounded-xl bg-white/5 hover:bg-white/10 active:scale-90 text-white font-mono font-bold flex items-center justify-center text-sm cursor-pointer transition-all">
+                −
+              </button>
+
+              <span class="text-xs font-mono font-bold text-emerald-400 min-w-[65px] text-center transition-all duration-200 inline-block" id="deviceDisplayCount">1 Device</span>
+
+              <button type="button" onclick="adjustDeviceQuantity(1)" 
+                class="w-7 h-7 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-90 text-emerald-400 font-mono font-bold flex items-center justify-center text-sm cursor-pointer transition-all">
+                +
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Add to Cart Action Button -->
+        <button onclick="addProductToConfiguredCart()" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black tracking-wider uppercase shadow-xl shadow-emerald-500/25 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2 cursor-pointer font-mono mt-2">
+          <span>+ ADD TO CART</span>
+        </button>
+
+      </div>
+
+      <!-- Limited Flash Deal Box -->
+      <div class="bg-surface-900/60 rounded-3xl p-4 flex items-center justify-between font-mono shadow-lg">
+        <div class="flex items-center gap-2.5">
+          <span class="text-base animate-pulse">🔥</span>
+          <div>
+            <span class="text-xs text-white font-sans font-bold block">Limited Flash Deal</span>
+            <span class="text-[10px] text-slate-400 font-sans">Special discount expires in:</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5 text-slate-400 text-xs" id="offerCountdownTimer">
+          <span class="text-emerald-400 font-bold bg-surface-950 px-2.5 py-1 rounded-xl" id="cd-hours">02</span>:
+          <span class="text-emerald-400 font-bold bg-surface-950 px-2.5 py-1 rounded-xl" id="cd-mins">59</span>:
+          <span class="text-emerald-400 font-bold bg-surface-950 px-2.5 py-1 rounded-xl" id="cd-secs">59</span>
+        </div>
+      </div>
+
+      <!-- Clean Showcase Slider -->
+      ${showcasePreviews.length > 0 ? `
+        <div class="-mx-2 px-2 flex items-center gap-3 overflow-x-auto py-1" style="scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch;">
+          ${showcasePreviews.map(img => `
+            <div class="flex-shrink-0 w-44 sm:w-48 aspect-[9/16] rounded-3xl overflow-hidden bg-surface-900 border border-white/10 shadow-2xl">
+              <img src="${img}" alt="Product Preview" class="w-full h-full object-cover select-none">
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+
+      <!-- Why Buy From Us Trust Section -->
+      <div class="bg-surface-900/70 rounded-3xl p-5 border border-white/5 space-y-4 shadow-xl">
+        
+        <div class="flex items-center justify-between border-b border-white/5 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-emerald-400 text-base">🛡️</span>
+            <h2 class="text-white font-bold text-xs uppercase tracking-wider font-mono">Why Buy From Us?</h2>
+          </div>
+          <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[9px] font-black uppercase">
+            100% Guaranteed
           </span>
         </div>
 
-        <!-- 100% Seamless Deep-Fade Hero Image -->
-        <div class="-mx-2 relative overflow-hidden bg-transparent aspect-[16/10] select-none">
-          <img src="${mainHeroImage}" class="w-full h-full object-cover">
-          
-          <div class="absolute inset-0 bg-gradient-to-t from-[#07090e] via-[#07090e]/75 to-transparent pointer-events-none" style="background: linear-gradient(to top, rgba(7, 9, 14, 1) 0%, rgba(7, 9, 14, 0.9) 18%, rgba(7, 9, 14, 0.4) 45%, rgba(7, 9, 14, 0) 80%);"></div>
-
-          <div class="absolute bottom-2 left-4 right-4 flex items-end justify-between z-10">
-            <div>
-              <span class="text-[10px] font-mono tracking-widest text-emerald-400 uppercase font-bold block mb-1">${p.category || 'OTT'}</span>
-              <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">${p.name}</h1>
+        <div class="space-y-2.5 font-sans text-[11px]">
+          <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/60 border border-white/5">
+            <div class="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 text-sm font-mono">
+              🎧
             </div>
-          </div>
-        </div>
-
-        <!-- Configuration Controls -->
-        <div class="space-y-4 pt-1">
-          
-          <!-- Access Duration Dropdown (Floating Overlay) -->
-          <div class="space-y-1.5 relative">
-            <div class="flex justify-between items-center text-[10px] font-mono uppercase tracking-wider text-slate-400">
-              <span>Access Duration</span>
-              <span class="text-emerald-400 font-bold transition-all duration-300" id="durationSubLabel">STANDARD PLAN</span>
-            </div>
-
-            <div class="relative" onclick="event.stopPropagation()">
-              <button type="button" onclick="toggleDurationMenu()" id="durationTriggerBtn"
-                class="w-full py-3.5 px-4 rounded-2xl bg-surface-900 text-white text-xs font-mono flex items-center justify-between hover:bg-surface-800 transition-all cursor-pointer">
-                <span id="selectedDurationText" class="font-bold transition-all duration-200">1 Month (Standard Plan)</span>
-                <span id="durationArrowIcon" class="text-slate-400 text-[10px] transition-transform duration-300">▼</span>
-              </button>
-
-              <!-- Floating Menu -->
-              <div id="durationDropdownMenu" class="hidden absolute top-full left-0 right-0 mt-2 space-y-1 p-2 rounded-2xl bg-surface-900/95 backdrop-blur-xl border border-white/10 shadow-2xl z-30 transform transition-all duration-300 opacity-0 -translate-y-2">
-                <div onclick="selectDurationCustom('1_MONTH', 1, 50, '1 Month (Standard Plan)', 'STANDARD PLAN')" 
-                  class="p-3 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-colors">
-                  <span class="text-xs font-mono text-white font-bold">1 Month</span>
-                  <span class="text-[10px] font-mono text-slate-400">Standard Plan</span>
-                </div>
-
-                <div onclick="selectDurationCustom('3_MONTHS', 2.55, 15, '3 Months (Save 15% OFF)', '15% OFF PLAN')" 
-                  class="p-3 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-colors">
-                  <div class="flex items-center gap-2">
-                    <span class="text-xs font-mono text-white font-bold">3 Months</span>
-                    <span class="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 text-[8px] font-mono font-bold rounded">15% OFF</span>
-                  </div>
-                  <span class="text-[10px] font-mono text-slate-400">Quarterly</span>
-                </div>
-
-                <div onclick="selectDurationCustom('6_MONTHS', 4.5, 25, '6 Months (Save 25% OFF)', '25% OFF PLAN')" 
-                  class="p-3 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-colors">
-                  <div class="flex items-center gap-2">
-                    <span class="text-xs font-mono text-white font-bold">6 Months</span>
-                    <span class="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 text-[8px] font-mono font-bold rounded">25% OFF</span>
-                  </div>
-                  <span class="text-[10px] font-mono text-slate-400">Half-Year</span>
-                </div>
-
-                <div onclick="selectDurationCustom('1_YEAR', 7.2, 40, '1 Year / 12 Months (Best Value — Save 40% OFF)', 'BEST VALUE 40% OFF')" 
-                  class="p-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 flex items-center justify-between cursor-pointer transition-colors">
-                  <div class="flex items-center gap-2">
-                    <span class="text-xs font-mono text-emerald-400 font-bold">1 Year (12 Mo)</span>
-                    <span class="px-1.5 py-0.5 bg-emerald-500 text-gray-950 text-[8px] font-mono font-black rounded">BEST VALUE</span>
-                  </div>
-                  <span class="text-[10px] font-mono text-emerald-400 font-bold">40% OFF</span>
-                </div>
-              </div>
+            <div class="space-y-0.5">
+              <strong class="text-white font-bold block text-xs">24/7 Support</strong>
+              <p class="text-slate-400 leading-relaxed">Round-the-clock priority customer assistance on Telegram for instant resolution.</p>
             </div>
           </div>
 
-          <!-- Total & Stepper -->
-          <div class="pt-2 flex items-center justify-between gap-2">
-            <div class="space-y-1">
-              <span class="text-slate-500 text-[10px] uppercase font-mono block">Order Total</span>
-              <div class="flex items-center gap-2 min-h-[36px]">
-                <span class="text-2xl sm:text-3xl font-black text-white font-mono leading-none transition-all duration-300 inline-block min-w-[70px]" id="calculatedSalePrice">₹${basePrice}</span>
-                <span class="text-xs text-slate-500 line-through font-mono leading-none transition-all duration-300 inline-block" id="calculatedOrigPrice">₹${origBase}</span>
-                <span class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg leading-none transition-all duration-300 whitespace-nowrap" id="savingsBadge">50% OFF</span>
-              </div>
+          <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/60 border border-white/5">
+            <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 text-sm font-mono">
+              🔒
             </div>
-
-            <!-- Stepper -->
-            <div class="flex flex-col items-end gap-1">
-              <span class="text-[9px] font-mono uppercase text-slate-400 tracking-wider">Device Quantity</span>
-              <div class="flex items-center gap-2 bg-surface-900 p-1.5 rounded-2xl border border-white/5">
-                <button type="button" onclick="adjustDeviceQuantity(-1)" 
-                  class="w-7 h-7 rounded-xl bg-white/5 hover:bg-white/10 active:scale-90 text-white font-mono font-bold flex items-center justify-center text-sm cursor-pointer transition-all">
-                  −
-                </button>
-
-                <span class="text-xs font-mono font-bold text-emerald-400 min-w-[65px] text-center transition-all duration-200 inline-block" id="deviceDisplayCount">1 Device</span>
-
-                <button type="button" onclick="adjustDeviceQuantity(1)" 
-                  class="w-7 h-7 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-90 text-emerald-400 font-mono font-bold flex items-center justify-center text-sm cursor-pointer transition-all">
-                  +
-                </button>
-              </div>
+            <div class="space-y-0.5">
+              <strong class="text-white font-bold block text-xs">Safe Accounts</strong>
+              <p class="text-slate-400 leading-relaxed">Legitimately procured, private, and secure subscriptions with zero ban risk.</p>
             </div>
           </div>
 
-          <!-- Add to Cart Action Button -->
-          <button onclick="addProductToConfiguredCart()" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black tracking-wider uppercase shadow-xl shadow-emerald-500/25 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2 cursor-pointer font-mono mt-2">
-            <span>+ ADD TO CART</span>
-          </button>
-
-        </div>
-
-        <!-- Limited Flash Deal Box -->
-        <div class="bg-surface-900/60 rounded-3xl p-4 flex items-center justify-between font-mono shadow-lg">
-          <div class="flex items-center gap-2.5">
-            <span class="text-base animate-pulse">🔥</span>
-            <div>
-              <span class="text-xs text-white font-sans font-bold block">Limited Flash Deal</span>
-              <span class="text-[10px] text-slate-400 font-sans">Special discount expires in:</span>
+          <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/60 border border-white/5">
+            <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0 text-sm font-mono">
+              ⚡
+            </div>
+            <div class="space-y-0.5">
+              <strong class="text-white font-bold block text-xs">100% Replacement</strong>
+              <p class="text-slate-400 leading-relaxed">Hassle-free instant replacement guarantee for the complete duration of your plan.</p>
             </div>
           </div>
-          <div class="flex items-center gap-1.5 text-slate-400 text-xs" id="offerCountdownTimer">
-            <span class="text-emerald-400 font-bold bg-surface-950 px-2.5 py-1 rounded-xl" id="cd-hours">02</span>:
-            <span class="text-emerald-400 font-bold bg-surface-950 px-2.5 py-1 rounded-xl" id="cd-mins">59</span>:
-            <span class="text-emerald-400 font-bold bg-surface-950 px-2.5 py-1 rounded-xl" id="cd-secs">59</span>
-          </div>
-        </div>
-
-        <!-- Clean Showcase Slider -->
-        ${showcasePreviews.length > 0 ? `
-          <div class="-mx-2 px-2 flex items-center gap-3 overflow-x-auto py-1" style="scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch;">
-            ${showcasePreviews.map(img => `
-              <div class="flex-shrink-0 w-44 sm:w-48 aspect-[9/16] rounded-3xl overflow-hidden bg-surface-900 border border-white/10 shadow-2xl">
-                <img src="${img}" alt="Product Preview" class="w-full h-full object-cover select-none">
-              </div>
-            `).join('')}
-          </div>
-        ` : ''}
-
-        <!-- Why Buy From Us Trust Section (With 24/7 Support, Safe Accounts, 100% Replacement) -->
-        <div class="bg-surface-900/70 rounded-3xl p-5 border border-white/5 space-y-4 shadow-xl">
-          
-          <div class="flex items-center justify-between border-b border-white/5 pb-3">
-            <div class="flex items-center gap-2">
-              <span class="text-emerald-400 text-base">🛡️</span>
-              <h2 class="text-white font-bold text-xs uppercase tracking-wider font-mono">Why Buy From Us?</h2>
-            </div>
-            <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[9px] font-black uppercase">
-              100% Guaranteed
-            </span>
-          </div>
-
-          <div class="space-y-2.5 font-sans text-[11px]">
-            
-            <!-- Point 1: 24/7 Support -->
-            <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/60 border border-white/5">
-              <div class="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 text-sm font-mono">
-                🎧
-              </div>
-              <div class="space-y-0.5">
-                <strong class="text-white font-bold block text-xs">24/7 Support</strong>
-                <p class="text-slate-400 leading-relaxed">Round-the-clock priority customer assistance on Telegram for instant resolution.</p>
-              </div>
-            </div>
-
-            <!-- Point 2: Safe Accounts -->
-            <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/60 border border-white/5">
-              <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 text-sm font-mono">
-                🔒
-              </div>
-              <div class="space-y-0.5">
-                <strong class="text-white font-bold block text-xs">Safe Accounts</strong>
-                <p class="text-slate-400 leading-relaxed">Legitimately procured, private, and secure subscriptions with zero ban risk.</p>
-              </div>
-            </div>
-
-            <!-- Point 3: 100% Replacement -->
-            <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/60 border border-white/5">
-              <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0 text-sm font-mono">
-                ⚡
-              </div>
-              <div class="space-y-0.5">
-                <strong class="text-white font-bold block text-xs">100% Replacement</strong>
-                <p class="text-slate-400 leading-relaxed">Hassle-free instant replacement guarantee for the complete duration of your plan.</p>
-              </div>
-            </div>
-
-          </div>
-
         </div>
 
       </div>
-    `;
 
-    startThreeHourCountdownLoop();
-  } catch (err) {
-    container.innerHTML = `
-      <div class="p-8 text-center text-rose-400 font-mono text-xs">
-        Error loading product: ${err.message}
-      </div>
-    `;
-  }
+    </div>
+  `;
+
+  startThreeHourCountdownLoop();
 }
 
 function startThreeHourCountdownLoop() {
