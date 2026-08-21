@@ -44,7 +44,7 @@ async function renderStoreProductDetails(container, productId) {
           </span>
         </div>
 
-        <!-- Full-Fit Hero Showcase -->
+        <!-- Full-Fit Hero Showcase Banner -->
         <div class="relative rounded-3xl overflow-hidden bg-surface-950 w-full aspect-[16/10] shadow-2xl">
           <img src="${showcaseImages[0]}" class="w-full h-full object-cover">
           <div class="absolute inset-0 bg-gradient-to-t from-surface-950/95 via-surface-950/20 to-transparent"></div>
@@ -57,26 +57,6 @@ async function renderStoreProductDetails(container, productId) {
             <span class="px-2.5 py-1 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-mono text-[9px] font-black uppercase flex items-center gap-1">
               ⚡ ${p.category || 'OTT'}
             </span>
-          </div>
-        </div>
-
-        <!-- Google Play Store-Style Showcase Reel -->
-        <div class="space-y-2">
-          <div class="flex items-center justify-between px-1 font-mono text-[10px] uppercase font-bold text-slate-400">
-            <span>Showcase Previews</span>
-            <span class="text-emerald-400 tracking-wider">Swipe to explore →</span>
-          </div>
-
-          <div class="flex items-center gap-3 overflow-x-auto py-1 px-1 custom-scroll snap-x snap-mandatory" style="scrollbar-width: none; -ms-overflow-style: none;">
-            ${showcaseImages.map((img, idx) => `
-              <div class="flex-shrink-0 w-36 sm:w-40 aspect-[9/16] rounded-2xl overflow-hidden bg-surface-900 border border-white/10 shadow-xl relative group snap-start">
-                <img src="${img}" alt="Preview ${idx + 1}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-                <div class="absolute inset-0 bg-gradient-to-t from-surface-950/80 via-transparent to-transparent pointer-events-none"></div>
-                <span class="absolute bottom-2 left-2.5 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[9px] font-mono text-white/90 font-bold border border-white/10">
-                  #0${idx + 1}
-                </span>
-              </div>
-            `).join('')}
           </div>
         </div>
 
@@ -185,6 +165,26 @@ async function renderStoreProductDetails(container, productId) {
             <span class="text-emerald-400 font-bold bg-surface-950 px-2.5 py-1 rounded-xl" id="cd-hours">02</span>:
             <span class="text-emerald-400 font-bold bg-surface-950 px-2.5 py-1 rounded-xl" id="cd-mins">59</span>:
             <span class="text-emerald-400 font-bold bg-surface-950 px-2.5 py-1 rounded-xl" id="cd-secs">59</span>
+          </div>
+        </div>
+
+        <!-- Google Play Store-Style Showcase Slides (Positioned Below Flash Deal) -->
+        <div class="space-y-2 pt-1">
+          <div class="flex items-center justify-between px-1 font-mono text-[10px] uppercase font-bold text-slate-400">
+            <span>Showcase Previews</span>
+            <span class="text-emerald-400 tracking-wider">Swipe to explore →</span>
+          </div>
+
+          <div class="flex items-center gap-3 overflow-x-auto py-1 px-1 custom-scroll snap-x snap-mandatory" style="scrollbar-width: none; -ms-overflow-style: none;">
+            ${showcaseImages.map((img, idx) => `
+              <div class="flex-shrink-0 w-36 sm:w-40 aspect-[9/16] rounded-2xl overflow-hidden bg-surface-900 border border-white/10 shadow-xl relative group snap-start">
+                <img src="${img}" alt="Preview ${idx + 1}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                <div class="absolute inset-0 bg-gradient-to-t from-surface-950/80 via-transparent to-transparent pointer-events-none"></div>
+                <span class="absolute bottom-2 left-2.5 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[9px] font-mono text-white/90 font-bold border border-white/10">
+                  #0${idx + 1}
+                </span>
+              </div>
+            `).join('')}
           </div>
         </div>
 
