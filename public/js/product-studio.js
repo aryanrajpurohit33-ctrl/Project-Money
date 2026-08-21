@@ -48,7 +48,7 @@ function paintProductStudioHTML(container, products) {
             <p class="text-slate-400 font-mono">No products listed in catalog yet.</p>
           </div>
         ` : products.map(p => {
-          const imgs = Array.isArray(p.images) && p.images.length > 0 ? p.images : (p.image ? [p.image] : ['/assets/placeholder.png']);
+          const imgs = Array.isArray(p.images) && p.images.length > 0 ? p.images : (p.image ? [p.image] : ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800']);
           return `
             <div class="admin-card rounded-3xl p-4 sm:p-5 border border-admin-border hover:border-white/15 transition-all shadow-xl space-y-4 flex flex-col justify-between">
               
@@ -109,7 +109,7 @@ function openProductStudioModal(productId = null) {
     <div class="space-y-4 font-sans text-xs">
       <div class="border-b border-white/10 pb-3">
         <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[10px] font-bold uppercase">Product Studio</span>
-        <h2 class="text-lg font-black text-white mt-1">${prod ? 'Edit Product & Slideshow Gallery' : 'Create New Product'}</h2>
+        <h2 class="text-lg font-black text-white mt-1">${prod ? 'Edit Product & Showcase Gallery' : 'Create New Product'}</h2>
       </div>
 
       <form onsubmit="handleSaveProductSubmit(event, '${productId || ''}')" class="space-y-4 font-mono">
@@ -141,10 +141,10 @@ function openProductStudioModal(productId = null) {
           </div>
         </div>
 
-        <!-- Multi-Image Slideshow Gallery Manager -->
+        <!-- Multi-Image Showcase Gallery Manager -->
         <div class="p-3.5 rounded-2xl bg-surface-950 border border-white/10 space-y-3">
           <div class="flex items-center justify-between">
-            <span class="text-emerald-400 font-bold text-xs">📷 Product Slideshow Images</span>
+            <span class="text-emerald-400 font-bold text-xs">📷 Showcase Images</span>
             <span class="text-slate-400 text-[10px]" id="galleryCountBadge">${window.currentEditingGalleryImages.length} images added</span>
           </div>
 
@@ -162,7 +162,7 @@ function openProductStudioModal(productId = null) {
             </div>
           </div>
 
-          <!-- Live Thumbnails Gallery Strip -->
+          <!-- Live Thumbnails Strip -->
           <div id="galleryThumbnailsContainer" class="flex items-center gap-2 overflow-x-auto py-2 custom-scroll">
             ${renderGalleryThumbnailsHTML()}
           </div>
@@ -170,7 +170,7 @@ function openProductStudioModal(productId = null) {
 
         <div>
           <label class="text-slate-400 text-[10px] block mb-1">Customer Usage Rules & Instructions</label>
-          <textarea id="prodInstructions" rows="2" class="w-full p-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500 font-mono">${prod?.customer_instructions || 'Never share your account password.'}</textarea>
+          <textarea id="prodInstructions" rows="2" class="w-full p-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500 font-mono">${prod?.custom_instructions || prod?.customer_instructions || 'Never share your account password.'}</textarea>
         </div>
 
         <div class="flex gap-2 pt-2">
@@ -189,7 +189,7 @@ function openProductStudioModal(productId = null) {
 
 function renderGalleryThumbnailsHTML() {
   if (!window.currentEditingGalleryImages || window.currentEditingGalleryImages.length === 0) {
-    return `<span class="text-slate-500 text-[10px] font-mono">No slideshow images added yet.</span>`;
+    return `<span class="text-slate-500 text-[10px] font-mono">No showcase images added yet.</span>`;
   }
   return window.currentEditingGalleryImages.map((src, idx) => `
     <div class="relative w-16 h-16 rounded-xl overflow-hidden bg-surface-900 border border-white/10 flex-shrink-0 group">
@@ -246,8 +246,9 @@ async function handleSaveProductSubmit(e, productId) {
     brand: document.getElementById('prodBrand').value.trim(),
     sale_price: Number(document.getElementById('prodSalePrice').value) || 499,
     original_price: Number(document.getElementById('prodOrigPrice').value) || 999,
+    custom_instructions: document.getElementById('prodInstructions').value.trim(),
     customer_instructions: document.getElementById('prodInstructions').value.trim(),
-    images: window.currentEditingGalleryImages
+    images: window.currentEditingGalleryImages.length > 0 ? window.currentEditingGalleryImages : ['https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800']
   };
 
   try {
@@ -260,7 +261,7 @@ async function handleSaveProductSubmit(e, productId) {
         },
         body: JSON.stringify(payload)
       });
-      showToast('✓ Product updated with new slideshow images');
+      showToast('✓ Product updated with showcase images');
     } else {
       await fetchJSON('/api/admin/products', {
         method: 'POST',
