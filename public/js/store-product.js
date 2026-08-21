@@ -1,9 +1,4 @@
-window.currentProductSlideIndex = 0;
-
 async function renderStoreProductDetails(container, productId) {
-  window.currentProductSlideIndex = 0;
-
-  // Check local cache for instant zero-latency paint
   const cachedProducts = state.cachedProducts || window.apiCache?.get('/api/products')?.data;
   let prod = null;
   if (Array.isArray(cachedProducts)) {
@@ -35,7 +30,7 @@ async function renderStoreProductDetails(container, productId) {
 }
 
 function paintProductDetailsHTML(container, p) {
-  const images = Array.isArray(p.images) && p.images.length > 0 ? p.images : (p.image ? [p.image] : ['/assets/placeholder.png']);
+  const imgUrl = (Array.isArray(p.images) && p.images[0]) || p.image || '/assets/placeholder.png';
   const activePlanPrice = p.sale_price || 499;
   const originalPrice = p.original_price || 999;
   const discount = Math.round(((originalPrice - activePlanPrice) / originalPrice) * 100) || 50;
@@ -43,7 +38,6 @@ function paintProductDetailsHTML(container, p) {
   container.innerHTML = `
     <div class="space-y-5 max-w-lg mx-auto font-sans text-xs pb-28 animate-fadeIn px-1">
       
-      <!-- Top Navigation -->
       <div class="flex items-center justify-between">
         <button onclick="navigate('home')" class="flex items-center gap-1.5 text-slate-400 hover:text-white font-mono text-xs transition-colors py-1 cursor-pointer">
           <span class="text-sm">←</span> <span>All Products</span>
@@ -53,55 +47,22 @@ function paintProductDetailsHTML(container, p) {
         </span>
       </div>
 
-      <!-- Slideshow Hero Card -->
-      <div class="relative bg-surface-900/90 rounded-3xl border border-white/10 overflow-hidden shadow-2xl group">
-        
-        <!-- Slides Container -->
-        <div class="relative w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden bg-surface-950 flex items-center justify-center">
-          <div id="productSlidesTrack" class="flex transition-transform duration-300 ease-out h-full w-full">
-            ${images.map((img, idx) => `
-              <div class="w-full h-full flex-shrink-0 relative flex items-center justify-center p-4">
-                <img src="${img}" alt="${p.name} Slide ${idx + 1}" class="w-full h-full object-contain rounded-2xl select-none pointer-events-none">
-                <!-- Subtle Gradient Shadow -->
-                <div class="absolute inset-0 bg-gradient-to-t from-surface-950/80 via-transparent to-transparent pointer-events-none"></div>
-              </div>
-            `).join('')}
-          </div>
-
-          <!-- Left/Right Slide Controls (Visible if more than 1 image) -->
-          ${images.length > 1 ? `
-            <button type="button" onclick="moveProductSlide(-1, ${images.length})" class="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10 text-white flex items-center justify-center transition-all cursor-pointer z-10 active:scale-90">
-              ‹
-            </button>
-            <button type="button" onclick="moveProductSlide(1, ${images.length})" class="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10 text-white flex items-center justify-center transition-all cursor-pointer z-10 active:scale-90">
-              ›
-            </button>
-
-            <!-- Bottom Dot Indicators -->
-            <div class="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-1.5 z-10">
-              ${images.map((_, idx) => `
-                <button type="button" onclick="goToProductSlide(${idx}, ${images.length})" id="slideDot-${idx}" class="h-1.5 rounded-full transition-all duration-300 ${idx === 0 ? 'w-5 bg-emerald-400' : 'w-1.5 bg-white/30'}"></button>
-              `).join('')}
-            </div>
-          ` : ''}
-
-          <!-- Floating Category Badge -->
-          <div class="absolute top-3.5 right-3.5 z-10">
+      <div class="relative bg-surface-900/90 rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
+        <div class="relative w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden bg-surface-950 flex items-center justify-center p-4">
+          <img src="${imgUrl}" alt="${p.name}" class="w-full h-full object-contain rounded-2xl">
+          <div class="absolute top-3.5 right-3.5">
             <span class="px-2.5 py-1 rounded-xl bg-surface-950/80 backdrop-blur-md border border-white/10 text-emerald-400 font-mono text-[10px] font-bold uppercase flex items-center gap-1">
               <span>⚡</span> <span>${p.category || 'OTT'}</span>
             </span>
           </div>
         </div>
 
-        <!-- Product Title Bar -->
         <div class="p-4 sm:p-5 border-t border-white/5 space-y-1">
           <span class="text-emerald-400 font-mono text-[10px] uppercase font-bold tracking-widest block">${p.brand || 'Nexus Digital'}</span>
           <h1 class="text-lg sm:text-xl font-black text-white leading-tight tracking-tight">${p.name}</h1>
         </div>
-
       </div>
 
-      <!-- Duration Selector & Pricing Settings -->
       <div class="space-y-3 font-mono">
         <div class="flex items-center justify-between text-[10px] uppercase font-bold">
           <span class="text-slate-400">Access Duration</span>
@@ -119,7 +80,6 @@ function paintProductDetailsHTML(container, p) {
         </div>
       </div>
 
-      <!-- Pricing & Device Quantity Row -->
       <div class="grid grid-cols-2 gap-3 items-center pt-1 font-mono">
         <div class="space-y-0.5">
           <span class="text-slate-500 text-[10px] uppercase font-bold block">Order Total</span>
@@ -140,12 +100,10 @@ function paintProductDetailsHTML(container, p) {
         </div>
       </div>
 
-      <!-- Add To Cart Primary Button -->
       <button onclick="handleAddCurrentProductToCart('${p._id}', '${p.name.replace(/'/g, "\\'")}', ${activePlanPrice})" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-gray-950 font-black uppercase text-xs tracking-wider transition-all cursor-pointer shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2 font-mono">
         <span>+ ADD TO CART</span>
       </button>
 
-      <!-- Flash Deal Banner -->
       <div class="p-4 rounded-2xl bg-surface-900/80 border border-white/5 flex items-center justify-between font-mono shadow-md">
         <div class="flex items-center gap-2.5">
           <span class="text-xl">🔥</span>
@@ -159,7 +117,6 @@ function paintProductDetailsHTML(container, p) {
         </div>
       </div>
 
-      <!-- Mandatory Usage Instructions -->
       <div class="p-4 rounded-2xl bg-surface-900/80 border border-white/5 space-y-2 text-slate-300">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2 text-amber-400 font-bold text-xs">
@@ -174,34 +131,6 @@ function paintProductDetailsHTML(container, p) {
 
     </div>
   `;
-}
-
-function moveProductSlide(direction, total) {
-  if (total <= 1) return;
-  window.currentProductSlideIndex = (window.currentProductSlideIndex + direction + total) % total;
-  updateSlideshowView(total);
-}
-
-function goToProductSlide(index, total) {
-  window.currentProductSlideIndex = index;
-  updateSlideshowView(total);
-}
-
-function updateSlideshowView(total) {
-  const track = document.getElementById('productSlidesTrack');
-  if (track) {
-    track.style.transform = `translateX(-${window.currentProductSlideIndex * 100}%)`;
-  }
-  for (let i = 0; i < total; i++) {
-    const dot = document.getElementById(`slideDot-${i}`);
-    if (dot) {
-      if (i === window.currentProductSlideIndex) {
-        dot.className = 'h-1.5 w-5 rounded-full bg-emerald-400 transition-all duration-300';
-      } else {
-        dot.className = 'h-1.5 w-1.5 rounded-full bg-white/30 transition-all duration-300';
-      }
-    }
-  }
 }
 
 let selectedDeviceQty = 1;
