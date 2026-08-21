@@ -27,6 +27,35 @@ async function renderStoreOrders(container) {
   }
 }
 
+function calculateRemainingDays(order) {
+  const createdAt = new Date(order.created_at || order.createdAt || Date.now()).getTime();
+
+  // If backend provided an explicit expiry date
+  if (order.expires_at || order.expiry_date) {
+    const expiry = new Date(order.expires_at || order.expiry_date).getTime();
+    const diff = Math.ceil((expiry - Date.now()) / (1000 * 60 * 60 * 24));
+    return Math.max(0, diff);
+  }
+
+  // Parse duration from product name or duration string (e.g. 1 Month, 3 Months, 1 Year)
+  const name = (order.product_name || order.duration || '').toLowerCase();
+  let days = 30; // default 1 month
+
+  if (name.includes('1 year') || name.includes('12 month') || name.includes('1_year')) {
+    days = 365;
+  } else if (name.includes('6 month') || name.includes('6_month')) {
+    days = 180;
+  } else if (name.includes('3 month') || name.includes('3_month')) {
+    days = 90;
+  } else if (name.includes('1 month') || name.includes('1_month')) {
+    days = 30;
+  }
+
+  const expiryTimestamp = createdAt + (days * 24 * 60 * 60 * 1000);
+  const diffDays = Math.ceil((expiryTimestamp - Date.now()) / (1000 * 60 * 60 * 24));
+  return Math.max(0, diffDays);
+}
+
 function paintCustomerOrdersHTML(container, orders) {
   container.innerHTML = `
     <div class="space-y-6 max-w-xl mx-auto font-sans text-xs pb-24 animate-fadeIn px-1">
@@ -67,8 +96,9 @@ function paintCustomerOrdersHTML(container, orders) {
           const isSuccess = status === 'SUCCESS' || status === 'PAID' || status === 'DELIVERED';
           const dateStr = new Date(order.created_at || Date.now()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
+          const remainingDays = calculateRemainingDays(order);
           const creds = order.credentials;
-          const isExpiredOrRevoked = !creds || order.sub_status === 'EXPIRED' || order.sub_status === 'REVOKED';
+          const isExpiredOrRevoked = !creds || remainingDays <= 0 || order.sub_status === 'EXPIRED' || order.sub_status === 'REVOKED';
 
           return `
             <div class="bg-surface-900/80 rounded-3xl p-4 sm:p-5 border border-white/5 shadow-2xl space-y-3.5 relative overflow-hidden backdrop-blur-xl">
@@ -121,7 +151,7 @@ function paintCustomerOrdersHTML(container, orders) {
               <!-- Conditional Credentials or Renewal Action -->
               ${isSuccess ? (
                 isExpiredOrRevoked ? `
-                  <!-- Expired / Revoked Slot State: Hide Details & Show Renewal -->
+                  <!-- Expired / Revoked Slot State -->
                   <div class="p-4 rounded-2xl bg-surface-950 border border-amber-500/25 space-y-3 font-mono">
                     <div class="flex items-center justify-between">
                       <div class="flex items-center gap-2 text-amber-400 font-bold text-xs">
@@ -139,13 +169,20 @@ function paintCustomerOrdersHTML(container, orders) {
                     </button>
                   </div>
                 ` : `
-                  <!-- Active Unlocked Credentials Box -->
+                  <!-- Active Unlocked Credentials Box with Days Left -->
                   <div class="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 space-y-2.5 font-mono text-xs">
                     <div class="flex items-center justify-between">
                       <div class="flex items-center gap-2 text-emerald-400 font-bold">
                         <span>🔓</span> <span>Credentials Unlocked</span>
                       </div>
-                      <span class="text-[9px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full uppercase">Verified</span>
+                      
+                      <!-- Days Remaining Pill Badge -->
+                      <div class="flex items-center gap-1.5">
+                        <span class="text-[10px] font-bold ${remainingDays <= 5 ? 'text-rose-400 bg-rose-500/10 border-rose-500/20' : 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30'} px-2.5 py-0.5 rounded-full uppercase border flex items-center gap-1">
+                          <span>⏳</span> ${remainingDays} ${remainingDays === 1 ? 'Day' : 'Days'} Left
+                        </span>
+                        <span class="text-[9px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full uppercase">Verified</span>
+                      </div>
                     </div>
 
                     <div class="p-3 bg-surface-950/90 rounded-xl border border-emerald-500/20 space-y-1.5 text-[11px]">
@@ -182,12 +219,10 @@ function paintCustomerOrdersHTML(container, orders) {
   `;
 }
 
-// Redirects user straight to the corresponding product page for seamless renewal
 function redirectToRenewProduct(productName) {
   const cached = state.cachedProducts || window.apiCache?.get('/api/products')?.data || [];
   const cleanName = (productName || '').toLowerCase().split('(')[0].trim();
 
-  // Find product by keyword match
   const matched = cached.find(p => {
     const pName = (p.name || '').toLowerCase();
     return pName.includes(cleanName) || cleanName.includes(pName);
