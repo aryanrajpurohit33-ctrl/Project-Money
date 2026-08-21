@@ -11,14 +11,20 @@ async function renderStoreProductDetails(container, productId) {
     const basePrice = p.sale_price || 499;
     const origBase = p.original_price || (basePrice * 2);
 
-    const showcaseImages = Array.isArray(p.images) && p.images.length > 0 
+    const allImages = Array.isArray(p.images) && p.images.length > 0 
       ? p.images 
       : [(p.image || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800')];
+
+    // Main hero image is image #0
+    const mainHeroImage = allImages[0];
+
+    // Showcase previews are all subsequent images (#1, #2, ...)
+    const showcasePreviews = allImages.length > 1 ? allImages.slice(1) : [];
 
     window.currentProductSelection = {
       productId: p._id,
       name: p.name,
-      image: showcaseImages[0],
+      image: mainHeroImage,
       basePrice: basePrice,
       baseOrig: origBase,
       subscriptionPricing: p.subscription_pricing || {},
@@ -31,7 +37,7 @@ async function renderStoreProductDetails(container, productId) {
     };
 
     container.innerHTML = `
-      <div class="space-y-5 pb-24 max-w-lg mx-auto font-sans animate-fadeIn text-xs px-2" onclick="closeDurationDropdownOutside(event)">
+      <div class="space-y-5 pb-24 max-w-lg mx-auto font-sans animate-fadeIn text-xs px-2 overflow-x-hidden" onclick="closeDurationDropdownOutside(event)">
         
         <!-- Back Navigation & Status -->
         <div class="flex items-center justify-between">
@@ -46,7 +52,7 @@ async function renderStoreProductDetails(container, productId) {
 
         <!-- Full-Fit Hero Showcase Banner -->
         <div class="relative rounded-3xl overflow-hidden bg-surface-950 w-full aspect-[16/10] shadow-2xl">
-          <img src="${showcaseImages[0]}" class="w-full h-full object-cover">
+          <img src="${mainHeroImage}" class="w-full h-full object-cover">
           <div class="absolute inset-0 bg-gradient-to-t from-surface-950/95 via-surface-950/20 to-transparent"></div>
 
           <div class="absolute bottom-4 left-4 right-4 flex items-end justify-between">
@@ -115,7 +121,7 @@ async function renderStoreProductDetails(container, productId) {
             </div>
           </div>
 
-          <!-- Total & Compact Device Stepper Row -->
+          <!-- Total & Stepper -->
           <div class="pt-2 flex items-center justify-between gap-2">
             <div class="space-y-1">
               <span class="text-slate-500 text-[10px] uppercase font-mono block">Order Total</span>
@@ -168,25 +174,27 @@ async function renderStoreProductDetails(container, productId) {
           </div>
         </div>
 
-        <!-- Google Play Store-Style Showcase Slides (Positioned Below Flash Deal) -->
-        <div class="space-y-2 pt-1">
-          <div class="flex items-center justify-between px-1 font-mono text-[10px] uppercase font-bold text-slate-400">
-            <span>Showcase Previews</span>
-            <span class="text-emerald-400 tracking-wider">Swipe to explore →</span>
-          </div>
+        <!-- Showcase Previews (Excludes Main Cover & Has Full Edge Bleed) -->
+        ${showcasePreviews.length > 0 ? `
+          <div class="space-y-2 pt-1">
+            <div class="flex items-center justify-between px-1 font-mono text-[10px] uppercase font-bold text-slate-400">
+              <span>Showcase Previews</span>
+              <span class="text-emerald-400 tracking-wider">Swipe to explore →</span>
+            </div>
 
-          <div class="flex items-center gap-3 overflow-x-auto py-1 px-1 custom-scroll snap-x snap-mandatory" style="scrollbar-width: none; -ms-overflow-style: none;">
-            ${showcaseImages.map((img, idx) => `
-              <div class="flex-shrink-0 w-36 sm:w-40 aspect-[9/16] rounded-2xl overflow-hidden bg-surface-900 border border-white/10 shadow-xl relative group snap-start">
-                <img src="${img}" alt="Preview ${idx + 1}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-                <div class="absolute inset-0 bg-gradient-to-t from-surface-950/80 via-transparent to-transparent pointer-events-none"></div>
-                <span class="absolute bottom-2 left-2.5 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[9px] font-mono text-white/90 font-bold border border-white/10">
-                  #0${idx + 1}
-                </span>
-              </div>
-            `).join('')}
+            <div class="-mx-2 px-3 flex items-center gap-3 overflow-x-auto py-2 custom-scroll" style="scrollbar-width: none; -webkit-overflow-scrolling: touch;">
+              ${showcasePreviews.map((img, idx) => `
+                <div class="flex-shrink-0 w-40 sm:w-44 aspect-[9/16] rounded-3xl overflow-hidden bg-surface-900 border border-white/10 shadow-2xl relative group">
+                  <img src="${img}" alt="Showcase Preview ${idx + 1}" class="w-full h-full object-cover">
+                  <div class="absolute inset-0 bg-gradient-to-t from-surface-950/80 via-transparent to-transparent pointer-events-none"></div>
+                  <span class="absolute bottom-2.5 left-3 px-2 py-0.5 rounded-lg bg-black/70 backdrop-blur-md text-[9px] font-mono text-white/90 font-bold border border-white/10">
+                    #0${idx + 1}
+                  </span>
+                </div>
+              `).join('')}
+            </div>
           </div>
-        </div>
+        ` : ''}
 
         <!-- Important Usage Instructions & Rules Card -->
         <div class="bg-surface-900/50 rounded-3xl p-4 sm:p-5 space-y-3 shadow-lg">
