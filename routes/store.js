@@ -3,9 +3,8 @@ const router = express.Router();
 const Transaction = require('../models/Transaction');
 const Subscription = require('../models/Subscription');
 const InventorySlot = require('../models/InventorySlot');
-const User = require('../models/User');
 
-// 1. Unified Checkout Submission Endpoints
+// Checkout Endpoint
 router.post(['/orders/checkout', '/checkout', '/orders', '/transactions/submit'], async (req, res) => {
   try {
     const { items, customer_name, customer_email, total_amount, amount, proof_screenshot, payment_method } = req.body;
@@ -22,7 +21,6 @@ router.post(['/orders/checkout', '/checkout', '/orders', '/transactions/submit']
 
     const generatedTxnId = 'TXN-' + Math.floor(100000 + Math.random() * 900000);
 
-    // Save transaction to DB
     const txn = await Transaction.create({
       txn_id: generatedTxnId,
       customer_name: customer_name || 'Anonymous Customer',
@@ -45,7 +43,7 @@ router.post(['/orders/checkout', '/checkout', '/orders', '/transactions/submit']
   }
 });
 
-// 2. Customer Vault Purchased Items Query
+// Customer Vault Items Query
 router.get('/orders', async (req, res) => {
   try {
     const { email } = req.query;
@@ -56,14 +54,23 @@ router.get('/orders', async (req, res) => {
       .sort({ created_at: -1 })
       .lean();
 
+    const now = new Date();
+
     const enrichedOrders = await Promise.all(txns.map(async (t) => {
       const sub = await Subscription.findOne({ 
         $or: [{ order_id: t._id }, { customer_email: t.customer_email, product_name: t.product_name }]
       }).populate('assigned_slot_id').lean();
 
       let creds = null;
-      if (sub) {
-        if (sub.assigned_slot_id) {
+      let subStatus = sub ? sub.status : 'ACTIVE';
+
+      // Check validity window
+      if (sub && sub.expires_at && new Date(sub.expires_at) <= now) {
+        subStatus = 'EXPIRED';
+      }
+
+      if (sub && subStatus === 'ACTIVE') {
+        if (sub.assigned_slot_id && sub.assigned_slot_id.status !== 'DISABLED') {
           creds = {
             email: sub.assigned_slot_id.email,
             password: sub.assigned_slot_id.password,
@@ -82,6 +89,7 @@ router.get('/orders', async (req, res) => {
 
       return {
         ...t,
+        sub_status: subStatus,
         credentials: creds
       };
     }));
