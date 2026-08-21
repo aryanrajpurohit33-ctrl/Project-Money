@@ -54,7 +54,6 @@ async function renderStoreProductDetails(container, productId) {
         <div class="-mx-2 relative overflow-hidden bg-transparent aspect-[16/10] select-none">
           <img src="${mainHeroImage}" class="w-full h-full object-cover">
           
-          <!-- Enhanced Multi-Stop Gradient (Blends 100% Seamlessly Into App Background) -->
           <div class="absolute inset-0 bg-gradient-to-t from-[#07090e] via-[#07090e]/75 to-transparent pointer-events-none" style="background: linear-gradient(to top, rgba(7, 9, 14, 1) 0%, rgba(7, 9, 14, 0.9) 18%, rgba(7, 9, 14, 0.4) 45%, rgba(7, 9, 14, 0) 80%);"></div>
 
           <div class="absolute bottom-2 left-4 right-4 flex items-end justify-between z-10">
@@ -120,7 +119,7 @@ async function renderStoreProductDetails(container, productId) {
             </div>
           </div>
 
-          <!-- Total & Compact Device Stepper Row -->
+          <!-- Total & Stepper -->
           <div class="pt-2 flex items-center justify-between gap-2">
             <div class="space-y-1">
               <span class="text-slate-500 text-[10px] uppercase font-mono block">Order Total</span>
@@ -184,38 +183,56 @@ async function renderStoreProductDetails(container, productId) {
           </div>
         ` : ''}
 
-        <!-- Important Usage Instructions & Rules Card -->
-        <div class="bg-surface-900/50 rounded-3xl p-4 sm:p-5 space-y-3 shadow-lg">
-          <div class="flex items-center justify-between border-b border-white/5 pb-2.5">
+        <!-- Why Buy From Us Trust Section (Replaced Instructions) -->
+        <div class="bg-surface-900/70 rounded-3xl p-5 border border-white/5 space-y-4 shadow-xl">
+          
+          <div class="flex items-center justify-between border-b border-white/5 pb-3">
             <div class="flex items-center gap-2">
-              <span class="text-amber-400 text-sm">⚠️</span>
-              <span class="text-white font-bold text-xs">Important Usage Instructions & Rules</span>
+              <span class="text-emerald-400 text-base">🛡️</span>
+              <h2 class="text-white font-bold text-xs uppercase tracking-wider font-mono">Why Buy From Us?</h2>
             </div>
-            <span class="text-[9px] font-mono text-amber-400/90 uppercase font-bold bg-amber-500/10 px-2 py-0.5 rounded-full">Mandatory</span>
+            <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[9px] font-black uppercase">
+              100% Guaranteed
+            </span>
           </div>
 
-          <div class="space-y-2.5 text-[11px] text-slate-300 font-sans leading-relaxed">
-            ${p.custom_instructions || p.customer_instructions ? `
-              <div>${(p.custom_instructions || p.customer_instructions).replace(/\\n/g, '<br>')}</div>
-            ` : `
-              <div class="flex items-start gap-2">
-                <span class="text-rose-400 font-bold text-xs leading-none mt-0.5">•</span>
-                <span><strong class="text-white">Do NOT Share Password:</strong> Keep login credentials strictly confidential. Sharing login credentials with others will lead to an immediate ban and warranty cancellation.</span>
+          <div class="space-y-3 font-sans text-[11px]">
+            
+            <!-- Point 1 -->
+            <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/60 border border-white/5">
+              <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 text-sm font-mono">
+                ⚡
               </div>
-              <div class="flex items-start gap-2">
-                <span class="text-rose-400 font-bold text-xs leading-none mt-0.5">•</span>
-                <span><strong class="text-white">1 Device per Purchase:</strong> You can only log in on <strong class="text-emerald-400">1 device at a time</strong> per purchased slot (unless you choose higher device quantity during checkout).</span>
+              <div class="space-y-0.5">
+                <strong class="text-white font-bold block text-xs">Instant Digital Delivery</strong>
+                <p class="text-slate-400 leading-relaxed">Direct unlock in your Purchased Items Vault right after order verification.</p>
               </div>
-              <div class="flex items-start gap-2">
-                <span class="text-amber-400 font-bold text-xs leading-none mt-0.5">•</span>
-                <span><strong class="text-white">Do NOT Change Account Details:</strong> Never change account email, master password, or billing settings. Modifying these permanently voids your warranty.</span>
+            </div>
+
+            <!-- Point 2 -->
+            <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/60 border border-white/5">
+              <div class="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0 text-sm font-mono">
+                🔐
               </div>
-              <div class="flex items-start gap-2">
-                <span class="text-emerald-400 font-bold text-xs leading-none mt-0.5">•</span>
-                <span><strong class="text-white">Profile & PIN Lock:</strong> Use only your assigned profile number. You may set your own 4-digit PIN for privacy.</span>
+              <div class="space-y-0.5">
+                <strong class="text-white font-bold block text-xs">Private & Dedicated Profiles</strong>
+                <p class="text-slate-400 leading-relaxed">Assigned single-user profile PIN protection with 4K UHD streaming quality.</p>
               </div>
-            `}
+            </div>
+
+            <!-- Point 3 -->
+            <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/60 border border-white/5">
+              <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0 text-sm font-mono">
+                🤝
+              </div>
+              <div class="space-y-0.5">
+                <strong class="text-white font-bold block text-xs">Full Replacement Warranty</strong>
+                <p class="text-slate-400 leading-relaxed">Complete subscription duration coverage with dedicated 24/7 Telegram support.</p>
+              </div>
+            </div>
+
           </div>
+
         </div>
 
       </div>
