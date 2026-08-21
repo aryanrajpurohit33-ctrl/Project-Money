@@ -60,7 +60,6 @@ async function renderStoreProductDetails(container, productId) {
               <span class="text-[10px] font-mono tracking-widest text-emerald-400 uppercase font-bold block mb-1">${p.category || 'OTT'}</span>
               <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">${p.name}</h1>
             </div>
-            <!-- Removed the OTT lightning pill here as requested -->
           </div>
         </div>
 
@@ -172,9 +171,9 @@ async function renderStoreProductDetails(container, productId) {
           </div>
         </div>
 
-        <!-- Clean Showcase Slider -->
+        <!-- Clean Showcase Slider (No Clipping Line / No Cut-off) -->
         ${showcasePreviews.length > 0 ? `
-          <div class="-mx-2 px-3 flex items-center gap-3 overflow-x-auto py-1 custom-scroll" style="scrollbar-width: none; -webkit-overflow-scrolling: touch;">
+          <div class="-mx-2 px-2 flex items-center gap-3 overflow-x-auto py-1" style="scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch;">
             ${showcasePreviews.map(img => `
               <div class="flex-shrink-0 w-44 sm:w-48 aspect-[9/16] rounded-3xl overflow-hidden bg-surface-900 border border-white/10 shadow-2xl">
                 <img src="${img}" alt="Product Preview" class="w-full h-full object-cover select-none">
