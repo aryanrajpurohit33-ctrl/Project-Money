@@ -1,6 +1,8 @@
 window.currentProofData = '';
 
 async function renderStoreCheckout(container) {
+  // Ensure body scroll is unlocked when entering checkout
+  document.body.style.overflow = '';
   window.currentProofData = '';
 
   if (!state.cart || state.cart.length === 0) {
@@ -120,9 +122,10 @@ async function renderStoreCheckout(container) {
         </button>
       </div>
 
-      <!-- Smooth Instructions Safety Modal Overlay -->
-      <div id="instructionModalOverlay" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-3 opacity-0 pointer-events-none transition-all duration-300">
-        <div id="instructionModalContent" class="w-full max-w-md bg-surface-900 border border-white/10 rounded-3xl p-6 space-y-5 shadow-2xl transform scale-95 translate-y-6 transition-all duration-300 font-sans">
+      <!-- Instructions Safety Modal Overlay -->
+      <div id="instructionModalOverlay" onclick="closeInstructionsModal()" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-3 opacity-0 pointer-events-none transition-all duration-300">
+        
+        <div id="instructionModalContent" onclick="event.stopPropagation()" class="w-full max-w-md bg-surface-900 border border-white/10 rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl transform scale-95 translate-y-8 transition-all duration-300 font-sans max-h-[90vh] overflow-y-auto">
           
           <!-- Modal Header -->
           <div class="flex items-center justify-between border-b border-white/5 pb-3">
@@ -130,11 +133,11 @@ async function renderStoreCheckout(container) {
               <span class="text-amber-400 text-lg">⚠️</span>
               <h3 class="text-white font-black text-sm uppercase tracking-wide font-mono">Usage Policy & Rules</h3>
             </div>
-            <button onclick="closeInstructionsModal()" class="text-slate-400 hover:text-white p-1 text-sm cursor-pointer">✕</button>
+            <button type="button" onclick="closeInstructionsModal()" class="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-xs cursor-pointer">✕</button>
           </div>
 
           <!-- Rules List -->
-          <div class="space-y-3 text-xs">
+          <div class="space-y-2.5 text-xs">
             <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-950/80 border border-white/5">
               <span class="text-rose-400 text-sm font-bold shrink-0">🚫</span>
               <div class="space-y-0.5">
@@ -162,7 +165,7 @@ async function renderStoreCheckout(container) {
 
           <!-- Mandatory Acknowledgment Checkbox -->
           <label class="flex items-start gap-3 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 cursor-pointer select-none">
-            <input type="checkbox" id="policyAgreementCheckbox" onchange="toggleAgreeButtonState()" class="mt-0.5 w-4 h-4 rounded border-rose-500/40 text-emerald-500 focus:ring-0 cursor-pointer accent-emerald-500">
+            <input type="checkbox" id="policyAgreementCheckbox" onchange="toggleAgreeButtonState()" class="mt-0.5 w-4 h-4 rounded border-rose-500/40 text-emerald-500 focus:ring-0 cursor-pointer accent-emerald-500 shrink-0">
             <span class="text-[11px] text-rose-200 leading-snug font-mono">
               I understand that violating any of these rules will result in immediate <strong class="text-rose-400 underline">subscription revocation without any refund</strong>.
             </span>
@@ -205,8 +208,11 @@ function openInstructionsModal() {
   if (checkbox) checkbox.checked = false;
   toggleAgreeButtonState();
 
+  // Lock body scroll
+  document.body.style.overflow = 'hidden';
+
   overlay.classList.remove('opacity-0', 'pointer-events-none');
-  modal.classList.remove('scale-95', 'translate-y-6');
+  modal.classList.remove('scale-95', 'translate-y-8');
   modal.classList.add('scale-100', 'translate-y-0');
 }
 
@@ -215,8 +221,11 @@ function closeInstructionsModal() {
   const modal = document.getElementById('instructionModalContent');
   if (!overlay || !modal) return;
 
+  // Restore body scroll
+  document.body.style.overflow = '';
+
   modal.classList.remove('scale-100', 'translate-y-0');
-  modal.classList.add('scale-95', 'translate-y-6');
+  modal.classList.add('scale-95', 'translate-y-8');
   overlay.classList.add('opacity-0', 'pointer-events-none');
 }
 
@@ -318,7 +327,6 @@ async function confirmAgreementAndSubmit() {
     closeInstructionsModal();
     showToast('✓ Payment proof submitted! Redirecting to vault...');
     
-    // Redirect directly to the purchased items / digital vault page
     setTimeout(() => {
       navigate('orders');
     }, 400);
