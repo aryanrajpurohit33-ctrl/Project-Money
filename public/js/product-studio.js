@@ -1,362 +1,295 @@
+window.currentEditingGalleryImages = [];
+
 async function renderAdminProductsStudio(container) {
-  container.innerHTML = `
-    <div class="space-y-6 font-mono text-xs animate-pulse">
-      <div class="h-10 bg-surface-900 rounded-2xl w-1/3"></div>
-      <div class="h-64 bg-surface-900 rounded-3xl"></div>
-    </div>
-  `;
+  const cached = window.apiCache?.get('/api/products')?.data;
+  if (cached && Array.isArray(cached)) {
+    paintProductStudioHTML(container, cached);
+  } else {
+    container.innerHTML = getLoadingSpinnerHTML();
+  }
 
   try {
     const products = await fetchJSON('/api/products');
-    state.loadedProducts = Array.isArray(products) ? products : [];
-    const list = state.loadedProducts;
-
-    const publishedCount = list.filter(p => p.status === 'PUBLISHED' || !p.status || p.status === 'ACTIVE' || p.status === 'active').length;
-    const draftCount = list.filter(p => p.status === 'DRAFT' || p.status === 'draft').length;
-    const outCount = list.filter(p => p.status === 'OUT_OF_STOCK').length;
-
-    container.innerHTML = `
-      <div class="space-y-6 font-sans text-xs pb-20 w-full max-w-full animate-fadeIn">
-        
-        <!-- Header -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 class="text-2xl font-black text-white tracking-tight">PRODUCT STUDIO</h1>
-            <p class="text-slate-400 text-xs mt-0.5 font-mono">Manage products, custom tier pricing, images, and feature configs.</p>
-          </div>
-          <button onclick="openProductEditModal()" class="w-full sm:w-auto px-6 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-gray-950 rounded-2xl font-black font-mono text-xs uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer">
-            <span>+ Add Product</span>
-          </button>
-        </div>
-
-        <!-- Metric Stat Cards -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono">
-          <div class="admin-card p-4 rounded-2xl space-y-1">
-            <span class="text-slate-400 text-[10px] uppercase block">Total Products</span>
-            <span class="text-white font-black text-xl">${list.length}</span>
-          </div>
-          <div class="admin-card p-4 rounded-2xl space-y-1">
-            <span class="text-slate-400 text-[10px] uppercase block">Published</span>
-            <span class="text-emerald-400 font-black text-xl">${publishedCount}</span>
-          </div>
-          <div class="admin-card p-4 rounded-2xl space-y-1">
-            <span class="text-slate-400 text-[10px] uppercase block">Drafts</span>
-            <span class="text-amber-400 font-black text-xl">${draftCount}</span>
-          </div>
-          <div class="admin-card p-4 rounded-2xl space-y-1">
-            <span class="text-slate-400 text-[10px] uppercase block">Out of Stock</span>
-            <span class="text-rose-400 font-black text-xl">${outCount}</span>
-          </div>
-        </div>
-
-        <!-- Product Cards List -->
-        <div class="space-y-3">
-          ${list.length === 0 ? `
-            <div class="admin-card rounded-3xl p-16 text-center text-slate-500 font-mono">No products in catalog yet. Click "+ Add Product" to create one.</div>
-          ` : list.map(p => `
-            <div class="admin-card rounded-3xl p-4 sm:p-5 space-y-4 border border-admin-border hover:border-emerald-500/30 transition-all shadow-xl">
-              <div class="flex items-center justify-between gap-3">
-                <div class="flex items-center gap-3 min-w-0">
-                  <img src="${(p.images && p.images[0]) || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=400'}" class="w-12 h-12 rounded-xl object-cover border border-white/10 shrink-0">
-                  <div class="min-w-0">
-                    <h3 class="text-white font-bold text-sm truncate">${p.name}</h3>
-                    <div class="flex items-center gap-2 mt-0.5">
-                      <span class="text-emerald-400 font-mono font-bold text-xs">₹${p.sale_price || 499}</span>
-                      <span class="text-slate-500 font-mono line-through text-[11px]">₹${p.original_price || 999}</span>
-                      <span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-white/5 text-slate-400 uppercase">${p.category || 'OTT'}</span>
-                    </div>
-                  </div>
-                </div>
-                <span class="px-2.5 py-1 rounded-full uppercase text-[9px] font-mono font-bold ${p.status === 'PUBLISHED' || !p.status || p.status === 'ACTIVE' || p.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">
-                  ${p.status || 'ACTIVE'}
-                </span>
-              </div>
-
-              <!-- Action Buttons -->
-              <div class="pt-3 border-t border-admin-border flex items-center justify-between gap-2">
-                <span class="text-[10px] text-slate-500 font-mono">Type: ${p.product_type || 'SUBSCRIPTION'}</span>
-                <div class="flex items-center gap-2">
-                  <button onclick="navigate('product-details', { id: '${p._id}' })" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-mono text-[11px] font-bold transition-all">
-                    Preview
-                  </button>
-                  <button onclick="openProductEditModal('${p._id}')" class="px-4 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 font-mono text-[11px] font-bold transition-all">
-                    Edit All Specs
-                  </button>
-                  <button onclick="deleteProductStudioItem('${p._id}')" class="px-2.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-mono text-[11px] font-bold transition-all">
-                    ✕
-                  </button>
-                </div>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-
-      </div>
-    `;
+    window.currentLoadedProductsList = Array.isArray(products) ? products : [];
+    paintProductStudioHTML(container, window.currentLoadedProductsList);
   } catch (err) {
-    container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono">Error: ${err.message}</div>`;
+    if (!cached) {
+      container.innerHTML = `<div class="admin-card p-8 text-center text-rose-400 text-xs font-mono rounded-3xl">Error loading products: ${err.message}</div>`;
+    }
   }
 }
 
-function openProductEditModal(productId = null) {
-  const p = productId ? (state.loadedProducts.find(x => x._id === productId) || {}) : {};
-  const isEdit = !!productId;
-
-  const modal = document.getElementById('globalModal');
-  const content = document.getElementById('globalModalContent');
-  modal.classList.remove('hidden'); modal.classList.add('flex');
-
-  // Multi-tier prices defaults
-  const pTiers = p.subscription_pricing || {};
-  const price1M = pTiers['1_MONTH']?.sale || p.sale_price || 499;
-  const orig1M = pTiers['1_MONTH']?.orig || p.original_price || 999;
-
-  const price3M = pTiers['3_MONTHS']?.sale || Math.round(price1M * 2.55);
-  const orig3M = pTiers['3_MONTHS']?.orig || (orig1M * 3);
-
-  const price6M = pTiers['6_MONTHS']?.sale || Math.round(price1M * 4.5);
-  const orig6M = pTiers['6_MONTHS']?.orig || (orig1M * 6);
-
-  const price1Y = pTiers['1_YEAR']?.sale || Math.round(price1M * 7.2);
-  const orig1Y = pTiers['1_YEAR']?.orig || (orig1M * 12);
-
-  const currentImg = (p.images && p.images[0]) || 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=800';
-
-  content.innerHTML = `
-    <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white p-2 z-20">✕</button>
-    
-    <div class="space-y-6 font-sans text-xs">
+function paintProductStudioHTML(container, products) {
+  container.innerHTML = `
+    <div class="space-y-6 font-sans text-xs pb-24 w-full max-w-full animate-fadeIn">
       
-      <!-- Modal Header -->
-      <div class="border-b border-white/10 pb-4">
-        <span class="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[10px] font-bold uppercase">Product Configuration</span>
-        <h2 class="text-xl font-black text-white mt-1.5 font-sans">${isEdit ? 'Edit Product & Specs' : 'Create New Product'}</h2>
+      <!-- Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[10px] font-bold uppercase tracking-wider">
+              Inventory Catalog
+            </span>
+            <span class="text-slate-500 font-mono text-[10px]">Slideshow & Digital Listings</span>
+          </div>
+          <h1 class="text-2xl font-black text-white tracking-tight mt-1">Product Studio</h1>
+        </div>
+
+        <button onclick="openProductStudioModal()" class="w-fit px-5 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-mono text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-95">
+          <span>+ Create New Product</span>
+        </button>
       </div>
 
-      <form onsubmit="handleSaveProductStudio(event, '${productId || ''}')" class="space-y-5">
+      <!-- Products Grid Feed -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        ${products.length === 0 ? `
+          <div class="col-span-full admin-card rounded-3xl p-16 text-center space-y-2 border border-admin-border">
+            <span class="text-3xl block">📦</span>
+            <p class="text-slate-400 font-mono">No products listed in catalog yet.</p>
+          </div>
+        ` : products.map(p => {
+          const imgs = Array.isArray(p.images) && p.images.length > 0 ? p.images : (p.image ? [p.image] : ['/assets/placeholder.png']);
+          return `
+            <div class="admin-card rounded-3xl p-4 sm:p-5 border border-admin-border hover:border-white/15 transition-all shadow-xl space-y-4 flex flex-col justify-between">
+              
+              <div class="space-y-3">
+                <div class="relative aspect-[16/9] rounded-2xl overflow-hidden bg-surface-950 border border-white/5">
+                  <img src="${imgs[0]}" alt="${p.name}" class="w-full h-full object-contain">
+                  <span class="absolute top-2 right-2 px-2.5 py-1 rounded-xl bg-surface-950/90 text-emerald-400 font-mono text-[10px] font-bold border border-white/10">
+                    📷 ${imgs.length} Image${imgs.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+
+                <div>
+                  <span class="text-emerald-400 font-mono text-[10px] uppercase font-bold">${p.category || 'OTT'} • ${p.brand || 'Nexus'}</span>
+                  <h3 class="text-white font-bold text-sm leading-tight">${p.name}</h3>
+                </div>
+
+                <div class="flex items-baseline gap-2 font-mono">
+                  <span class="text-emerald-400 font-black text-base">₹${p.sale_price}</span>
+                  <span class="text-slate-500 line-through text-xs">₹${p.original_price}</span>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="flex items-center justify-end gap-2 pt-2 border-t border-white/5 font-mono">
+                <button onclick="openProductStudioModal('${p._id}')" class="px-3.5 py-2 rounded-xl bg-surface-900 hover:bg-surface-800 border border-white/10 text-white text-[11px] font-bold transition-all cursor-pointer">
+                  ✏️ Edit & Photos
+                </button>
+                <button onclick="handleDeleteProduct('${p._id}')" class="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[11px] font-bold transition-all cursor-pointer">
+                  Delete ✕
+                </button>
+              </div>
+
+            </div>
+          `;
+        }).join('')}
+      </div>
+
+    </div>
+  `;
+}
+
+function openProductStudioModal(productId = null) {
+  const modal = document.getElementById('globalModal');
+  const content = document.getElementById('globalModalContent');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+
+  let prod = null;
+  if (productId) {
+    prod = (window.currentLoadedProductsList || []).find(x => x._id === productId);
+  }
+
+  window.currentEditingGalleryImages = prod ? (Array.isArray(prod.images) ? [...prod.images] : (prod.image ? [prod.image] : [])) : [];
+
+  content.innerHTML = `
+    <button onclick="document.getElementById('globalModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white p-2">✕</button>
+    
+    <div class="space-y-4 font-sans text-xs">
+      <div class="border-b border-white/10 pb-3">
+        <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[10px] font-bold uppercase">Product Studio</span>
+        <h2 class="text-lg font-black text-white mt-1">${prod ? 'Edit Product & Slideshow Gallery' : 'Create New Product'}</h2>
+      </div>
+
+      <form onsubmit="handleSaveProductSubmit(event, '${productId || ''}')" class="space-y-4 font-mono">
         
-        <!-- 1. General Product Details -->
-        <div class="space-y-3 font-mono">
-          <span class="text-slate-400 text-[10px] uppercase tracking-wider block font-bold">1. General Information</span>
-          
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label class="text-slate-400 text-[10px] block mb-1">Product Title</label>
-              <input type="text" id="edProdName" required value="${p.name || ''}" placeholder="e.g. Amazon Prime Video" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500 font-sans font-bold">
-            </div>
+        <div>
+          <label class="text-slate-400 text-[10px] block mb-1">Product Title</label>
+          <input type="text" id="prodTitle" required value="${prod?.name || ''}" placeholder="e.g. Netflix Premium 4K UHD (PRIVATE)" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
+        </div>
 
-            <div>
-              <label class="text-slate-400 text-[10px] block mb-1">Category Badge</label>
-              <input type="text" id="edProdCat" required value="${p.category || 'OTT'}" placeholder="e.g. OTT, STREAMING, SOFTWARE" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
-            </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-slate-400 text-[10px] block mb-1">Category</label>
+            <input type="text" id="prodCategory" value="${prod?.category || 'OTT'}" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="text-slate-400 text-[10px] block mb-1">Brand Name</label>
+            <input type="text" id="prodBrand" value="${prod?.brand || 'Nexus Digital'}" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-slate-400 text-[10px] block mb-1">Sale Price (₹)</label>
+            <input type="number" id="prodSalePrice" required value="${prod?.sale_price || 499}" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="text-slate-400 text-[10px] block mb-1">Original Price (₹)</label>
+            <input type="number" id="prodOrigPrice" required value="${prod?.original_price || 999}" class="w-full px-3.5 py-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
+          </div>
+        </div>
+
+        <!-- Multi-Image Slideshow Gallery Manager -->
+        <div class="p-3.5 rounded-2xl bg-surface-950 border border-white/10 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-emerald-400 font-bold text-xs">📷 Product Slideshow Images</span>
+            <span class="text-slate-400 text-[10px]" id="galleryCountBadge">${window.currentEditingGalleryImages.length} images added</span>
           </div>
 
-          <!-- Product Image: File Upload & URL Option -->
+          <!-- Add Image by File Upload or URL -->
           <div class="space-y-2">
-            <label class="text-slate-400 text-[10px] block font-bold">Product Image (Upload File or Enter URL)</label>
-            
-            <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border space-y-3">
-              <!-- Upload from device -->
-              <div class="flex items-center gap-3">
-                <label class="px-4 py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 font-bold font-mono text-[11px] cursor-pointer active:scale-95 transition-all flex items-center gap-1.5 shrink-0">
-                  <span>📁 Upload Image File</span>
-                  <input type="file" accept="image/*" class="hidden" onchange="handleProductImageFileUpload(event)">
-                </label>
-                <span class="text-[10px] text-slate-500 font-mono">PNG, JPG, WEBP</span>
-              </div>
+            <div class="flex gap-2">
+              <input type="url" id="newImageUrlInput" placeholder="Paste Image URL (https://...)" class="flex-1 px-3 py-2 rounded-xl bg-surface-900 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
+              <button type="button" onclick="handleAddImageUrl()" class="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs cursor-pointer">
+                + Add URL
+              </button>
+            </div>
 
-              <!-- Or URL Input with Live Preview -->
-              <div class="flex items-center gap-2">
-                <input type="text" id="edProdImg" required value="${currentImg}" oninput="document.getElementById('edImgPreview').src = this.value" placeholder="Or paste image URL here..." class="flex-1 px-3.5 py-2.5 rounded-xl bg-surface-900 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
-                <img id="edImgPreview" src="${currentImg}" class="w-12 h-12 rounded-xl object-cover border border-white/10 shrink-0 shadow-md">
-              </div>
+            <div class="relative">
+              <input type="file" id="multiImageFileInput" accept="image/*" multiple onchange="handleMultiImageUpload(event)" class="w-full px-3 py-2 rounded-xl bg-surface-900 border border-admin-border text-slate-400 text-xs outline-none file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-black file:bg-emerald-500 file:text-gray-950 cursor-pointer">
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label class="text-slate-400 text-[10px] block mb-1">Product Type</label>
-              <select id="edProdType" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
-                <option value="SUBSCRIPTION" ${p.product_type === 'SUBSCRIPTION' ? 'selected' : ''}>SUBSCRIPTION</option>
-                <option value="ONE_TIME" ${p.product_type === 'ONE_TIME' ? 'selected' : ''}>ONE_TIME / LIFETIME</option>
-              </select>
-            </div>
-            <div>
-              <label class="text-slate-400 text-[10px] block mb-1">Store Status</label>
-              <select id="edProdStatus" class="w-full px-4 py-3 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500">
-                <option value="PUBLISHED" ${p.status === 'PUBLISHED' || !p.status || p.status === 'active' || p.status === 'ACTIVE' ? 'selected' : ''}>PUBLISHED (Active)</option>
-                <option value="DRAFT" ${p.status === 'DRAFT' || p.status === 'draft' ? 'selected' : ''}>DRAFT (Hidden)</option>
-                <option value="OUT_OF_STOCK" ${p.status === 'OUT_OF_STOCK' ? 'selected' : ''}>OUT OF STOCK</option>
-              </select>
-            </div>
+          <!-- Live Thumbnails Gallery Strip -->
+          <div id="galleryThumbnailsContainer" class="flex items-center gap-2 overflow-x-auto py-2 custom-scroll">
+            ${renderGalleryThumbnailsHTML()}
           </div>
         </div>
 
-        <!-- 2. Subscription Pricing Matrix -->
-        <div class="space-y-3 font-mono pt-2 border-t border-white/5">
-          <span class="text-slate-400 text-[10px] uppercase tracking-wider block font-bold">2. Subscription Tier Pricing (Sale vs Strikethrough)</span>
-          
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            
-            <!-- 1 Month -->
-            <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border space-y-2">
-              <span class="text-emerald-400 font-bold text-xs block">1 Month Plan</span>
-              <div class="grid grid-cols-2 gap-2">
-                <div>
-                  <label class="text-slate-500 text-[9px] block">Sale Price (₹)</label>
-                  <input type="number" id="tierPrice1M" required value="${price1M}" class="w-full px-3 py-2 rounded-lg bg-surface-900 border border-admin-border text-white font-bold text-xs outline-none focus:border-emerald-500">
-                </div>
-                <div>
-                  <label class="text-slate-500 text-[9px] block">Original (₹)</label>
-                  <input type="number" id="tierOrig1M" required value="${orig1M}" class="w-full px-3 py-2 rounded-lg bg-surface-900 border border-admin-border text-slate-400 text-xs outline-none">
-                </div>
-              </div>
-            </div>
-
-            <!-- 3 Months -->
-            <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border space-y-2">
-              <span class="text-amber-400 font-bold text-xs block">3 Months Plan (Save 15%)</span>
-              <div class="grid grid-cols-2 gap-2">
-                <div>
-                  <label class="text-slate-500 text-[9px] block">Sale Price (₹)</label>
-                  <input type="number" id="tierPrice3M" required value="${price3M}" class="w-full px-3 py-2 rounded-lg bg-surface-900 border border-admin-border text-white font-bold text-xs outline-none focus:border-emerald-500">
-                </div>
-                <div>
-                  <label class="text-slate-500 text-[9px] block">Original (₹)</label>
-                  <input type="number" id="tierOrig3M" required value="${orig3M}" class="w-full px-3 py-2 rounded-lg bg-surface-900 border border-admin-border text-slate-400 text-xs outline-none">
-                </div>
-              </div>
-            </div>
-
-            <!-- 6 Months -->
-            <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border space-y-2">
-              <span class="text-indigo-400 font-bold text-xs block">6 Months Plan (Save 25%)</span>
-              <div class="grid grid-cols-2 gap-2">
-                <div>
-                  <label class="text-slate-500 text-[9px] block">Sale Price (₹)</label>
-                  <input type="number" id="tierPrice6M" required value="${price6M}" class="w-full px-3 py-2 rounded-lg bg-surface-900 border border-admin-border text-white font-bold text-xs outline-none focus:border-emerald-500">
-                </div>
-                <div>
-                  <label class="text-slate-500 text-[9px] block">Original (₹)</label>
-                  <input type="number" id="tierOrig6M" required value="${orig6M}" class="w-full px-3 py-2 rounded-lg bg-surface-900 border border-admin-border text-slate-400 text-xs outline-none">
-                </div>
-              </div>
-            </div>
-
-            <!-- 1 Year -->
-            <div class="p-3.5 rounded-2xl bg-surface-950 border border-admin-border space-y-2">
-              <span class="text-emerald-400 font-bold text-xs block">1 Year / 12 Months (Save 40%)</span>
-              <div class="grid grid-cols-2 gap-2">
-                <div>
-                  <label class="text-slate-500 text-[9px] block">Sale Price (₹)</label>
-                  <input type="number" id="tierPrice1Y" required value="${price1Y}" class="w-full px-3 py-2 rounded-lg bg-surface-900 border border-admin-border text-white font-bold text-xs outline-none focus:border-emerald-500">
-                </div>
-                <div>
-                  <label class="text-slate-500 text-[9px] block">Original (₹)</label>
-                  <input type="number" id="tierOrig1Y" required value="${orig1Y}" class="w-full px-3 py-2 rounded-lg bg-surface-900 border border-admin-border text-slate-400 text-xs outline-none">
-                </div>
-              </div>
-            </div>
-
-          </div>
+        <div>
+          <label class="text-slate-400 text-[10px] block mb-1">Customer Usage Rules & Instructions</label>
+          <textarea id="prodInstructions" rows="2" class="w-full p-2.5 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500 font-mono">${prod?.customer_instructions || 'Never share your account password.'}</textarea>
         </div>
 
-        <!-- 3. Instructions & Rules Override -->
-        <div class="space-y-2 font-mono pt-2 border-t border-white/5">
-          <label class="text-slate-400 text-[10px] uppercase tracking-wider block font-bold">3. Custom Delivery Instructions & Rules (Optional)</label>
-          <textarea id="edProdInstructions" rows="3" placeholder="Leave blank to use default (No password sharing, 1 device rule, PIN setup...)" class="w-full p-4 rounded-xl bg-surface-950 border border-admin-border text-white text-xs outline-none focus:border-emerald-500 font-sans">${p.custom_instructions || p.customer_instructions || ''}</textarea>
-        </div>
-
-        <!-- Action Submit -->
-        <div class="flex flex-col sm:flex-row gap-3 pt-3 border-t border-white/10">
-          <button type="submit" class="w-full sm:flex-1 py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black uppercase tracking-wider shadow-lg shadow-emerald-500/25 font-mono text-xs cursor-pointer active:scale-95 transition-all">
-            ✓ Save & Publish Product
+        <div class="flex gap-2 pt-2">
+          <button type="submit" class="flex-1 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-black uppercase text-xs tracking-wider transition-all cursor-pointer shadow-lg shadow-emerald-500/20">
+            Save Product Listing
           </button>
-          <button type="button" onclick="document.getElementById('globalModal').classList.add('hidden')" class="w-full sm:w-auto px-6 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold font-mono text-center">
+          <button type="button" onclick="document.getElementById('globalModal').classList.add('hidden')" class="px-4 py-3.5 rounded-xl bg-white/5 text-slate-300 font-bold">
             Cancel
           </button>
         </div>
 
       </form>
-
     </div>
   `;
 }
 
-function handleProductImageFileUpload(e) {
-  const file = e.target.files && e.target.files[0];
-  if (!file) return;
-
-  if (file.size > 10 * 1024 * 1024) {
-    showToast('File is too large. Please select an image under 10MB.', 'error');
-    return;
+function renderGalleryThumbnailsHTML() {
+  if (!window.currentEditingGalleryImages || window.currentEditingGalleryImages.length === 0) {
+    return `<span class="text-slate-500 text-[10px] font-mono">No slideshow images added yet.</span>`;
   }
-
-  const reader = new FileReader();
-  reader.onload = function(event) {
-    const base64Data = event.target.result;
-    const imgInput = document.getElementById('edProdImg');
-    const imgPreview = document.getElementById('edImgPreview');
-    
-    if (imgInput) imgInput.value = base64Data;
-    if (imgPreview) imgPreview.src = base64Data;
-    
-    showToast('✓ Image uploaded and preview ready');
-  };
-  reader.readAsDataURL(file);
+  return window.currentEditingGalleryImages.map((src, idx) => `
+    <div class="relative w-16 h-16 rounded-xl overflow-hidden bg-surface-900 border border-white/10 flex-shrink-0 group">
+      <img src="${src}" alt="Gallery ${idx + 1}" class="w-full h-full object-cover">
+      <button type="button" onclick="removeGalleryImage(${idx})" class="absolute top-1 right-1 w-4 h-4 rounded-full bg-rose-600 text-white font-bold text-[9px] flex items-center justify-center hover:scale-110 transition-transform">
+        ✕
+      </button>
+      <span class="absolute bottom-0.5 left-1 text-[8px] font-mono text-white/80 font-bold">#${idx + 1}</span>
+    </div>
+  `).join('');
 }
 
-async function handleSaveProductStudio(e, productId) {
+function handleAddImageUrl() {
+  const input = document.getElementById('newImageUrlInput');
+  const val = input.value.trim();
+  if (!val) return;
+  window.currentEditingGalleryImages.push(val);
+  input.value = '';
+  refreshGalleryView();
+}
+
+function handleMultiImageUpload(e) {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      window.currentEditingGalleryImages.push(event.target.result);
+      refreshGalleryView();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function removeGalleryImage(index) {
+  window.currentEditingGalleryImages.splice(index, 1);
+  refreshGalleryView();
+}
+
+function refreshGalleryView() {
+  const container = document.getElementById('galleryThumbnailsContainer');
+  const count = document.getElementById('galleryCountBadge');
+  if (container) container.innerHTML = renderGalleryThumbnailsHTML();
+  if (count) count.textContent = `${window.currentEditingGalleryImages.length} images added`;
+}
+
+async function handleSaveProductSubmit(e, productId) {
   e.preventDefault();
-  
+
   const payload = {
-    name: document.getElementById('edProdName').value.trim(),
-    category: document.getElementById('edProdCat').value.trim() || 'OTT',
-    images: [document.getElementById('edProdImg').value.trim()],
-    product_type: document.getElementById('edProdType').value,
-    status: document.getElementById('edProdStatus').value,
-    sale_price: Number(document.getElementById('tierPrice1M').value) || 499,
-    original_price: Number(document.getElementById('tierOrig1M').value) || 999,
-    subscription_pricing: {
-      '1_MONTH': { sale: Number(document.getElementById('tierPrice1M').value) || 499, orig: Number(document.getElementById('tierOrig1M').value) || 999 },
-      '3_MONTHS': { sale: Number(document.getElementById('tierPrice3M').value) || 1199, orig: Number(document.getElementById('tierOrig3M').value) || 2997 },
-      '6_MONTHS': { sale: Number(document.getElementById('tierPrice6M').value) || 1999, orig: Number(document.getElementById('tierOrig6M').value) || 5994 },
-      '1_YEAR': { sale: Number(document.getElementById('tierPrice1Y').value) || 2999, orig: Number(document.getElementById('tierOrig1Y').value) || 11988 }
-    },
-    custom_instructions: document.getElementById('edProdInstructions').value.trim()
+    name: document.getElementById('prodTitle').value.trim(),
+    category: document.getElementById('prodCategory').value.trim(),
+    brand: document.getElementById('prodBrand').value.trim(),
+    sale_price: Number(document.getElementById('prodSalePrice').value) || 499,
+    original_price: Number(document.getElementById('prodOrigPrice').value) || 999,
+    customer_instructions: document.getElementById('prodInstructions').value.trim(),
+    images: window.currentEditingGalleryImages
   };
 
   try {
-    const url = productId ? `/api/admin/products/${productId}` : '/api/admin/products';
-    const method = productId ? 'PUT' : 'POST';
+    if (productId) {
+      await fetchJSON(`/api/admin/products/${productId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${state.adminToken}`
+        },
+        body: JSON.stringify(payload)
+      });
+      showToast('✓ Product updated with new slideshow images');
+    } else {
+      await fetchJSON('/api/admin/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${state.adminToken}`
+        },
+        body: JSON.stringify(payload)
+      });
+      showToast('✓ Product created successfully');
+    }
 
-    await fetchJSON(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${state.adminToken}`
-      },
-      body: JSON.stringify(payload)
-    });
-
-    showToast(`✓ Product "${payload.name}" saved successfully`);
     document.getElementById('globalModal').classList.add('hidden');
-    await prefetchGlobalData();
+    window.apiCache?.clear();
     renderAdminProductsStudio(document.getElementById('adminMainContent'));
   } catch (err) {
     showToast(err.message, 'error');
   }
 }
 
-async function deleteProductStudioItem(productId) {
-  if (!confirm('Are you sure you want to delete this product?')) return;
+async function handleDeleteProduct(id) {
+  if (!confirm('Are you sure you want to delete this product listing?')) return;
   try {
-    await fetchJSON(`/api/admin/products/${productId}`, {
+    await fetchJSON(`/api/admin/products/${id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${state.adminToken}` }
     });
     showToast('✓ Product deleted');
-    await prefetchGlobalData();
+    window.apiCache?.clear();
     renderAdminProductsStudio(document.getElementById('adminMainContent'));
   } catch (err) {
     showToast(err.message, 'error');
