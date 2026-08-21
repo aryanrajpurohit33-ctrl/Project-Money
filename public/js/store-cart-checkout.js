@@ -1,4 +1,8 @@
+window.currentCheckoutProofImage = '';
+
 async function renderStoreCheckout(container) {
+  window.currentCheckoutProofImage = '';
+
   if (!state.cart || state.cart.length === 0) {
     navigate('cart');
     return;
@@ -22,7 +26,6 @@ async function renderStoreCheckout(container) {
   const upiName = s.upi_name || 'Nexus Digital Pay';
   const customQR = s.upi_qr_image || s.qr_code || '';
   
-  // Use custom uploaded QR if available, otherwise generate dynamic UPI QR
   const qrSrc = customQR || `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiName)}&am=${total}&cu=INR`)}`;
 
   container.innerHTML = `
@@ -80,7 +83,7 @@ async function renderStoreCheckout(container) {
         </div>
       </div>
 
-      <!-- Payment Verification Form -->
+      <!-- Payment Verification Form (Proof Upload Option) -->
       <form onsubmit="handleCustomerPaymentProofSubmit(event)" class="space-y-4 font-mono">
         <div class="space-y-1.5">
           <div class="flex items-center justify-between">
@@ -90,21 +93,53 @@ async function renderStoreCheckout(container) {
           <input type="text" id="payerNameInput" required placeholder="e.g. Aryan" value="${state.user?.name || ''}" class="w-full px-4 py-3.5 rounded-2xl bg-surface-900 border border-white/10 text-white text-xs outline-none focus:border-emerald-500">
         </div>
 
+        <!-- Payment Screenshot Proof Upload -->
         <div class="space-y-1.5">
           <div class="flex items-center justify-between">
-            <label class="text-slate-300 text-[10px] uppercase font-bold tracking-wider">12-Digit UTR / Transaction ID *</label>
-            <span class="text-slate-500 text-[9px]">Mandatory for verification</span>
+            <label class="text-slate-300 text-[10px] uppercase font-bold tracking-wider">Payment Screenshot Proof *</label>
+            <span class="text-emerald-400 text-[9px] font-bold">PNG, JPG, WEBP</span>
           </div>
-          <input type="text" id="transactionIdInput" required maxlength="12" placeholder="e.g. 423456789012" class="w-full px-4 py-3.5 rounded-2xl bg-surface-900 border border-white/10 text-emerald-400 font-bold text-xs outline-none focus:border-emerald-500">
+          
+          <div class="p-4 rounded-2xl bg-surface-900 border border-white/10 space-y-3">
+            <input type="file" id="proofFileInput" accept="image/*" required onchange="handleProofFileSelection(event)" class="w-full px-3 py-2 rounded-xl bg-surface-950 border border-white/10 text-slate-400 text-xs outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-500 file:text-gray-950 cursor-pointer">
+
+            <div id="proofPreviewBox" class="hidden items-center gap-3 pt-1">
+              <div class="relative w-16 h-16 rounded-xl overflow-hidden bg-black/40 border border-emerald-500/40 shrink-0">
+                <img id="proofPreviewImg" src="" alt="Proof Preview" class="w-full h-full object-cover">
+              </div>
+              <div class="space-y-0.5">
+                <span class="text-emerald-400 text-[11px] font-bold block">✓ Proof Loaded</span>
+                <span class="text-slate-500 text-[10px] block">Admin will inspect this payment receipt</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <button type="submit" id="confirmOrderBtn" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-gray-950 font-black uppercase text-xs tracking-wider transition-all cursor-pointer shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2">
-          <span>✓ SUBMIT PAYMENT VERIFICATION</span>
+          <span>✓ SUBMIT PAYMENT PROOF</span>
         </button>
       </form>
 
     </div>
   `;
+}
+
+function handleProofFileSelection(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    window.currentCheckoutProofImage = event.target.result;
+    const previewBox = document.getElementById('proofPreviewBox');
+    const previewImg = document.getElementById('proofPreviewImg');
+    if (previewBox && previewImg) {
+      previewImg.src = event.target.result;
+      previewBox.classList.remove('hidden');
+      previewBox.classList.add('flex');
+    }
+  };
+  reader.readAsDataURL(file);
 }
 
 function copyCheckoutUpi(id) {
@@ -114,20 +149,27 @@ function copyCheckoutUpi(id) {
 
 async function handleCustomerPaymentProofSubmit(e) {
   e.preventDefault();
+
+  if (!window.currentCheckoutProofImage) {
+    showToast('Please upload a payment screenshot proof', 'error');
+    return;
+  }
+
   const btn = document.getElementById('confirmOrderBtn');
   btn.disabled = true;
-  btn.innerHTML = 'Verifying & Creating Order...';
+  btn.innerHTML = 'Submitting Proof...';
 
   const payerName = document.getElementById('payerNameInput').value.trim();
-  const utr = document.getElementById('transactionIdInput').value.trim();
-
   const total = state.cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
 
   const payload = {
     items: state.cart,
     total_amount: total,
     payer_name: payerName,
-    transaction_id: utr,
+    payment_proof: window.currentCheckoutProofImage,
+    payment_proof_image: window.currentCheckoutProofImage,
+    proof_image: window.currentCheckoutProofImage,
+    transaction_id: 'PROOF-' + Math.floor(100000 + Math.random() * 900000),
     payment_method: 'UPI'
   };
 
@@ -146,11 +188,11 @@ async function handleCustomerPaymentProofSubmit(e) {
     const bagBadge = document.getElementById('cartBadgeCount');
     if (bagBadge) bagBadge.classList.add('hidden');
 
-    showToast('✓ Order submitted successfully!');
+    showToast('✓ Order proof submitted! Admin will verify shortly.');
     navigate('dashboard');
   } catch (err) {
     btn.disabled = false;
-    btn.innerHTML = '✓ SUBMIT PAYMENT VERIFICATION';
+    btn.innerHTML = '✓ SUBMIT PAYMENT PROOF';
     showToast(err.message, 'error');
   }
 }
